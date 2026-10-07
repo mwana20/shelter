@@ -1,0 +1,6 @@
+{
+  "name": "Sheltered - Mukono Real Estate & Property Marketplace",
+  "description": "Premium real estate platform for buying, renting, and advertising houses and properties across Mukono, Uganda.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
