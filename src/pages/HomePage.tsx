@@ -64,9 +64,9 @@ export const HomePage: React.FC = () => {
           <img
             src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85"
             alt="Mukono Modern Residential Property"
-            className="w-full h-full object-cover opacity-35 filter brightness-75 scale-105 transition-transform duration-1000"
+            className="w-full h-full object-cover opacity-100 filter brightness-100 scale-105 transition-transform duration-1000"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-white/0 via-white/0 to-white/0" />
         </div>
 
         {/* Content Container */}
