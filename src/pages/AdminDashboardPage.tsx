@@ -47,6 +47,18 @@ export const AdminDashboardPage: React.FC = () => {
   const pendingCount = properties.filter((p) => p.status === 'Pending').length;
 
   const pendingListings = properties.filter((p) => p.status === 'Pending');
+  const locationCounts = properties.reduce<Record<string, { country: string; area: string; count: number }>>(
+    (counts, property) => {
+      const country = property.country ?? 'Uganda';
+      const key = `${country}:${property.area}`;
+      const location = counts[key] ?? { country, area: property.area, count: 0 };
+      location.count += 1;
+      counts[key] = location;
+      return counts;
+    },
+    {}
+  );
+  const topLocations = Object.values(locationCounts).sort((a, b) => b.count - a.count).slice(0, 4);
 
   // Analytics rankings
   const topViewed = [...properties].sort((a, b) => b.viewsCount - a.viewsCount).slice(0, 5);
@@ -60,7 +72,7 @@ export const AdminDashboardPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">
               <Shield className="w-4 h-4" />
-              <span>Mukono District Administration Console</span>
+              <span>Global Marketplace Administration Console</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold font-serif-display">
               Sheltered Admin Control Center
@@ -164,7 +176,7 @@ export const AdminDashboardPage: React.FC = () => {
         {activeTab === 'inventory' && (
           <div className="bg-white rounded-3xl border border-neutral-200/90 shadow-xs overflow-hidden">
             <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
-              <h3 className="font-bold text-sm text-neutral-900">All Mukono Properties</h3>
+              <h3 className="font-bold text-sm text-neutral-900">All Marketplace Properties</h3>
               <span className="text-xs text-neutral-500">Showing {properties.length} listings</span>
             </div>
 
@@ -207,7 +219,7 @@ export const AdminDashboardPage: React.FC = () => {
                       </td>
 
                       <td className="p-3.5 font-bold text-neutral-900 whitespace-nowrap">
-                        {formatCompactUGX(prop.price, prop.listingType)}
+                        {formatCompactUGX(prop.price, prop.listingType, prop.currencyCode)}
                       </td>
 
                       <td className="p-3.5 text-neutral-600 whitespace-nowrap">
@@ -328,7 +340,7 @@ export const AdminDashboardPage: React.FC = () => {
                         >
                           {prop.title}
                         </h4>
-                        <p className="text-emerald-700 font-extrabold">{formatUGX(prop.price, prop.listingType)}</p>
+                        <p className="text-emerald-700 font-extrabold">{formatUGX(prop.price, prop.listingType, prop.currencyCode)}</p>
                         <p className="text-neutral-400 text-[11px]">
                           Submitted by: {prop.agent?.name} ({prop.agent?.phone})
                         </p>
@@ -446,25 +458,15 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="bg-white rounded-3xl p-6 border border-neutral-200/90 shadow-xs space-y-4">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-700">
                 <TrendingUp className="w-4 h-4 text-blue-600" />
-                <span>High-Demand Mukono Localities</span>
+                <span>Markets Represented in Listings</span>
               </div>
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between items-center py-1">
-                  <span>1. Seeta & Bajjo Road Corridor</span>
-                  <span className="font-bold text-neutral-800">38% of inquiries</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span>2. Sonde Hill & Misindye Ridge</span>
-                  <span className="font-bold text-neutral-800">26% of inquiries</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span>3. Mukono Municipality (UCU/Bishop Tucker)</span>
-                  <span className="font-bold text-neutral-800">21% of inquiries</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span>4. Kyetume & Katosi Corridor</span>
-                  <span className="font-bold text-neutral-800">15% of inquiries</span>
-                </div>
+                {topLocations.map((location, index) => (
+                  <div key={`${location.country}:${location.area}`} className="flex justify-between items-center py-1">
+                    <span>{index + 1}. {location.area}, {location.country}</span>
+                    <span className="font-bold text-neutral-800">{location.count} listings</span>
+                  </div>
+                ))}
               </div>
             </div>
 

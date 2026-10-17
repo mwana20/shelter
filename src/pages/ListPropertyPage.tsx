@@ -1,33 +1,44 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Upload,
-  Plus,
   Trash2,
   CheckCircle2,
   ShieldCheck,
   Building,
-  Image as ImageIcon
+  ChevronUp,
+  ChevronDown,
+  Film
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { companySettings } from '../config/company';
 import { ALL_AMENITIES } from '../data/mockProperties';
-import { mockAgents } from '../data/mockAgents';
-import { ListingType, PropertyType, MukonoArea } from '../types';
+import { ListingType, Property, PropertyType } from '../types';
+
+interface MediaFile {
+  file: File;
+  preview: string;
+}
 
 export const ListPropertyPage: React.FC = () => {
-  const { addProperty, currentUser, setCurrentPage } = useApp();
+  const { addProperty, currentUser, setCurrentPage, showNotification } = useApp();
 
   const [title, setTitle] = useState('');
   const [listingType, setListingType] = useState<ListingType>('Sale');
   const [propertyType, setPropertyType] = useState<PropertyType>('House');
   const [price, setPrice] = useState('');
-  const [area, setArea] = useState<MukonoArea>('Seeta');
+  const [currencyCode, setCurrencyCode] = useState('UGX');
+  const [country, setCountry] = useState('Uganda');
+  const [region, setRegion] = useState('');
+  const [district, setDistrict] = useState('');
+  const [city, setCity] = useState('');
+  const [area, setArea] = useState('');
   const [locationDetails, setLocationDetails] = useState('');
   const [bedrooms, setBedrooms] = useState('3');
   const [bathrooms, setBathrooms] = useState('2');
   const [parkingSpaces, setParkingSpaces] = useState('2');
   const [sqft, setSqft] = useState('2000');
   const [plotSize, setPlotSize] = useState('50 x 100 ft (12 Decimals)');
-  const [titleDeedStatus, setTitleDeedStatus] = useState<any>('Ready Private Mailo');
+  const [titleDeedStatus, setTitleDeedStatus] = useState<Property['titleDeedStatus']>();
   const [description, setDescription] = useState('');
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([
     'Water availability',
@@ -35,12 +46,26 @@ export const ListPropertyPage: React.FC = () => {
     'Security',
     'Fence'
   ]);
-  const [images, setImages] = useState<string[]>([
-    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
-    'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=85'
-  ]);
-  const [newImageUrl, setNewImageUrl] = useState('');
+  const [photos, setPhotos] = useState<(MediaFile | null)[]>(Array.from({ length: 5 }, () => null));
+  const [video, setVideo] = useState<MediaFile | null>(null);
+  const previewUrls = useRef<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => () => {
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
+  const createMediaPreview = (file: File): MediaFile => {
+    const preview = URL.createObjectURL(file);
+    previewUrls.current.push(preview);
+    return { file, preview };
+  };
+
+  const releaseMediaPreview = (media: MediaFile | null) => {
+    if (!media) return;
+    URL.revokeObjectURL(media.preview);
+    previewUrls.current = previewUrls.current.filter((url) => url !== media.preview);
+  };
 
   const toggleFeature = (f: string) => {
     setSelectedFeatures((prev) =>
@@ -48,57 +73,88 @@ export const ListPropertyPage: React.FC = () => {
     );
   };
 
-  const handleAddImage = () => {
-    if (newImageUrl.trim()) {
-      setImages((prev) => [...prev, newImageUrl.trim()]);
-      setNewImageUrl('');
+  const handlePhotoChange = (index: number, file?: File) => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 15 * 1024 * 1024) {
+      showNotification('Use a JPEG, PNG, or WebP photograph no larger than 15 MB.', 'error');
+      return;
     }
+    releaseMediaPreview(photos[index]);
+    const selected = createMediaPreview(file);
+    setPhotos((previous) => previous.map((photo, slot) => slot === index ? selected : photo));
   };
 
-  const handleRemoveImage = (index: number) => {
-    setImages((prev) => prev.filter((_, idx) => idx !== index));
+  const movePhoto = (index: number, offset: number) => {
+    const target = index + offset;
+    if (target < 0 || target >= photos.length) return;
+    setPhotos((previous) => {
+      const next = [...previous];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
   };
 
-  const samplePhotoPresets = [
-    { label: 'Modern Bungalow Exterior', url: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1200&q=85' },
-    { label: 'Spacious Living Room', url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1200&q=85' },
-    { label: 'Granite Counter Kitchen', url: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=85' },
-    { label: 'Green Compound & Garden', url: 'https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1200&q=85' }
-  ];
+  const handleVideoChange = (file?: File) => {
+    if (!file) return;
+    if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type) || file.size > 150 * 1024 * 1024) {
+      showNotification('Use an MP4, WebM, or MOV video no larger than 150 MB.', 'error');
+      return;
+    }
+    releaseMediaPreview(video);
+    setVideo(createMediaPreview(file));
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (photos.some((photo) => photo === null) || !video) {
+      showNotification('Add five property photographs and one property video before submitting.', 'error');
+      return;
+    }
+    if (!companySettings.mediaUploadEndpoint || !companySettings.listingSubmissionEndpoint) {
+      showNotification('Listing submission is unavailable until media storage and a listing service are configured.', 'error');
+      return;
+    }
+    if (currentUser.id === 'guest') {
+      showNotification('Sign in with a verified seller account before submitting a property.', 'error');
+      return;
+    }
 
-    // Coordinates fallback for selected Mukono area
-    const coordsMap: Record<string, { lat: number; lng: number }> = {
-      'Mukono Municipality': { lat: 0.3533, lng: 32.7554 },
-      'Mukono Town': { lat: 0.3533, lng: 32.7554 },
-      'Seeta': { lat: 0.3582, lng: 32.7093 },
-      'Namugongo': { lat: 0.3951, lng: 32.6582 },
-      'Sonde': { lat: 0.3842, lng: 32.6951 },
-      'Kyetume': { lat: 0.3245, lng: 32.7789 },
-      'Namanoga': { lat: 0.2841, lng: 32.7412 },
-      'Goma': { lat: 0.3701, lng: 32.7214 },
-      'Katosi': { lat: 0.1472, lng: 32.7981 },
-      'Nakisunga': { lat: 0.2981, lng: 32.7621 },
-      'Wantoni': { lat: 0.3491, lng: 32.7611 }
-    };
+    try {
+      const mediaForm = new FormData();
+      photos.forEach((photo) => mediaForm.append('photos', photo!.file));
+      mediaForm.append('video', video.file);
+      const mediaResponse = await fetch(companySettings.mediaUploadEndpoint, {
+        method: 'POST',
+        credentials: 'include',
+        body: mediaForm
+      });
+      if (!mediaResponse.ok) throw new Error('Property media upload failed.');
+      const mediaResult = await mediaResponse.json();
+      if (!Array.isArray(mediaResult.images) || mediaResult.images.length !== 5 ||
+          mediaResult.images.some((image: unknown) => typeof image !== 'string') ||
+          typeof mediaResult.videoUrl !== 'string') {
+        throw new Error('The media service returned an invalid media package.');
+      }
 
-    const targetCoords = coordsMap[area] || { lat: 0.3533, lng: 32.7554 };
+    const targetCoords = { lat: 0, lng: 0 };
 
-    // Create property with status 'Pending' for admin moderation
-    addProperty({
+      const propertySubmission = {
       title,
       slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       listingType,
       propertyType,
-      status: 'Pending', // Moderation workflow requirement
+      status: 'Pending' as const,
       verified: false,
       featured: false,
       isNew: true,
       price: Number(price),
+      currencyCode,
+      country,
+      region,
+      district,
+      city,
       area,
-      locationDetails: locationDetails || `${area}, Mukono`,
+      locationDetails: locationDetails || [area, city, district, country].filter(Boolean).join(', '),
       coordinates: targetCoords,
       bedrooms: Number(bedrooms),
       bathrooms: Number(bathrooms),
@@ -107,8 +163,9 @@ export const ListPropertyPage: React.FC = () => {
       plotSize,
       description,
       features: selectedFeatures,
-      images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85'],
-      titleDeedStatus,
+      images: mediaResult.images as string[],
+      videoUrl: mediaResult.videoUrl as string,
+      titleDeedStatus: country.trim().toLowerCase() === 'uganda' ? titleDeedStatus : undefined,
       agent: {
         id: 'agent-owner',
         name: currentUser.name,
@@ -120,13 +177,25 @@ export const ListPropertyPage: React.FC = () => {
         verified: false,
         activeListingsCount: 1,
         experienceYears: 1,
-        bio: 'Property owner listed on Sheltered Mukono.',
+        bio: 'Property owner listed on Sheltered.',
         areaSpecialty: area
       }
-    });
+      };
 
-    setSubmitted(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+      const listingResponse = await fetch(companySettings.listingSubmissionEndpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(propertySubmission)
+      });
+      if (!listingResponse.ok) throw new Error('The listing service could not accept this submission.');
+      addProperty(propertySubmission);
+
+      setSubmitted(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Property submission failed. Please try again.', 'error');
+    }
   };
 
   return (
@@ -142,7 +211,7 @@ export const ListPropertyPage: React.FC = () => {
             Have a Property to Sell or Rent?
           </h1>
           <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-            Reach people actively looking for homes in Mukono. Advertise directly to local families, university faculty, corporate renters, and investors.
+            Reach people searching for property in Uganda and supported markets around the world.
           </p>
         </div>
 
@@ -156,15 +225,14 @@ export const ListPropertyPage: React.FC = () => {
                 Your property has been submitted for review.
               </h2>
               <p className="text-sm text-neutral-600 max-w-lg mx-auto leading-relaxed">
-                Thank you for listing on Sheltered. Our local team in Mukono verifies land ownership and property integrity before publishing listings to maintain platform trust.
+                The configured listing service accepted this submission. It remains pending until an authorized marketplace reviewer approves it.
               </p>
             </div>
 
             <div className="bg-neutral-50 p-4 rounded-2xl max-w-md mx-auto text-xs text-neutral-500 space-y-1 border border-neutral-200 text-left">
               <p className="font-bold text-neutral-800">What happens next?</p>
-              <p>1. Our Mukono verification desk confirms your title deed and phone number.</p>
-              <p>2. You receive an SMS/WhatsApp confirmation once approved.</p>
-              <p>3. Your listing goes live on Sheltered search and map results!</p>
+              <p>1. The listing must remain unavailable in public search while pending.</p>
+              <p>2. An authorized marketplace reviewer must approve it before publication.</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
@@ -172,7 +240,7 @@ export const ListPropertyPage: React.FC = () => {
                 onClick={() => setCurrentPage('admin')}
                 className="bg-slate-950 text-white text-xs font-bold py-3 px-6 rounded-xl hover:bg-slate-800 transition"
               >
-                Review in Admin Portal (Simulate Approval)
+                Return to marketplace preview
               </button>
               <button
                 onClick={() => {
@@ -244,7 +312,7 @@ export const ListPropertyPage: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1">
-                    Price in UGX *
+                    Price *
                   </label>
                   <input
                     type="number"
@@ -255,43 +323,94 @@ export const ListPropertyPage: React.FC = () => {
                     className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                   <span className="text-[10px] text-neutral-400 mt-1 block">
-                    {listingType === 'Sale' ? 'Total selling price in UGX' : 'Monthly rent in UGX'}
+                    {listingType === 'Sale' ? `Total selling price in ${currencyCode}` : `Monthly rent in ${currencyCode}`}
                   </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">
-                    Mukono Area / Locality *
-                  </label>
-                  <select
-                    value={area}
-                    onChange={(e) => setArea(e.target.value as MukonoArea)}
-                    className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-                  >
-                    <option value="Mukono Municipality">Mukono Municipality</option>
-                    <option value="Mukono Town">Mukono Town</option>
-                    <option value="Seeta">Seeta</option>
-                    <option value="Namugongo">Namugongo</option>
-                    <option value="Sonde">Sonde</option>
-                    <option value="Kyetume">Kyetume</option>
-                    <option value="Namanoga">Namanoga</option>
-                    <option value="Goma">Goma</option>
-                    <option value="Katosi">Katosi</option>
-                    <option value="Nakisunga">Nakisunga</option>
-                    <option value="Wantoni">Wantoni</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">
-                    Neighborhood / Street Details *
-                  </label>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Country *</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Seeta, Nabuti Road near Kampala University"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    placeholder="Country"
+                    className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Currency code *</label>
+                  <input
+                    type="text"
+                    required
+                    minLength={3}
+                    maxLength={3}
+                    pattern="[A-Za-z]{3}"
+                    value={currencyCode}
+                    onChange={(e) => setCurrencyCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. UGX, USD, GBP"
+                    className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                    Region / Province / State
+                  </label>
+                  <input
+                    type="text"
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    placeholder="Region, province, or state"
+                    className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">District / County *</label>
+                  <input
+                    type="text"
+                    required
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    placeholder="District, county, or equivalent"
+                    className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">City / Town</label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="City, town, or village"
+                    className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Neighborhood / Locality *</label>
+                  <input
+                    type="text"
+                    required
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                    placeholder="Neighborhood, ward, parish, or locality"
+                    className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Street / Address Details *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Street, plot number, or other useful address detail"
                     value={locationDetails}
                     onChange={(e) => setLocationDetails(e.target.value)}
                     className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
@@ -345,32 +464,34 @@ export const ListPropertyPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1">
-                    Plot / Land Size (e.g. 50x100 or Decimals)
+                    Plot / Land Size
                   </label>
                   <input
                     type="text"
+                    required={propertyType === 'Land'}
                     value={plotSize}
                     onChange={(e) => setPlotSize(e.target.value)}
-                    placeholder="e.g. 50 x 100 ft (12 Decimals) or 25 Decimals"
+                    placeholder="Enter the local measurement and unit"
                     className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
 
-                <div>
+                {country.trim().toLowerCase() === 'uganda' && <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1">
                     Land Title Status
                   </label>
                   <select
                     value={titleDeedStatus}
-                    onChange={(e) => setTitleDeedStatus(e.target.value)}
+                    onChange={(e) => setTitleDeedStatus(e.target.value as Property['titleDeedStatus'])}
                     className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
                   >
+                    <option value="">Not specified</option>
                     <option value="Ready Private Mailo">Ready Private Mailo Title</option>
                     <option value="Freehold">Freehold Title</option>
                     <option value="Leasehold">Leasehold Title</option>
                     <option value="Customary">Customary / Kibanja with Sales Agreement</option>
                   </select>
-                </div>
+                </div>}
               </div>
 
               <div>
@@ -414,68 +535,46 @@ export const ListPropertyPage: React.FC = () => {
               </div>
             </div>
 
-            {/* 3. Photographs */}
+            {/* 3. Property media */}
             <div className="space-y-4">
               <h3 className="text-lg font-bold text-neutral-900 border-b border-neutral-100 pb-3 flex items-center justify-between">
-                <span>3. Property Photographs</span>
-                <span className="text-xs font-normal text-neutral-400">({images.length} added)</span>
+                <span>3. Property Media</span>
+                <span className="text-xs font-normal text-neutral-400">({photos.filter(Boolean).length}/5 photos · {video ? '1/1 video' : '0/1 video'})</span>
               </h3>
-
-              {/* Current Images Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {images.map((img, idx) => (
-                  <div key={idx} className="relative group rounded-xl overflow-hidden h-28 border border-neutral-200 bg-neutral-100">
-                    <img src={img} alt={`Upload ${idx + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(idx)}
-                      className="absolute top-1.5 right-1.5 bg-black/70 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition hover:bg-rose-600"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                    {idx === 0 && (
-                      <span className="absolute bottom-1.5 left-1.5 bg-slate-900/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                        Cover Photo
-                      </span>
-                    )}
+              <p className="text-xs text-neutral-500">Upload exactly five photographs and one video. The first photo is the cover; reorder with the arrows. Maximum 15 MB per photo and 150 MB per video.</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {photos.map((photo, index) => (
+                  <div key={index} className="space-y-2 rounded-lg border border-neutral-200 p-3">
+                    <div className="aspect-video overflow-hidden bg-neutral-100">
+                      {photo ? <img src={photo.preview} alt={`Property photo ${index + 1}`} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-xs text-neutral-400">Photo {index + 1}</div>}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="min-w-0 flex-1 cursor-pointer text-xs font-semibold text-emerald-800">
+                        <span className="inline-flex items-center gap-1"><Upload className="h-3.5 w-3.5" />{photo ? 'Replace photo' : 'Choose photo'}</span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => handlePhotoChange(index, event.target.files?.[0])} />
+                      </label>
+                      <button type="button" aria-label={`Move photo ${index + 1} up`} disabled={index === 0 || !photo} onClick={() => movePhoto(index, -1)} className="p-1 text-neutral-600 disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
+                      <button type="button" aria-label={`Move photo ${index + 1} down`} disabled={index === photos.length - 1 || !photo} onClick={() => movePhoto(index, 1)} className="p-1 text-neutral-600 disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
+                      <button type="button" aria-label={`Remove photo ${index + 1}`} disabled={!photo} onClick={() => {
+                        releaseMediaPreview(photo);
+                        setPhotos((previous) => previous.map((item, slot) => slot === index ? null : item));
+                      }} className="p-1 text-rose-700 disabled:opacity-30"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                    {index === 0 && <span className="text-[11px] font-semibold text-neutral-500">Cover photo</span>}
                   </div>
                 ))}
               </div>
 
-              {/* Add Custom Image URL */}
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  placeholder="Paste property image URL..."
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  className="flex-1 text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddImage}
-                  className="bg-neutral-800 hover:bg-neutral-900 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition"
-                >
-                  Add Image
-                </button>
-              </div>
-
-              {/* Preset Sample Photos for Fast Testing */}
-              <div className="pt-2">
-                <p className="text-[11px] font-semibold text-neutral-500 mb-2">Or pick from sample Mukono architecture photos:</p>
-                <div className="flex flex-wrap gap-2">
-                  {samplePhotoPresets.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setImages((prev) => [...prev, preset.url])}
-                      className="text-[11px] font-medium py-1 px-2.5 rounded-lg border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>{preset.label}</span>
-                    </button>
-                  ))}
-                </div>
+              <div className="space-y-3 rounded-lg border border-neutral-200 p-4">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-emerald-800">
+                  <Film className="h-4 w-4" />
+                  {video ? 'Replace property video' : 'Choose property video'}
+                  <input type="file" accept="video/mp4,video/webm,video/quicktime" className="sr-only" onChange={(event) => handleVideoChange(event.target.files?.[0])} />
+                </label>
+                {video && <div className="flex items-center gap-3">
+                  <video src={video.preview} controls className="max-h-40 max-w-full" />
+                  <button type="button" onClick={() => { releaseMediaPreview(video); setVideo(null); }} className="p-2 text-rose-700" aria-label="Remove property video"><Trash2 className="h-4 w-4" /></button>
+                </div>}
               </div>
             </div>
 
@@ -486,17 +585,19 @@ export const ListPropertyPage: React.FC = () => {
                 <div>
                   <p className="font-bold text-white mb-0.5">Sheltered Moderation Policy</p>
                   <p>
-                    All submissions undergo initial ownership screening before appearing on the public marketplace. You can review your listing status anytime inside the administrator portal or your user dashboard.
+                    Submission is enabled only when media storage and a listing service are configured. The server must enforce seller verification, file validation, pending status, and administrator approval.
                   </p>
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-slate-950 hover:bg-slate-900 text-white font-bold text-sm py-4 rounded-xl shadow-lg transition"
+                disabled={!companySettings.mediaUploadEndpoint || !companySettings.listingSubmissionEndpoint || photos.some((photo) => !photo) || !video}
+                className="w-full bg-slate-950 hover:bg-slate-900 disabled:bg-neutral-400 disabled:cursor-not-allowed text-white font-bold text-sm py-4 rounded-xl shadow-lg transition"
               >
-                Submit Property for Review
+                {!companySettings.mediaUploadEndpoint || !companySettings.listingSubmissionEndpoint ? 'Listing services not configured' : 'Submit for Review'}
               </button>
+              {(!companySettings.mediaUploadEndpoint || !companySettings.listingSubmissionEndpoint) && <p className="text-xs text-neutral-500" role="status">Submission is disabled until secure media storage and a listing API are configured.</p>}
             </div>
           </form>
         )}

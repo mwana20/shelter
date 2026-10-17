@@ -1,9 +1,17 @@
 import React from 'react';
 import { Home, ShieldCheck, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { companySettings } from '../config/company';
+import { mockAreas } from '../data/mockAreas';
+import { useTranslation } from '../i18n/translations';
 
 export const Footer: React.FC = () => {
+  const t = useTranslation();
   const { setCurrentPage, applyQuickSearch, setFilters } = useApp();
+  const featuredLocations = [
+    ...mockAreas.filter((location) => location.country === 'Uganda').slice(0, 3),
+    ...mockAreas.filter((location) => location.country !== 'Uganda').slice(0, 3)
+  ];
 
   const navigateTo = (page: string) => {
     setCurrentPage(page);
@@ -21,13 +29,13 @@ export const Footer: React.FC = () => {
             </div>
             <div>
               <h4 className="text-white text-base font-bold flex items-center gap-2">
-                <span>Safe Property Transactions in Mukono</span>
+                <span>{t('Check every property independently')}</span>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-semibold px-2 py-0.5 rounded uppercase">
-                  Buyer Protection
+                  {t('Safety')}
                 </span>
               </h4>
               <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-                Always conduct a physical site inspection and verify the Private Mailo or Freehold title deed at the <strong>Mukono Ministry Zonal Land Office (MZO)</strong> before issuing any commitment fee or purchase deposit. Sheltered verified listings have gone through independent ownership check.
+                {t('Visit the property and confirm ownership with the relevant local authority before making a payment. Marketplace listings are not a guarantee of ownership, condition, or transaction outcome.')}
               </p>
             </div>
           </div>
@@ -35,7 +43,7 @@ export const Footer: React.FC = () => {
             onClick={() => navigateTo('about')}
             className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold shrink-0 transition"
           >
-            Read Buyer Safety Guide
+            {t('Read Buyer Safety Guide')}
           </button>
         </div>
 
@@ -52,106 +60,64 @@ export const Footer: React.FC = () => {
               </div>
               <div>
                 <span className="text-2xl font-extrabold tracking-tight text-white font-serif-display uppercase">
-                  SHELTERED
+                  {companySettings.name.toUpperCase()}
                 </span>
                 <p className="text-[10px] uppercase tracking-widest font-semibold text-emerald-400">
-                  Find a place to call home.
+                  {t('Find a place to call home.')}
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              The premier digital real-estate marketplace dedicated specifically to Mukono, Uganda. Connecting verified property owners, brokers, buyers, and tenants across Seeta, Sonde, Mukono Central, and the Lake Victoria corridor.
+              {t('A global property marketplace connecting buyers, sellers, and renters across Uganda and supported markets around the world.')}
             </p>
 
             <div className="space-y-2 text-xs text-slate-400 pt-2">
               <div className="flex items-center gap-2.5">
                 <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Bishop Tucker Road, Mukono Municipality, Uganda</span>
+                <span>{t('Headquarters:')} {companySettings.headquarters}</span>
               </div>
-              <div className="flex items-center gap-2.5">
-                <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>+256 701 442 890 / +256 772 889 123</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>listings@sheltered.co.ug</span>
-              </div>
+              {companySettings.officeAddress && <div className="flex items-center gap-2.5">
+                <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{companySettings.officeAddress}</span>
+              </div>}
+              {companySettings.phoneNumbers.map((phone) => (
+                <div className="flex items-center gap-2.5" key={phone}>
+                  <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <a href={`tel:${phone}`} className="hover:text-white">{phone}</a>
+                </div>
+              ))}
+              {companySettings.email && (
+                <div className="flex items-center gap-2.5">
+                  <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <a href={`mailto:${companySettings.email}`} className="hover:text-white">{companySettings.email}</a>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Col: Explore Mukono Areas */}
+          {/* Col: Featured locations */}
           <div>
             <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 text-emerald-400">
-              Mukono Localities
+              {t('Featured Locations')}
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-400">
-              <li>
-                <button
-                  onClick={() => {
-                    applyQuickSearch({ area: 'Seeta' });
-                  }}
-                  className="hover:text-white transition"
-                >
-                  Seeta Residential Homes
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    applyQuickSearch({ area: 'Sonde' });
-                  }}
-                  className="hover:text-white transition"
-                >
-                  Sonde Executive Estates
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    applyQuickSearch({ area: 'Mukono Municipality' });
-                  }}
-                  className="hover:text-white transition"
-                >
-                  Mukono Town & Central
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    applyQuickSearch({ area: 'Namugongo' });
-                  }}
-                  className="hover:text-white transition"
-                >
-                  Namugongo - Mukono Border
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    applyQuickSearch({ area: 'Kyetume' });
-                  }}
-                  className="hover:text-white transition"
-                >
-                  Kyetume Plots & Bungalows
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => {
-                    applyQuickSearch({ area: 'Katosi' });
-                  }}
-                  className="hover:text-white transition"
-                >
-                  Katosi Lakefront Properties
-                </button>
-              </li>
+              {featuredLocations.map((location) => (
+                <li key={`${location.country}:${location.id}`}>
+                  <button
+                    onClick={() => applyQuickSearch({ country: location.country, area: location.id })}
+                    className="hover:text-white transition"
+                  >
+                    {location.name}, {location.country}
+                  </button>
+                </li>
+              ))}
               <li>
                 <button
                   onClick={() => navigateTo('areas')}
                   className="text-emerald-400 font-semibold hover:underline"
                 >
-                  View All Mukono Areas →
+                  {t('View All Locations →')}
                 </button>
               </li>
             </ul>
@@ -160,7 +126,7 @@ export const Footer: React.FC = () => {
           {/* Col: Property Types */}
           <div>
             <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 text-emerald-400">
-              Property Categories
+              {t('Property Categories')}
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-400">
               <li>
@@ -171,7 +137,7 @@ export const Footer: React.FC = () => {
                   }}
                   className="hover:text-white transition"
                 >
-                  Standalone Houses
+                  {t('Standalone Houses')}
                 </button>
               </li>
               <li>
@@ -182,7 +148,7 @@ export const Footer: React.FC = () => {
                   }}
                   className="hover:text-white transition"
                 >
-                  Modern Apartments
+                  {t('Modern Apartments')}
                 </button>
               </li>
               <li>
@@ -193,7 +159,7 @@ export const Footer: React.FC = () => {
                   }}
                   className="hover:text-white transition"
                 >
-                  Luxury Hillside Villas
+                  {t('Luxury Hillside Villas')}
                 </button>
               </li>
               <li>
@@ -204,7 +170,7 @@ export const Footer: React.FC = () => {
                   }}
                   className="hover:text-white transition"
                 >
-                  Family Bungalows
+                  {t('Family Bungalows')}
                 </button>
               </li>
               <li>
@@ -215,7 +181,7 @@ export const Footer: React.FC = () => {
                   }}
                   className="hover:text-white transition"
                 >
-                  Titled Land & Decimals
+                  {t('Titled Land & Decimals')}
                 </button>
               </li>
               <li>
@@ -226,7 +192,7 @@ export const Footer: React.FC = () => {
                   }}
                   className="hover:text-white transition"
                 >
-                  Commercial & Retail Plots
+                  {t('Commercial & Retail Plots')}
                 </button>
               </li>
             </ul>
@@ -235,42 +201,37 @@ export const Footer: React.FC = () => {
           {/* Col: Platform Links */}
           <div>
             <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 text-emerald-400">
-              Quick Links
+              {t('Quick Links')}
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-400">
               <li>
                 <button onClick={() => navigateTo('list-property')} className="hover:text-white transition">
-                  Advertise Your Property
+                  {t('Advertise Your Property')}
                 </button>
               </li>
               <li>
                 <button onClick={() => navigateTo('saved')} className="hover:text-white transition">
-                  My Saved Homes
+                  {t('My Saved Homes')}
                 </button>
               </li>
               <li>
                 <button onClick={() => navigateTo('agents')} className="hover:text-white transition">
-                  Verified Mukono Agents
+                  {t('Agent Directory (Preview)')}
                 </button>
               </li>
               <li>
                 <button onClick={() => navigateTo('my-sheltered')} className="hover:text-white transition">
-                  My Viewing Appointments
-                </button>
-              </li>
-              <li>
-                <button onClick={() => navigateTo('admin')} className="text-amber-400 hover:text-amber-300 transition font-semibold">
-                  Administrator Portal
+                  {t('My Viewing Appointments')}
                 </button>
               </li>
               <li>
                 <button onClick={() => navigateTo('about')} className="hover:text-white transition">
-                  About Our Platform
+                  {t('About Our Platform')}
                 </button>
               </li>
               <li>
                 <button onClick={() => navigateTo('contact')} className="hover:text-white transition">
-                  Customer Support
+                  {t('Customer Support')}
                 </button>
               </li>
             </ul>
@@ -280,15 +241,16 @@ export const Footer: React.FC = () => {
         {/* Bottom copyright & disclaimer */}
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>
-            © {new Date().getFullYear()} Sheltered Uganda. All rights reserved. Mukono District Real Estate Exchange.
+            © {new Date().getFullYear()} Sheltered. {t('All rights reserved.')} {t('Global property marketplace.')}
           </p>
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-1.5 text-slate-400">
               <AlertCircle className="w-3.5 h-3.5 text-emerald-500" />
-              Standard Currency: Uganda Shillings (UGX)
+              {t('Standard Currency: Listed in local market currency')}
             </span>
-            <span>Terms of Service</span>
-            <span>Privacy Policy</span>
+            <button onClick={() => navigateTo('terms')} className="hover:text-white">{t('Terms of Service')}</button>
+            <button onClick={() => navigateTo('privacy')} className="hover:text-white">{t('Privacy Policy')}</button>
+            <button onClick={() => navigateTo('marketplace-policy')} className="hover:text-white">{t('Marketplace Policy')}</button>
           </div>
         </div>
       </div>

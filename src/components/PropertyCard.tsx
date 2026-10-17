@@ -14,6 +14,7 @@ import {
 import { Property } from '../types';
 import { formatUGX } from '../utils/format';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from '../i18n/translations';
 
 interface PropertyCardProps {
   property: Property;
@@ -21,6 +22,7 @@ interface PropertyCardProps {
 }
 
 export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover }) => {
+  const t = useTranslation();
   const {
     openPropertyDetail,
     toggleSaveProperty,
@@ -80,7 +82,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
                 : 'bg-emerald-700/90 text-white'
             }`}
           >
-            {property.listingType === 'Sale' ? 'For Sale' : 'For Rent'}
+            {t(property.listingType === 'Sale' ? 'For Sale' : 'For Rent')}
           </span>
 
           {property.isNew && (
@@ -91,7 +93,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
 
           {property.status === 'Pending' && (
             <span className="px-2 py-1 text-xs font-semibold rounded-md bg-amber-600/90 text-white">
-              Under Offer
+              {t('Under Offer')}
             </span>
           )}
 
@@ -164,7 +166,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
         {property.verified && (
           <div className="absolute bottom-2.5 left-3 bg-emerald-600/95 text-white text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm backdrop-blur-sm">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Verified Listing
+            {t('Verified Listing')}
           </div>
         )}
       </div>
@@ -175,10 +177,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
           {/* Price Header */}
           <div className="flex items-baseline justify-between mb-1.5">
             <h3 className="text-xl font-bold tracking-tight text-neutral-900">
-              {formatUGX(property.price, property.listingType)}
+              {formatUGX(property.price, property.listingType, property.currencyCode)}
             </h3>
             <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-              {property.propertyType}
+              {t(property.propertyType)}
             </span>
           </div>
 
@@ -191,7 +193,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
           <div className="flex items-center text-xs text-neutral-500 mb-3 gap-1">
             <MapPin className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
             <span className="truncate">
-              Mukono, {property.area} · <span className="text-neutral-400">{property.locationDetails}</span>
+              {property.country ?? 'Uganda'}, {property.area} · <span className="text-neutral-400">{property.locationDetails}</span>
             </span>
           </div>
 
@@ -201,7 +203,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
               <span className="flex items-center gap-1.5">
                 <Bed className="w-3.5 h-3.5 text-neutral-400" />
                 <span>
-                  <strong className="text-neutral-800">{property.bedrooms}</strong> Beds
+                  <strong className="text-neutral-800">{property.bedrooms}</strong> {t('Beds')}
                 </span>
               </span>
             )}
@@ -209,7 +211,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
               <span className="flex items-center gap-1.5">
                 <Bath className="w-3.5 h-3.5 text-neutral-400" />
                 <span>
-                  <strong className="text-neutral-800">{property.bathrooms}</strong> Baths
+                  <strong className="text-neutral-800">{property.bathrooms}</strong> {t('Baths')}
                 </span>
               </span>
             )}
@@ -236,7 +238,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
 
           {/* Short Description */}
           <p className="text-xs text-neutral-500 line-clamp-2 mt-2 leading-relaxed">
-            {property.description}
+            {t(property.description)}
           </p>
         </div>
 
@@ -250,7 +252,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
             }}
             className="flex-1 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold py-2.5 px-3 rounded-lg transition text-center shadow-xs"
           >
-            View Property
+            {t('View Property')}
           </button>
           <button
             type="button"
@@ -261,7 +263,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
                 : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
             }`}
           >
-            {saved ? 'Saved' : 'Save'}
+            {t(saved ? 'Saved' : 'Save')}
           </button>
         </div>
       </div>

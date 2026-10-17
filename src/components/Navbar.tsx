@@ -11,8 +11,12 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { companySettings } from '../config/company';
+import { languageOptions } from '../i18n/languages';
+import { useTranslation } from '../i18n/translations';
 
 export const Navbar: React.FC = () => {
+  const t = useTranslation();
   const {
     currentPage,
     setCurrentPage,
@@ -20,9 +24,10 @@ export const Navbar: React.FC = () => {
     comparedPropertyIds,
     setCompareModalOpen,
     currentUser,
+    language,
+    setLanguage,
     setAuthModalOpen,
     isAdmin,
-    setIsAdmin,
     applyQuickSearch,
     setFilters
   } = useApp();
@@ -65,23 +70,33 @@ export const Navbar: React.FC = () => {
       <div className="bg-slate-900 text-slate-200 text-[11px] py-1 px-4 sm:px-8 flex justify-between items-center tracking-wide font-medium">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
-          <span>Uganda Christian University corridor & Mukono District Verified Registry</span>
+          <span>{t('Preview marketplace · global listings across supported countries')}</span>
         </div>
         <div className="flex items-center gap-4 text-slate-300">
-          <span>Mukono, Uganda (EAT)</span>
+          <span>Headquarters: {companySettings.headquarters}</span>
+          <label className="flex items-center gap-1.5">
+            <span className="sr-only">{t('Display language')}</span>
+            <select
+              aria-label="Display language"
+              value={language}
+              onChange={(event) => setLanguage(event.target.value)}
+              className="max-w-32 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-white"
+            >
+              {languageOptions.map((option) => (
+                <option key={option.code} value={option.code} disabled={!option.available}>
+                  {option.label}{option.available ? '' : ' · unavailable'}
+                </option>
+              ))}
+            </select>
+          </label>
           <span className="hidden sm:inline">|</span>
-          <button
-            onClick={() => {
-              setIsAdmin(!isAdmin);
-              if (!isAdmin) navigateTo('admin');
-            }}
-            className={`hidden sm:flex items-center gap-1 font-semibold px-2 py-0.5 rounded text-[10px] transition ${
-              isAdmin ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-white'
-            }`}
+          {isAdmin && <button
+            onClick={() => navigateTo('admin')}
+            className="hidden sm:flex items-center gap-1 font-semibold px-2 py-0.5 rounded text-[10px] transition bg-amber-500 text-slate-950"
           >
             <Shield className="w-3 h-3" />
-            {isAdmin ? 'Admin View: Active' : 'Switch to Admin Portal'}
-          </button>
+            Administrator
+          </button>}
         </div>
       </div>
 
@@ -98,10 +113,10 @@ export const Navbar: React.FC = () => {
             </div>
             <div>
               <span className="text-2xl font-extrabold tracking-tight text-neutral-900 font-serif-display uppercase">
-                SHELTERED
+                {companySettings.name.toUpperCase()}
               </span>
               <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-500 -mt-1">
-                Mukono · Uganda
+                {t('Global Marketplace')}
               </p>
             </div>
           </div>
@@ -114,7 +129,7 @@ export const Navbar: React.FC = () => {
                 currentPage === 'buy' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
               }`}
             >
-              Buy
+              {t('Buy')}
             </button>
             <button
               onClick={() => handleNavClick('rent')}
@@ -122,25 +137,25 @@ export const Navbar: React.FC = () => {
                 currentPage === 'rent' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
               }`}
             >
-              Rent
+              {t('Rent')}
             </button>
             <button
               onClick={() => handleNavClick('houses')}
               className="px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100"
             >
-              Houses
+              {t('Houses')}
             </button>
             <button
               onClick={() => handleNavClick('apartments')}
               className="px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100"
             >
-              Apartments
+              {t('Apartments')}
             </button>
             <button
               onClick={() => handleNavClick('land')}
               className="px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100"
             >
-              Land
+              {t('Land')}
             </button>
             <button
               onClick={() => handleNavClick('new')}
@@ -148,7 +163,7 @@ export const Navbar: React.FC = () => {
                 currentPage === 'new-listings' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
               }`}
             >
-              New Listings
+              {t('New Listings')}
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             </button>
             <button
@@ -157,7 +172,7 @@ export const Navbar: React.FC = () => {
                 currentPage === 'areas' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
               }`}
             >
-              Explore Mukono
+              {t('Explore Locations')}
             </button>
             <button
               onClick={() => navigateTo('agents')}
@@ -165,7 +180,7 @@ export const Navbar: React.FC = () => {
                 currentPage === 'agents' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
               }`}
             >
-              Agents
+              {t('Agents')}
             </button>
             <button
               onClick={() => navigateTo('about')}
@@ -173,7 +188,7 @@ export const Navbar: React.FC = () => {
                 currentPage === 'about' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
               }`}
             >
-              About
+              {t('About')}
             </button>
             <button
               onClick={() => navigateTo('contact')}
@@ -181,7 +196,7 @@ export const Navbar: React.FC = () => {
                 currentPage === 'contact' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
               }`}
             >
-              Contact
+              {t('Contact')}
             </button>
           </nav>
 
@@ -193,7 +208,7 @@ export const Navbar: React.FC = () => {
                 type="button"
                 onClick={() => setCompareModalOpen(true)}
                 className="relative p-2 rounded-lg text-neutral-700 hover:bg-neutral-100 transition"
-                title="Compare Properties"
+                title={t('Compare Properties')}
               >
                 <Scale className="w-5 h-5" />
                 <span className="absolute -top-1 -right-1 bg-slate-900 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
@@ -207,10 +222,10 @@ export const Navbar: React.FC = () => {
               type="button"
               onClick={() => navigateTo('saved')}
               className="relative p-2 rounded-lg text-neutral-700 hover:bg-neutral-100 transition flex items-center gap-1.5 text-xs font-semibold"
-              title="Saved Properties"
+              title={t('Saved Properties')}
             >
               <Heart className="w-4 h-4 text-rose-600 fill-rose-50" />
-              <span>Saved</span>
+              <span>{t('Saved')}</span>
               {savedPropertyIds.length > 0 && (
                 <span className="bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full ml-0.5">
                   {savedPropertyIds.length}
@@ -228,7 +243,7 @@ export const Navbar: React.FC = () => {
                 <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-slate-700">
                   <User className="w-3.5 h-3.5" />
                 </div>
-                <span className="truncate max-w-[90px]">{currentUser ? currentUser.name.split(' ')[0] : 'Sign In'}</span>
+                    <span className="truncate max-w-[90px]">{currentUser.id === 'guest' ? t('Sign In') : currentUser.name.split(' ')[0]}</span>
                 <ChevronDown className="w-3 h-3 text-neutral-400" />
               </button>
 
@@ -238,7 +253,7 @@ export const Navbar: React.FC = () => {
                   onMouseLeave={() => setProfileDropdownOpen(false)}
                 >
                   <div className="px-4 py-2 border-b border-neutral-100">
-                    <p className="text-xs font-bold text-neutral-900">{currentUser.name}</p>
+                    <p className="text-xs font-bold text-neutral-900">{currentUser.id === 'guest' ? t('Guest') : currentUser.name}</p>
                     <p className="text-[11px] text-neutral-500 truncate">{currentUser.email}</p>
                   </div>
                   <button
@@ -248,8 +263,8 @@ export const Navbar: React.FC = () => {
                     }}
                     className="w-full text-left px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition flex items-center justify-between"
                   >
-                    <span>My Sheltered Dashboard</span>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">Active</span>
+                    <span>{t('My Sheltered Dashboard')}</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">{t('Active')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -258,9 +273,9 @@ export const Navbar: React.FC = () => {
                     }}
                     className="w-full text-left px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition"
                   >
-                    Saved Homes ({savedPropertyIds.length})
+                    {t('Saved Homes')} ({savedPropertyIds.length})
                   </button>
-                  <button
+                  {isAdmin && <button
                     onClick={() => {
                       setProfileDropdownOpen(false);
                       navigateTo('admin');
@@ -268,8 +283,8 @@ export const Navbar: React.FC = () => {
                     className="w-full text-left px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition flex items-center gap-2"
                   >
                     <Shield className="w-3.5 h-3.5 text-amber-600" />
-                    Admin Control Center
-                  </button>
+                    {t('Admin Control Center')}
+                  </button>}
                   <div className="border-t border-neutral-100 mt-1 pt-1">
                     <button
                       onClick={() => {
@@ -278,7 +293,7 @@ export const Navbar: React.FC = () => {
                       }}
                       className="w-full text-left px-4 py-2 text-xs font-medium text-neutral-500 hover:bg-neutral-50 transition"
                     >
-                      Switch User / Sign Out
+                      {t('Switch User / Sign Out')}
                     </button>
                   </div>
                 </div>
@@ -292,7 +307,7 @@ export const Navbar: React.FC = () => {
               className="bg-slate-950 hover:bg-slate-900 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-xs transition flex items-center gap-2 hover:shadow-md"
             >
               <PlusCircle className="w-4 h-4 text-emerald-400" />
-              <span>List a Property</span>
+              <span>{t('List a Property')}</span>
             </button>
           </div>
 
@@ -313,7 +328,7 @@ export const Navbar: React.FC = () => {
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-neutral-700 hover:bg-neutral-100 transition"
-              aria-label="Toggle menu"
+              aria-label={t('Toggle menu')}
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -329,13 +344,13 @@ export const Navbar: React.FC = () => {
               onClick={() => handleNavClick('buy')}
               className="py-2.5 px-3 bg-neutral-100 rounded-xl text-center text-xs font-bold text-neutral-900"
             >
-              Buy Homes
+              {t('Buy Homes')}
             </button>
             <button
               onClick={() => handleNavClick('rent')}
               className="py-2.5 px-3 bg-neutral-100 rounded-xl text-center text-xs font-bold text-neutral-900"
             >
-              Rent Homes
+              {t('Rent Homes')}
             </button>
           </div>
 
@@ -344,63 +359,63 @@ export const Navbar: React.FC = () => {
               onClick={() => handleNavClick('houses')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
             >
-              Houses for Sale & Rent
+              {t('Houses for Sale & Rent')}
             </button>
             <button
               onClick={() => handleNavClick('apartments')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
             >
-              Apartments in Mukono
+              {t('Apartments Worldwide')}
             </button>
             <button
               onClick={() => handleNavClick('land')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
             >
-              Plots & Land with Title
+              {t('Plots & Land with Title')}
             </button>
             <button
               onClick={() => handleNavClick('new')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg flex items-center justify-between"
             >
-              <span>New Listings</span>
+              <span>{t('New Listings')}</span>
               <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">NEW</span>
             </button>
             <button
               onClick={() => navigateTo('areas')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
             >
-              Explore Mukono Areas
+              {t('Explore Locations')}
             </button>
             <button
               onClick={() => navigateTo('agents')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
             >
-              Property Agents & Brokers
+              {t('Property Agents & Brokers')}
             </button>
             <button
               onClick={() => navigateTo('my-sheltered')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
             >
-              My Sheltered Dashboard
+              {t('My Sheltered Dashboard')}
             </button>
-            <button
+            {isAdmin && <button
               onClick={() => navigateTo('admin')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg text-amber-700 font-semibold flex items-center gap-2"
             >
               <Shield className="w-4 h-4" />
-              Admin Portal
-            </button>
+              {t('Admin Portal')}
+            </button>}
             <button
               onClick={() => navigateTo('about')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
             >
-              About Sheltered Mukono
+              {t('About Sheltered')}
             </button>
             <button
               onClick={() => navigateTo('contact')}
               className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
             >
-              Contact Support
+              {t('Contact Support')}
             </button>
           </div>
 
@@ -411,7 +426,7 @@ export const Navbar: React.FC = () => {
               className="w-full bg-slate-950 text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2"
             >
               <PlusCircle className="w-4 h-4 text-emerald-400" />
-              <span>List Your Property</span>
+              <span>{t('List Your Property')}</span>
             </button>
             <button
               type="button"
@@ -421,7 +436,7 @@ export const Navbar: React.FC = () => {
               }}
               className="w-full border border-neutral-300 text-neutral-800 text-xs font-semibold py-2.5 rounded-xl text-center"
             >
-              Account / Sign In ({currentUser.name})
+              {t('Account / Sign In')} ({currentUser.name})
             </button>
           </div>
         </div>

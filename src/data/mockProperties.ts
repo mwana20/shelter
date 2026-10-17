@@ -1,7 +1,7 @@
 import { Property } from '../types';
 import { mockAgents } from './mockAgents';
 
-export const mockProperties: Property[] = [
+const seedProperties: Property[] = [
   {
     id: 'prop-1',
     title: 'Modern 4-Bedroom Family Home with Servant Quarters',
@@ -42,7 +42,6 @@ export const mockProperties: Property[] = [
       'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=85',
       'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1200&q=85'
     ],
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     dateAdded: '2026-10-02T10:00:00Z',
     viewsCount: 342,
     savesCount: 48,
@@ -591,6 +590,185 @@ export const mockProperties: Property[] = [
     titleDeedStatus: 'Ready Private Mailo'
   }
 ];
+
+const regionalPreviewProperties: Property[] = [
+  {
+    ...seedProperties[0],
+    id: 'preview-kampala',
+    slug: 'preview-family-house-kampala',
+    title: 'Sample Family House in Kampala',
+    country: 'Uganda',
+    region: 'Central Region',
+    district: 'Kampala',
+    city: 'Kampala',
+    area: 'Kampala',
+    locationDetails: 'Kampala, Uganda',
+    coordinates: { lat: 0.3136, lng: 32.5811 },
+    price: 650000000,
+    priceLabel: 'UGX 650,000,000',
+    description: 'Sample preview listing in Kampala, Uganda. This example demonstrates a local listing and is not a live or independently verified offer.'
+  },
+  {
+    ...seedProperties[1],
+    id: 'preview-wakiso',
+    slug: 'preview-apartment-entebbe-wakiso',
+    title: 'Sample Rental Apartment in Entebbe',
+    country: 'Uganda',
+    region: 'Central Region',
+    district: 'Wakiso',
+    city: 'Entebbe',
+    area: 'Entebbe',
+    locationDetails: 'Entebbe, Wakiso District, Uganda',
+    coordinates: { lat: 0.0512, lng: 32.4637 },
+    price: 1800000,
+    priceLabel: 'UGX 1,800,000 / month',
+    description: 'Sample preview rental in Entebbe, Wakiso District. This example demonstrates a listing in a different Ugandan district and is not a live or independently verified offer.'
+  },
+  {
+    ...seedProperties[5],
+    id: 'preview-jinja',
+    slug: 'preview-land-jinja',
+    title: 'Sample Residential Land in Jinja',
+    country: 'Uganda',
+    region: 'Eastern Region',
+    district: 'Jinja',
+    city: 'Jinja',
+    area: 'Jinja',
+    locationDetails: 'Jinja, Uganda',
+    coordinates: { lat: 0.4479, lng: 33.2026 },
+    price: 95000000,
+    priceLabel: 'UGX 95,000,000',
+    description: 'Sample preview land listing in Jinja District, Uganda. This example is for marketplace demonstration only and is not a live or independently verified offer.'
+  },
+  {
+    ...seedProperties[0],
+    id: 'preview-mbarara',
+    slug: 'preview-house-mbarara',
+    title: 'Sample Family Home in Mbarara',
+    country: 'Uganda',
+    region: 'Western Region',
+    district: 'Mbarara',
+    city: 'Mbarara',
+    area: 'Mbarara',
+    locationDetails: 'Mbarara City, Uganda',
+    coordinates: { lat: -0.6072, lng: 30.6545 },
+    price: 320000000,
+    priceLabel: 'UGX 320,000,000',
+    description: 'Sample preview family home in Mbarara, Uganda. This example demonstrates regional listings and is not a live or independently verified offer.'
+  },
+  {
+    ...seedProperties[1],
+    id: 'preview-gulu',
+    slug: 'preview-apartment-gulu',
+    title: 'Sample Rental Apartment in Gulu',
+    country: 'Uganda',
+    region: 'Northern Region',
+    district: 'Gulu',
+    city: 'Gulu',
+    area: 'Gulu',
+    locationDetails: 'Gulu City, Uganda',
+    coordinates: { lat: 2.7746, lng: 32.2989 },
+    price: 750000,
+    priceLabel: 'UGX 750,000 / month',
+    description: 'Sample preview rental in Gulu, Uganda. This example demonstrates listings in northern Uganda and is not a live or independently verified offer.'
+  },
+  {
+    ...seedProperties[0],
+    id: 'preview-nairobi',
+    slug: 'preview-house-nairobi-kenya',
+    title: 'Sample Home in Nairobi',
+    country: 'Kenya',
+    region: 'Nairobi County',
+    district: 'Nairobi',
+    city: 'Nairobi',
+    area: 'Nairobi',
+    currencyCode: 'KES',
+    locationDetails: 'Nairobi, Kenya',
+    coordinates: { lat: -1.2864, lng: 36.8172 },
+    price: 24000000,
+    priceLabel: 'KES 24,000,000',
+    description: 'Sample preview home in Nairobi, Kenya. This example demonstrates a cross-border listing and is not a live or independently verified offer.'
+  },
+  {
+    ...seedProperties[1],
+    id: 'preview-dar-es-salaam',
+    slug: 'preview-apartment-dar-es-salaam-tanzania',
+    title: 'Sample Rental Apartment in Dar es Salaam',
+    country: 'Tanzania',
+    region: 'Dar es Salaam Region',
+    district: 'Ilala',
+    city: 'Dar es Salaam',
+    area: 'Dar es Salaam',
+    currencyCode: 'TZS',
+    locationDetails: 'Ilala, Dar es Salaam, Tanzania',
+    coordinates: { lat: -6.7924, lng: 39.2083 },
+    price: 1200000,
+    priceLabel: 'TZS 1,200,000 / month',
+    description: 'Sample preview rental in Dar es Salaam, Tanzania. This example demonstrates a cross-border listing and is not a live or independently verified offer.'
+  },
+  {
+    ...seedProperties[0],
+    id: 'preview-cape-town',
+    slug: 'preview-house-cape-town-south-africa',
+    title: 'Sample Home in Cape Town',
+    country: 'South Africa',
+    region: 'Western Cape',
+    district: 'City of Cape Town',
+    city: 'Cape Town',
+    area: 'Cape Town',
+    currencyCode: 'ZAR',
+    locationDetails: 'Cape Town, South Africa',
+    coordinates: { lat: -33.9249, lng: 18.4241 },
+    price: 3200000,
+    priceLabel: 'ZAR 3,200,000',
+    description: 'Sample preview home in Cape Town, South Africa. This example demonstrates a cross-border listing and is not a live or independently verified offer.'
+  },
+  {
+    ...seedProperties[1],
+    id: 'preview-london',
+    slug: 'preview-flat-london-united-kingdom',
+    title: 'Sample Rental Flat in London',
+    country: 'United Kingdom',
+    region: 'Greater London',
+    district: 'London',
+    city: 'London',
+    area: 'London',
+    currencyCode: 'GBP',
+    locationDetails: 'London, United Kingdom',
+    coordinates: { lat: 51.5072, lng: -0.1276 },
+    price: 2200,
+    priceLabel: 'GBP 2,200 / month',
+    description: 'Sample preview rental flat in London, United Kingdom. This example demonstrates a cross-border listing and is not a live or independently verified offer.'
+  },
+  {
+    ...seedProperties[0],
+    id: 'preview-new-york',
+    slug: 'preview-house-new-york-united-states',
+    title: 'Sample Home in New York',
+    country: 'United States',
+    region: 'New York',
+    district: 'New York County',
+    city: 'New York City',
+    area: 'New York City',
+    currencyCode: 'USD',
+    locationDetails: 'New York City, United States',
+    coordinates: { lat: 40.7128, lng: -74.006 },
+    price: 725000,
+    priceLabel: 'USD 725,000',
+    description: 'Sample preview home in New York City, United States. This example demonstrates a cross-border listing and is not a live or independently verified offer.'
+  }
+];
+
+export const mockProperties: Property[] = [...seedProperties, ...regionalPreviewProperties].map((property) => ({
+  ...property,
+  country: property.country ?? 'Uganda',
+  region: property.region ?? 'Central Region',
+  district: property.district ?? 'Mukono',
+  featured: property.id.startsWith('preview-') ? true : property.featured,
+  titleDeedStatus: property.id.startsWith('preview-') ? undefined : property.titleDeedStatus,
+  verified: false,
+  agent: { ...property.agent, verified: false }
+}));
 
 export const ALL_AMENITIES = [
   'Gated community',

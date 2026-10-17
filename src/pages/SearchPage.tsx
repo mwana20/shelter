@@ -13,7 +13,10 @@ import { useApp } from '../context/AppContext';
 import { PropertyCard } from '../components/PropertyCard';
 import { InteractiveMap } from '../components/InteractiveMap';
 import { ALL_AMENITIES } from '../data/mockProperties';
+import { GLOBAL_COUNTRIES } from '../data/globalLocations';
+import { mockAreas } from '../data/mockAreas';
 import { ListingType } from '../types';
+import { useTranslation } from '../i18n/translations';
 
 interface SearchPageProps {
   initialListingType?: ListingType | 'All';
@@ -27,6 +30,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   subtitle
 }) => {
   const { availableProperties, filters, setFilters, resetFilters } = useApp();
+  const t = useTranslation();
 
   // View mode: 'split' (side-by-side on desktop), 'list' (cards grid), 'map' (full map)
   const [viewMode, setViewMode] = useState<'split' | 'list' | 'map'>('split');
@@ -48,39 +52,44 @@ export const SearchPage: React.FC<SearchPageProps> = ({
         if (item.listingType !== filters.listingType) return false;
       }
 
-      // 2. Area
+      // 2. Country
+      if (filters.country && filters.country !== '') {
+        if ((item.country ?? 'Uganda') !== filters.country) return false;
+      }
+
+      // 3. Area
       if (filters.area && filters.area !== '') {
         if (item.area !== filters.area) return false;
       }
 
-      // 3. Property Type
+      // 4. Property Type
       if (filters.propertyType && filters.propertyType !== '') {
         if (item.propertyType !== filters.propertyType) return false;
       }
 
-      // 4. Min Price
+      // 5. Min Price
       if (filters.minPrice !== undefined && filters.minPrice > 0) {
         if (item.price < filters.minPrice) return false;
       }
 
-      // 5. Max Price
+      // 6. Max Price
       if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
         if (item.price > filters.maxPrice) return false;
       }
 
-      // 6. Bedrooms
+      // 7. Bedrooms
       if (filters.bedrooms && filters.bedrooms !== 'Any') {
         const requiredBeds = Number(filters.bedrooms);
         if (item.bedrooms < requiredBeds) return false;
       }
 
-      // 7. Bathrooms
+      // 8. Bathrooms
       if (filters.bathrooms && filters.bathrooms !== 'Any') {
         const requiredBaths = Number(filters.bathrooms);
         if (item.bathrooms < requiredBaths) return false;
       }
 
-      // 8. Amenities
+      // 9. Amenities
       if (filters.amenities && filters.amenities.length > 0) {
         const hasAll = filters.amenities.every((amenity) =>
           item.features.includes(amenity)
@@ -88,7 +97,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
         if (!hasAll) return false;
       }
 
-      // 9. Free-text Search Query
+      // 10. Free-text Search Query
       if (filters.searchQuery && filters.searchQuery.trim() !== '') {
         const q = filters.searchQuery.toLowerCase();
         const matchesTitle = item.title.toLowerCase().includes(q);
@@ -130,6 +139,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
   const activeFilterCount =
     (filters.listingType && filters.listingType !== 'All' ? 1 : 0) +
+    (filters.country ? 1 : 0) +
     (filters.area ? 1 : 0) +
     (filters.propertyType ? 1 : 0) +
     (filters.minPrice ? 1 : 0) +
@@ -138,6 +148,13 @@ export const SearchPage: React.FC<SearchPageProps> = ({
     (filters.bathrooms && filters.bathrooms !== 'Any' ? 1 : 0) +
     filters.amenities.length +
     (filters.searchQuery ? 1 : 0);
+  const locationOptions = mockAreas.filter(
+    (location) => !filters.country || location.country === filters.country
+  );
+  const countryOptions = Array.from(new Set([
+    ...GLOBAL_COUNTRIES,
+    ...availableProperties.map((property) => property.country ?? 'Uganda')
+  ])).sort((a, b) => a.localeCompare(b));
 
   return (
     <div className="flex flex-col min-h-screen bg-neutral-50/50">
@@ -151,7 +168,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
               <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search Seeta, Sonde, road..."
+                placeholder={t('Search city, district, address...')}
                 value={filters.searchQuery || ''}
                 onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))}
                 className="w-full text-xs font-medium border border-neutral-200 rounded-lg py-2 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-neutral-50/60 focus:bg-white"
@@ -172,9 +189,21 @@ export const SearchPage: React.FC<SearchPageProps> = ({
               onChange={(e) => setFilters((prev) => ({ ...prev, listingType: e.target.value as any }))}
               className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
             >
-              <option value="All">Buy & Rent</option>
-              <option value="Sale">For Sale</option>
-              <option value="Rent">For Rent</option>
+              <option value="All">{t('Buy & Rent')}</option>
+              <option value="Sale">{t('For Sale')}</option>
+              <option value="Rent">{t('For Rent')}</option>
+            </select>
+
+            {/* Country */}
+            <select
+              value={filters.country || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, country: e.target.value, area: '' }))}
+              className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+            >
+              <option value="">{t('All Countries')}</option>
+              {countryOptions.map((countryName) => (
+                <option key={countryName} value={countryName}>{countryName}</option>
+              ))}
             </select>
 
             {/* Area */}
@@ -183,17 +212,12 @@ export const SearchPage: React.FC<SearchPageProps> = ({
               onChange={(e) => setFilters((prev) => ({ ...prev, area: e.target.value }))}
               className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
             >
-              <option value="">All Locations</option>
-              <option value="Mukono Municipality">Mukono Municipality</option>
-              <option value="Mukono Town">Mukono Town</option>
-              <option value="Seeta">Seeta</option>
-              <option value="Namugongo">Namugongo</option>
-              <option value="Sonde">Sonde</option>
-              <option value="Kyetume">Kyetume</option>
-              <option value="Namanoga">Namanoga</option>
-              <option value="Goma">Goma</option>
-              <option value="Katosi">Katosi</option>
-              <option value="Nakisunga">Nakisunga</option>
+              <option value="">{t('All Locations')}</option>
+              {locationOptions.map((location) => (
+                <option key={`${location.country}:${location.id}`} value={location.id}>
+                  {location.name} · {location.country}
+                </option>
+              ))}
             </select>
 
             {/* Property Type */}
@@ -202,14 +226,14 @@ export const SearchPage: React.FC<SearchPageProps> = ({
               onChange={(e) => setFilters((prev) => ({ ...prev, propertyType: e.target.value }))}
               className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white hidden sm:inline-block"
             >
-              <option value="">All Types</option>
-              <option value="House">Houses</option>
-              <option value="Apartment">Apartments</option>
-              <option value="Villa">Villas</option>
-              <option value="Townhouse">Townhouses</option>
-              <option value="Bungalow">Bungalows</option>
-              <option value="Land">Land / Plots</option>
-              <option value="Commercial Property">Commercial</option>
+              <option value="">{t('All Types')}</option>
+              <option value="House">{t('Houses')}</option>
+              <option value="Apartment">{t('Apartments')}</option>
+              <option value="Villa">{t('Villas')}</option>
+              <option value="Townhouse">{t('Townhouses')}</option>
+              <option value="Bungalow">{t('Bungalows')}</option>
+              <option value="Land">{t('Land / Plots')}</option>
+              <option value="Commercial Property">{t('Commercial')}</option>
             </select>
 
             {/* Bedrooms */}
@@ -218,12 +242,12 @@ export const SearchPage: React.FC<SearchPageProps> = ({
               onChange={(e) => setFilters((prev) => ({ ...prev, bedrooms: e.target.value as any }))}
               className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white hidden md:inline-block"
             >
-              <option value="Any">Beds: Any</option>
-              <option value="1">1+ Bed</option>
-              <option value="2">2+ Beds</option>
-              <option value="3">3+ Beds</option>
-              <option value="4">4+ Beds</option>
-              <option value="5">5+ Beds</option>
+              <option value="Any">{t('Beds: Any')}</option>
+              <option value="1">1+ {t('Bed')}</option>
+              <option value="2">2+ {t('Beds')}</option>
+              <option value="3">3+ {t('Beds')}</option>
+              <option value="4">4+ {t('Beds')}</option>
+              <option value="5">5+ {t('Beds')}</option>
             </select>
 
             {/* More Filters Toggle */}
@@ -237,7 +261,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
               }`}
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>More Filters</span>
+              <span>{t('More Filters')}</span>
               {filters.amenities.length > 0 && (
                 <span className="w-4 h-4 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-bold flex items-center justify-center">
                   {filters.amenities.length}
@@ -251,10 +275,10 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                 type="button"
                 onClick={resetFilters}
                 className="text-xs font-semibold text-neutral-500 hover:text-rose-600 flex items-center gap-1 py-1.5 px-2 rounded hover:bg-neutral-100 transition"
-                title="Reset all filters"
+                title={t('Reset all filters')}
               >
                 <RotateCcw className="w-3 h-3" />
-                <span className="hidden sm:inline">Reset</span>
+                <span className="hidden sm:inline">{t('Reset')}</span>
               </button>
             )}
           </div>
@@ -265,7 +289,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
             <div className="flex rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 text-neutral-600">
               <button
                 onClick={() => setViewMode('split')}
-                title="Split View (List + Map)"
+                title={t('Split View (List + Map)')}
                 className={`p-1.5 rounded-md transition ${
                   viewMode === 'split' ? 'bg-white text-neutral-900 shadow-xs' : 'hover:text-neutral-900'
                 } hidden lg:inline-flex`}
@@ -274,7 +298,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                title="List View"
+                title={t('List View')}
                 className={`p-1.5 rounded-md transition ${
                   viewMode === 'list' ? 'bg-white text-neutral-900 shadow-xs' : 'hover:text-neutral-900'
                 }`}
@@ -283,7 +307,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
               </button>
               <button
                 onClick={() => setViewMode('map')}
-                title="Map View"
+                title={t('Map View')}
                 className={`p-1.5 rounded-md transition ${
                   viewMode === 'map' ? 'bg-white text-neutral-900 shadow-xs' : 'hover:text-neutral-900'
                 }`}
@@ -299,10 +323,10 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           <div className="mt-4 pt-4 border-t border-neutral-200 grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-2">
             {/* Price Ranges */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">Price Filter (UGX)</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">{t('Price Filter (UGX)')}</h4>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[11px] text-neutral-500">Min Price</label>
+                  <label className="text-[11px] text-neutral-500">{t('Min Price')}</label>
                   <input
                     type="number"
                     placeholder="e.g. 500000"
@@ -317,7 +341,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-neutral-500">Max Price</label>
+                  <label className="text-[11px] text-neutral-500">{t('Max Price')}</label>
                   <input
                     type="number"
                     placeholder="e.g. 500000000"
@@ -336,7 +360,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
             {/* Bathrooms */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">Bathrooms</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">{t('Bathrooms')}</h4>
               <div className="flex gap-1.5">
                 {['Any', '1', '2', '3', '4'].map((b) => (
                   <button
@@ -348,7 +372,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                         : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
                     }`}
                   >
-                    {b === 'Any' ? 'Any' : `${b}+`}
+                    {b === 'Any' ? t('Any') : `${b}+`}
                   </button>
                 ))}
               </div>
@@ -358,14 +382,14 @@ export const SearchPage: React.FC<SearchPageProps> = ({
             <div className="md:col-span-2 space-y-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">
-                  Amenities & Facilities
+                  {t('Amenities & Facilities')}
                 </h4>
                 {filters.amenities.length > 0 && (
                   <button
                     onClick={() => setFilters((prev) => ({ ...prev, amenities: [] }))}
                     className="text-[11px] text-rose-600 hover:underline"
                   >
-                    Clear Amenities
+                    {t('Clear Amenities')}
                   </button>
                 )}
               </div>
@@ -399,26 +423,27 @@ export const SearchPage: React.FC<SearchPageProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-neutral-200/80 gap-3">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 font-serif-display">
-              {title || (filters.listingType === 'Rent' ? 'Rental Homes in Mukono' : 'Homes in Mukono, Uganda')}
+              {title ? t(title) : (filters.listingType === 'Rent' ? t('Rental Properties') : t('Property Listings'))}
             </h1>
             <p className="text-xs font-semibold text-neutral-500 mt-0.5">
-              {filteredProperties.length} {filteredProperties.length === 1 ? 'Property' : 'Properties'} Matching Your Criteria
-              {filters.area ? ` in ${filters.area}` : ''}
+              {filteredProperties.length} {t(filteredProperties.length === 1 ? 'Property' : 'Properties')} {t('Matching Your Criteria')}
+              {filters.area ? ` ${t('in')} ${filters.area}` : ''}
+              {filters.country ? `, ${filters.country}` : ''}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="text-xs font-medium text-neutral-500">Sort by:</label>
+            <label className="text-xs font-medium text-neutral-500">{t('Sort by:')}</label>
             <select
               value={filters.sortBy}
               onChange={(e) => setFilters((prev) => ({ ...prev, sortBy: e.target.value as any }))}
               className="text-xs font-bold border border-neutral-200 rounded-lg py-1.5 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
             >
-              <option value="recommended">Recommended</option>
-              <option value="newest">Newest First</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-              <option value="views">Most Viewed</option>
+              <option value="recommended">{t('Recommended')}</option>
+              <option value="newest">{t('Newest First')}</option>
+              <option value="price-asc">{t('Price: Low to High')}</option>
+              <option value="price-desc">{t('Price: High to Low')}</option>
+              <option value="views">{t('Most Viewed')}</option>
             </select>
           </div>
         </div>
@@ -492,20 +517,21 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   );
 };
 
-const EmptyResults: React.FC<{ resetFilters: () => void }> = ({ resetFilters }) => (
-  <div className="bg-white rounded-2xl p-12 text-center border border-neutral-200 space-y-4 max-w-md mx-auto my-8">
+const EmptyResults: React.FC<{ resetFilters: () => void }> = ({ resetFilters }) => {
+  const t = useTranslation();
+  return <div className="bg-white rounded-2xl p-12 text-center border border-neutral-200 space-y-4 max-w-md mx-auto my-8">
     <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 mx-auto">
       <Filter className="w-6 h-6" />
     </div>
-    <h3 className="text-base font-bold text-neutral-800">No matching properties found</h3>
+    <h3 className="text-base font-bold text-neutral-800">{t('No matching properties found')}</h3>
     <p className="text-xs text-neutral-500 leading-relaxed">
-      Try loosening your price filters, selecting "All Locations", or clearing specific amenities to see more homes in Mukono.
+      {t('Try loosening your price filters, selecting "All Locations", or clearing amenities to see more properties.')}
     </p>
     <button
       onClick={resetFilters}
       className="bg-slate-950 text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-slate-800 transition"
     >
-      Reset All Filters
+      {t('Reset All Filters')}
     </button>
   </div>
-);
+};

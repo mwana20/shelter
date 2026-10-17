@@ -13,6 +13,7 @@ import { AgentsPage } from './pages/AgentsPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { PolicyPage } from './pages/PolicyPage';
 
 // Modals
 import { ImageGalleryModal } from './components/ImageGalleryModal';
@@ -23,7 +24,7 @@ import { ComparisonModal } from './components/ComparisonModal';
 import { AuthModal } from './components/AuthModal';
 
 const AppContent: React.FC = () => {
-  const { currentPage } = useApp();
+  const { currentPage, isAdmin, setCurrentPage } = useApp();
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -35,23 +36,23 @@ const AppContent: React.FC = () => {
         return (
           <SearchPage
             initialListingType="Sale"
-            title="Homes for Sale in Mukono"
-            subtitle="Explore verified houses, villas, and bungalows for sale across Mukono District."
+            title="Properties for Sale Worldwide"
+            subtitle="Explore verified houses, villas, land, and investment properties across Uganda and other countries."
           />
         );
       case 'rent':
         return (
           <SearchPage
             initialListingType="Rent"
-            title="Find a Home to Rent in Mukono"
-            subtitle="Explore apartments and rental houses across Seeta, Sonde, and Mukono town."
+            title="Find a Home to Rent"
+            subtitle="Browse apartments, houses, and rentals in major cities and neighborhoods around the world."
           />
         );
       case 'new-listings':
         return (
           <SearchPage
-            title="New Homes in Mukono"
-            subtitle="Recently listed houses and properties in Mukono added within the last 7 days."
+            title="New Listings"
+            subtitle="Recently published homes and properties from supported global markets."
           />
         );
       case 'property-detail':
@@ -71,7 +72,19 @@ const AppContent: React.FC = () => {
       case 'contact':
         return <ContactPage />;
       case 'admin':
-        return <AdminDashboardPage />;
+        return isAdmin ? <AdminDashboardPage /> : (
+          <section className="min-h-[55vh] grid place-items-center px-6 text-center">
+            <div className="max-w-lg space-y-3">
+              <h1 className="text-2xl font-bold text-neutral-900">Administrator access required</h1>
+              <p className="text-sm text-neutral-600">This preview does not provide an administrator session. Sign in through a configured authentication service to continue.</p>
+              <button onClick={() => setCurrentPage('home')} className="text-sm font-semibold text-emerald-800 underline">Return to marketplace</button>
+            </div>
+          </section>
+        );
+      case 'privacy':
+      case 'terms':
+      case 'marketplace-policy':
+        return <PolicyPage kind={currentPage} />;
       default:
         return <HomePage />;
     }

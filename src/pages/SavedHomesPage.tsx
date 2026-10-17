@@ -33,7 +33,7 @@ export const SavedHomesPage: React.FC = () => {
               Saved Homes
             </h1>
             <p className="text-xs font-semibold text-neutral-500 mt-0.5">
-              {savedProperties.length} {savedProperties.length === 1 ? 'Home' : 'Homes'} Saved for Inspection in Mukono
+              {savedProperties.length} {savedProperties.length === 1 ? 'Property' : 'Properties'} Saved
             </p>
           </div>
 
@@ -58,13 +58,13 @@ export const SavedHomesPage: React.FC = () => {
             </div>
             <h3 className="text-lg font-bold text-neutral-900">You haven't saved any homes yet</h3>
             <p className="text-xs text-neutral-500 leading-relaxed max-w-sm mx-auto">
-              Click the heart icon on any Mukono house or apartment listing to keep track of your favorites and compare their features.
+              Click the heart icon on any listing to keep track of your favorites and compare features across locations.
             </p>
             <button
               onClick={() => setCurrentPage('search')}
               className="bg-slate-950 text-white text-xs font-bold py-3 px-6 rounded-xl hover:bg-slate-800 transition inline-flex items-center gap-2"
             >
-              <span>Explore Mukono Properties</span>
+              <span>Explore Properties</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -106,13 +106,13 @@ export const SavedHomesPage: React.FC = () => {
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <div onClick={() => openPropertyDetail(property.id)} className="cursor-pointer">
                       <p className="text-lg font-bold text-neutral-900">
-                        {formatUGX(property.price, property.listingType)}
+                        {formatUGX(property.price, property.listingType, property.currencyCode)}
                       </p>
                       <h4 className="text-sm font-semibold text-neutral-800 line-clamp-1 mt-0.5">
                         {property.title}
                       </h4>
                       <p className="text-xs text-neutral-500 mt-1">
-                        📍 {property.area}, Mukono
+                        📍 {property.city ? `${property.city}, ` : ''}{property.area}, {property.country ?? 'Uganda'}
                       </p>
                       <div className="flex gap-3 text-xs text-neutral-600 mt-3 pt-3 border-t border-neutral-100">
                         <span>🛏️ {property.bedrooms} Beds</span>

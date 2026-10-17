@@ -89,7 +89,7 @@ export const PropertyDetailPage: React.FC = () => {
             className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Mukono Listings</span>
+            <span>Back to Listings</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -223,20 +223,30 @@ export const PropertyDetailPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 pb-5">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-                    {property.propertyType} in Mukono
+                    {property.propertyType} in {property.city ?? property.area}
                   </span>
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight mt-1 font-serif-display">
                     {property.title}
                   </h1>
                   <div className="flex items-center gap-1.5 text-xs text-neutral-500 mt-2">
                     <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{property.locationDetails}, {property.area}, Mukono District, Uganda</span>
+                    <span>
+                      {[
+                        property.locationDetails,
+                        property.street,
+                        property.neighborhood,
+                        property.city,
+                        property.district,
+                        property.region,
+                        property.country ?? 'Uganda'
+                      ].filter((part, index, parts) => part && parts.indexOf(part) === index).join(', ')}
+                    </span>
                   </div>
                 </div>
 
                 <div className="sm:text-right">
                   <p className="text-2xl sm:text-3xl font-extrabold text-neutral-950 tracking-tight font-serif-display">
-                    {formatUGX(property.price, property.listingType)}
+                    {formatUGX(property.price, property.listingType, property.currencyCode)}
                   </p>
                   <p className="text-xs font-semibold text-neutral-400 mt-0.5">
                     {property.listingType === 'Sale' ? 'Asking Price (Negotiable)' : 'Monthly Rental Rate'}
@@ -304,7 +314,7 @@ export const PropertyDetailPage: React.FC = () => {
                 <div className="flex items-center gap-2 p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900">
                   <FileCheck className="w-4 h-4 text-emerald-700 shrink-0" />
                   <span>
-                    Land Title Status: <strong>{property.titleDeedStatus}</strong>. Free of legal encumbrances, registered in Mukono Zonal Land Registry.
+                    Land Title Status: <strong>{property.titleDeedStatus}</strong>. Confirm the status with the official land registry and qualified local professionals.
                   </span>
                 </div>
               )}
@@ -347,7 +357,7 @@ export const PropertyDetailPage: React.FC = () => {
                   Location & Neighborhood
                 </h3>
                 <p className="text-xs text-neutral-500 mt-1">
-                  Approximate geolocation in {property.area}, Mukono. Exact street address provided upon scheduling viewing.
+                  Approximate location in {[property.city, property.district, property.country ?? 'Uganda'].filter(Boolean).join(', ')}. Confirm exact address details with the listing contact.
                 </p>
               </div>
 
@@ -367,7 +377,7 @@ export const PropertyDetailPage: React.FC = () => {
                 <span>Buyer & Tenant Protection Notice</span>
               </div>
               <p className="text-xs text-amber-900/80 leading-relaxed">
-                Do not transfer money via Mobile Money (Airtel Money or MTN MoMo) to anyone prior to an in-person viewing and conducting an official search on the duplicate certificate of title at the <strong>Ministry Zonal Office (MZO) in Mukono</strong>. Sheltered staff will accompany you on your viewing.
+                Independently verify the property, ownership documents, and listing contact through the relevant local authorities before sending money or signing an agreement. Never pay unexpected viewing or reservation fees.
               </p>
               <div className="pt-2">
                 <button
@@ -398,7 +408,7 @@ export const PropertyDetailPage: React.FC = () => {
                   </div>
                   <p className="text-xs text-neutral-500">{agent.company}</p>
                   <p className="text-[11px] text-neutral-400 mt-0.5">
-                    {agent.experienceYears} yrs experience in Mukono
+                    {agent.experienceYears} yrs experience
                   </p>
                 </div>
               </div>
@@ -448,7 +458,7 @@ export const PropertyDetailPage: React.FC = () => {
               <div className="text-[11px] text-neutral-500 space-y-1.5 pt-2 border-t border-neutral-100">
                 <p className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Licensed Mukono real estate firm</span>
+                  <span>Property listing contact</span>
                 </p>
                 <p className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />

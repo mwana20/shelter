@@ -11,18 +11,18 @@ export type PropertyType =
   | 'Commercial Property'
   | 'Land';
 
-export type MukonoArea =
-  | 'Mukono Municipality'
-  | 'Mukono Town'
-  | 'Seeta'
-  | 'Namugongo'
-  | 'Sonde'
-  | 'Kyetume'
-  | 'Namanoga'
-  | 'Goma'
-  | 'Nakisunga'
-  | 'Katosi'
-  | 'Wantoni';
+export type AreaName = string;
+export type MukonoArea = AreaName;
+
+export interface PropertyLocation {
+  country?: string;
+  region?: string;
+  district?: string;
+  city?: string;
+  town?: string;
+  neighborhood?: string;
+  street?: string;
+}
 
 export interface PropertyAmenity {
   id: string;
@@ -55,9 +55,17 @@ export interface Property {
   verified: boolean;
   featured: boolean;
   isNew: boolean;
-  price: number; // In UGX (sale price or monthly rent)
+  price: number; // In local currency for the listing (for example UGX or USD)
+  currencyCode?: string;
   priceLabel?: string; // Optional custom string like "UGX 450M negotiable"
-  area: MukonoArea;
+  country?: string;
+  region?: string;
+  district?: string;
+  city?: string;
+  town?: string;
+  neighborhood?: string;
+  street?: string;
+  area: AreaName;
   locationDetails: string; // e.g. "Seeta, Nabuti Road near Kampala University"
   coordinates: {
     lat: number;
@@ -110,14 +118,13 @@ export interface EnquiryMessage {
 }
 
 export interface AreaInfo {
-  id: MukonoArea;
+  id: string;
   name: string;
+  country: string;
+  region: string;
   tagline: string;
   description: string;
   image: string;
-  distanceFromKampala: string;
-  avgSalePrice: string;
-  avgRentPrice: string;
   coordinates: { lat: number; lng: number };
 }
 
@@ -132,6 +139,10 @@ export interface UserProfile {
 
 export interface FilterState {
   listingType?: ListingType | 'All';
+  country?: string;
+  region?: string;
+  district?: string;
+  city?: string;
   area?: string;
   propertyType?: string;
   minPrice?: number;

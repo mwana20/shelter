@@ -15,7 +15,7 @@ export const ReportListingModal: React.FC = () => {
     e.preventDefault();
     setSubmitted(true);
     setTimeout(() => {
-      showNotification('Thank you. Our compliance team in Mukono is reviewing this listing.', 'success');
+      showNotification('Thank you. Our compliance team is reviewing this listing.', 'success');
       setSubmitted(false);
       setReportModalProperty(null);
     }, 1500);
@@ -100,7 +100,7 @@ export const ReportListingModal: React.FC = () => {
             <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-[11px] text-rose-800 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <span>
-                Safety reminder: Never send mobile money or cash to anyone claiming to be a caretaker or agent before visiting the property in person and verifying land title at Mukono Zonal Land Office.
+                Safety reminder: Verify the property and ownership documents with the relevant local authority before making a payment.
               </span>
             </div>
 

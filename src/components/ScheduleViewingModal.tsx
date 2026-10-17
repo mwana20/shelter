@@ -63,13 +63,13 @@ export const ScheduleViewingModal: React.FC = () => {
         <div className="mb-5">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">
             <Calendar className="w-4 h-4" />
-            <span>Schedule Physical Viewing</span>
+            <span>Schedule a Viewing</span>
           </div>
           <h3 className="text-xl font-bold text-neutral-900">
-            Book an Inspection in Mukono
+            Schedule a Property Viewing
           </h3>
           <p className="text-xs text-neutral-500 mt-1 line-clamp-1">
-            {scheduleModalProperty.title} · {formatUGX(scheduleModalProperty.price, scheduleModalProperty.listingType)}
+            {scheduleModalProperty.title} · {formatUGX(scheduleModalProperty.price, scheduleModalProperty.listingType, scheduleModalProperty.currencyCode)}
           </p>
         </div>
 
@@ -82,8 +82,10 @@ export const ScheduleViewingModal: React.FC = () => {
           />
           <div className="text-xs">
             <p className="font-semibold text-neutral-800 line-clamp-1">{scheduleModalProperty.title}</p>
-            <p className="text-neutral-500">📍 {scheduleModalProperty.area}, Mukono</p>
-            <p className="text-emerald-700 font-bold">{formatUGX(scheduleModalProperty.price, scheduleModalProperty.listingType)}</p>
+            <p className="text-neutral-500">
+              📍 {scheduleModalProperty.city ? `${scheduleModalProperty.city}, ` : ''}{scheduleModalProperty.area}, {scheduleModalProperty.country ?? 'Uganda'}
+            </p>
+            <p className="text-emerald-700 font-bold">{formatUGX(scheduleModalProperty.price, scheduleModalProperty.listingType, scheduleModalProperty.currencyCode)}</p>
           </div>
         </div>
 
@@ -181,7 +183,7 @@ export const ScheduleViewingModal: React.FC = () => {
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2.5 text-[11px] text-emerald-800">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <span>
-              Sheltered viewing guarantee: Free accompanied site visits with accredited Mukono local brokers. No advance inspection fees requested.
+              Confirm viewing arrangements directly with the listing contact. Never pay unexpected viewing or reservation fees.
             </span>
           </div>
 

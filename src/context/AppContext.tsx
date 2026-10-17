@@ -9,6 +9,8 @@ import {
   ListingType
 } from '../types';
 import { mockProperties } from '../data/mockProperties';
+import { enabledLanguages } from '../i18n/languages';
+import { companySettings } from '../config/company';
 
 export interface AppContextType {
   // Navigation & Routing
@@ -34,7 +36,8 @@ export interface AppContextType {
   currentUser: UserProfile;
   setCurrentUser: (user: UserProfile) => void;
   isAdmin: boolean;
-  setIsAdmin: (val: boolean) => void;
+  language: string;
+  setLanguage: (language: string) => void;
 
   // Favorites & Comparisons
   savedPropertyIds: string[];
@@ -56,7 +59,7 @@ export interface AppContextType {
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   resetFilters: () => void;
-  applyQuickSearch: (params: { listingType?: ListingType; area?: string; propertyType?: string; minPrice?: number; maxPrice?: number; bedrooms?: number | 'Any' }) => void;
+  applyQuickSearch: (params: { listingType?: ListingType; country?: string; area?: string; propertyType?: string; minPrice?: number; maxPrice?: number; bedrooms?: number | 'Any' }) => void;
 
   // Modals
   authModalOpen: boolean;
@@ -78,6 +81,10 @@ export interface AppContextType {
 
 const defaultFilters: FilterState = {
   listingType: 'All',
+  country: '',
+  region: '',
+  district: '',
+  city: '',
   area: '',
   propertyType: '',
   minPrice: undefined,
@@ -90,11 +97,30 @@ const defaultFilters: FilterState = {
 };
 
 const defaultUser: UserProfile = {
-  id: 'user-demo-1',
-  name: 'Phillip Mwanaweika',
-  email: 'phillipmwanaweika@gmail.com',
-  phone: '+256 700 123 456',
+  id: 'guest',
+  name: 'Guest',
+  email: '',
+  phone: '',
   role: 'buyer'
+};
+
+const getInitialLanguage = () => {
+  try {
+    const savedLanguage = localStorage.getItem('sheltered_language');
+    if (savedLanguage && enabledLanguages.some((language) => language.code === savedLanguage)) {
+      return savedLanguage;
+    }
+  } catch {
+    // Storage may be unavailable in private browsing contexts.
+  }
+
+  const browserLanguages = typeof navigator === 'undefined' ? [] : navigator.languages;
+  const preferred = browserLanguages
+    .map((language) => language.toLowerCase().split('-')[0])
+    .find((code) => enabledLanguages.some((language) => language.code === code));
+  return preferred ?? (enabledLanguages.some((language) => language.code === companySettings.defaultLanguage)
+    ? companySettings.defaultLanguage
+    : 'en');
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -109,7 +135,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [properties, setProperties] = useState<Property[]>(() => {
     try {
       const saved = localStorage.getItem('sheltered_properties_v2');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const savedProperties = JSON.parse(saved) as Property[];
+        const savedIds = new Set(savedProperties.map((property) => property.id));
+        const restoredProperties = savedProperties.map((property) => {
+          const seed = mockProperties.find((candidate) => candidate.id === property.id);
+          return seed
+            ? {
+                ...seed,
+                ...property,
+                country: property.country ?? seed.country,
+                region: property.region ?? seed.region,
+                district: property.district ?? seed.district,
+                currencyCode: property.currencyCode ?? seed.currencyCode
+              }
+            : property;
+        });
+        const newPreviewProperties = mockProperties.filter(
+          (property) => property.id.startsWith('preview-') && !savedIds.has(property.id)
+        );
+        return [...restoredProperties, ...newPreviewProperties];
+      }
     } catch {
       // ignore
     }
@@ -183,7 +229,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // User authentication
   const [currentUser, setCurrentUser] = useState<UserProfile>(defaultUser);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const isAdmin = currentUser.role === 'admin' && currentUser.id !== 'guest';
+  const [language, setLanguage] = useState<string>(getInitialLanguage);
 
   // Search Filters
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
@@ -231,6 +278,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
   }, [enquiries]);
+
+  useEffect(() => {
+    const selectedLanguage = enabledLanguages.find((option) => option.code === language) ?? enabledLanguages[0];
+    document.documentElement.lang = selectedLanguage.code;
+    document.documentElement.dir = selectedLanguage.direction;
+    try {
+      localStorage.setItem('sheltered_language', selectedLanguage.code);
+    } catch {
+      // Language choice remains active for the current session.
+    }
+  }, [language]);
 
   const showNotification = (msg: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -332,9 +390,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const approveProperty = (id: string) => {
     setProperties((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: 'Available', verified: true } : p))
+      prev.map((p) => (p.id === id ? { ...p, status: 'Available' } : p))
     );
-    showNotification('Property approved and published to Mukono marketplace!', 'success');
+    showNotification('Preview listing status changed locally. This action does not publish to a live marketplace.', 'info');
   };
 
   const rejectProperty = (id: string) => {
@@ -381,6 +439,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const applyQuickSearch = (params: {
     listingType?: ListingType;
+    country?: string;
     area?: string;
     propertyType?: string;
     minPrice?: number;
@@ -390,6 +449,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFilters((prev) => ({
       ...prev,
       listingType: params.listingType || prev.listingType,
+      country: params.country !== undefined ? params.country : prev.country,
       area: params.area !== undefined ? params.area : prev.area,
       propertyType: params.propertyType !== undefined ? params.propertyType : prev.propertyType,
       minPrice: params.minPrice,
@@ -400,10 +460,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Only Available (and optionally Pending) properties for buyers/renters
-  // Sold, Rented, Unavailable are excluded from active search
+  // Only published listings belong in public search.
   const availableProperties = properties.filter(
-    (p) => p.status === 'Available' || p.status === 'Pending'
+    (p) => p.status === 'Available'
   );
 
   return (
@@ -427,7 +486,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         setCurrentUser,
         isAdmin,
-        setIsAdmin,
+        language,
+        setLanguage,
         savedPropertyIds,
         toggleSaveProperty,
         isSaved,

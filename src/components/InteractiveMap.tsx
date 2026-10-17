@@ -26,10 +26,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     if (!mapContainerRef.current) return;
     if (mapInstanceRef.current) return;
 
-    // Center on Mukono Municipality: ~0.3533, 32.7554
     const map = L.map(mapContainerRef.current, {
-      center: [0.3533, 32.7554],
-      zoom: 12,
+      center: [0, 0],
+      zoom: 2,
       scrollWheelZoom: true,
       zoomControl: true
     });
@@ -64,7 +63,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
     validProps.forEach((prop) => {
       const isSelected = highlightedPropertyId === prop.id;
-      const priceText = formatCompactUGX(prop.price, prop.listingType);
+      const priceText = formatCompactUGX(prop.price, prop.listingType, prop.currencyCode);
       const isSale = prop.listingType === 'Sale';
 
       const customIcon = L.divIcon({
@@ -93,13 +92,13 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           </div>
           <div style="padding: 12px;">
             <div style="font-size: 15px; font-weight: 800; color: #0f172a; margin-bottom: 2px;">
-              ${formatUGX(prop.price, prop.listingType)}
+              ${formatUGX(prop.price, prop.listingType, prop.currencyCode)}
             </div>
             <div style="font-size: 12px; font-weight: 600; color: #334155; line-height: 1.3; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               ${prop.title}
             </div>
             <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">
-              📍 ${prop.area}, Mukono
+              📍 ${prop.city ?? prop.area}, ${prop.country ?? 'Uganda'}
             </div>
             <div style="display: flex; gap: 8px; font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 10px;">
               ${prop.bedrooms > 0 ? `<span>🛏️ ${prop.bedrooms} Beds</span>` : ''}
@@ -159,7 +158,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       <div ref={mapContainerRef} className="h-full w-full z-0" />
       <div className="absolute top-3 right-3 z-10 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm border border-neutral-200 text-xs font-semibold text-neutral-700 flex items-center gap-2">
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
-        Mukono District, Uganda
+        Sample locations worldwide
       </div>
     </div>
   );

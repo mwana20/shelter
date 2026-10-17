@@ -14,13 +14,13 @@ export const AgentsPage: React.FC = () => {
         <div className="max-w-2xl space-y-3">
           <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700">
             <Award className="w-4 h-4" />
-            <span>Accredited Mukono Realtors</span>
+            <span>Accredited Global Realtors</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 font-serif-display">
             Verified Property Agents & Consultants
           </h1>
           <p className="text-sm text-neutral-500 leading-relaxed">
-            Work with accredited, local real-estate professionals who understand Mukono land registry, zoning ordinances, and fair property valuations.
+            Work with accredited professionals who understand local registry processes, zoning rules, and fair property valuations across supported regions.
           </p>
         </div>
 

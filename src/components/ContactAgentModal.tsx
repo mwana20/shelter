@@ -105,7 +105,7 @@ export const ContactAgentModal: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <div className="text-xs text-neutral-500 bg-neutral-50 p-2.5 rounded-lg border border-neutral-100">
               Regarding: <strong>{contactModalProperty.title}</strong> (
-              {formatUGX(contactModalProperty.price, contactModalProperty.listingType)})
+              {formatUGX(contactModalProperty.price, contactModalProperty.listingType, contactModalProperty.currencyCode)})
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

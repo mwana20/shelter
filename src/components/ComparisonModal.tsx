@@ -35,7 +35,7 @@ export const ComparisonModal: React.FC = () => {
               Property Comparison
             </h3>
             <p className="text-xs text-neutral-500 mt-0.5">
-              Compare features, prices, and amenities across selected homes in Mukono
+              Compare features, prices, and amenities across selected homes in your chosen market
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -94,7 +94,7 @@ export const ComparisonModal: React.FC = () => {
                           />
                           <h4 className="font-bold text-neutral-900 text-xs line-clamp-1">{p.title}</h4>
                           <p className="text-[11px] text-emerald-700 font-extrabold mt-0.5">
-                            {formatUGX(p.price, p.listingType)}
+                            {formatUGX(p.price, p.listingType, p.currencyCode)}
                           </p>
                           <button
                             onClick={() => {
