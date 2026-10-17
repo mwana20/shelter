@@ -22,8 +22,11 @@ import { useApp } from '../context/AppContext';
 import { formatUGX, getWhatsAppLink, getTelLink } from '../utils/format';
 import { PropertyCard } from '../components/PropertyCard';
 import { InteractiveMap } from '../components/InteractiveMap';
+import { getLocalizedProperty, getOriginalLanguageNotice } from '../utils/propertyLocalization';
+import { useTranslation } from '../i18n/translations';
 
 export const PropertyDetailPage: React.FC = () => {
+  const t = useTranslation();
   const {
     selectedPropertyId,
     properties,
@@ -36,7 +39,8 @@ export const PropertyDetailPage: React.FC = () => {
     setScheduleModalProperty,
     setContactModalProperty,
     setReportModalProperty,
-    showNotification
+    showNotification,
+    language
   } = useApp();
 
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -51,7 +55,7 @@ export const PropertyDetailPage: React.FC = () => {
           onClick={() => setCurrentPage('search')}
           className="mt-4 bg-slate-900 text-white text-xs font-semibold py-2 px-4 rounded-lg"
         >
-          Back to Listings
+          {t('Back to Listings')}
         </button>
       </div>
     );
@@ -59,8 +63,9 @@ export const PropertyDetailPage: React.FC = () => {
 
   const saved = isSaved(property.id);
   const compared = isCompared(property.id);
+  const localizedProperty = getLocalizedProperty(property, language);
   const agent = property.agent;
-  const whatsappUrl = getWhatsAppLink(agent.whatsapp, property.title);
+  const whatsappUrl = getWhatsAppLink(agent.whatsapp, localizedProperty.title);
   const telUrl = getTelLink(agent.phone);
 
   const handleShare = () => {
@@ -89,7 +94,7 @@ export const PropertyDetailPage: React.FC = () => {
             className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Listings</span>
+            <span>{t('Back to Listings')}</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -98,7 +103,7 @@ export const PropertyDetailPage: React.FC = () => {
               className="flex items-center gap-1 text-xs font-semibold py-1.5 px-3 rounded-lg border border-neutral-200 text-neutral-700 hover:bg-neutral-50 transition"
             >
               <Share2 className="w-3.5 h-3.5" />
-              <span>Share</span>
+              <span>{t('Share')}</span>
             </button>
             <button
               onClick={() => toggleCompareProperty(property.id)}
@@ -107,7 +112,7 @@ export const PropertyDetailPage: React.FC = () => {
               }`}
             >
               <Scale className="w-3.5 h-3.5" />
-              <span>{compared ? 'Comparing' : 'Compare'}</span>
+              <span>{t(compared ? 'Comparing' : 'Compare')}</span>
             </button>
             <button
               onClick={() => toggleSaveProperty(property.id)}
@@ -116,7 +121,7 @@ export const PropertyDetailPage: React.FC = () => {
               }`}
             >
               <Heart className={`w-3.5 h-3.5 ${saved ? 'fill-rose-600 text-rose-600' : ''}`} />
-              <span>{saved ? 'Saved' : 'Save'}</span>
+              <span>{t(saved ? 'Saved' : 'Save')}</span>
             </button>
           </div>
         </div>
@@ -133,7 +138,7 @@ export const PropertyDetailPage: React.FC = () => {
             >
               <img
                 src={property.images[activePhotoIndex]}
-                alt={property.title}
+                alt={localizedProperty.title}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-103"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60" />
@@ -141,17 +146,17 @@ export const PropertyDetailPage: React.FC = () => {
               {/* Status and Type Badges */}
               <div className="absolute top-4 left-4 flex flex-wrap gap-2">
                 <span className="px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-slate-900/90 text-white shadow-sm backdrop-blur-md">
-                  {property.listingType === 'Sale' ? 'For Sale' : 'For Rent'}
+                  {t(property.listingType === 'Sale' ? 'For Sale' : 'For Rent')}
                 </span>
                 {property.verified && (
                   <span className="px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-emerald-600/90 text-white shadow-sm backdrop-blur-md flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    Verified Listing
+                    {t('Verified Listing')}
                   </span>
                 )}
                 {property.status !== 'Available' && (
                   <span className="px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-rose-600 text-white shadow-sm">
-                    {property.status}
+                    {t(property.status)}
                   </span>
                 )}
               </div>
@@ -161,13 +166,13 @@ export const PropertyDetailPage: React.FC = () => {
                 type="button"
                 className="absolute bottom-4 right-4 bg-white/90 hover:bg-white text-slate-950 font-bold text-xs py-2 px-3.5 rounded-xl backdrop-blur-md transition shadow-md flex items-center gap-1.5"
               >
-                View All {property.images.length} Photos
+                {t('View All Photos')} ({property.images.length})
               </button>
 
               {property.videoUrl && (
                 <div className="absolute bottom-4 left-4 bg-black/70 text-white font-semibold text-xs py-1.5 px-3 rounded-lg flex items-center gap-1.5 backdrop-blur-md">
                   <Play className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Virtual Video Tour Available</span>
+                  <span>{t('Virtual Video Tour Available')}</span>
                 </div>
               )}
             </div>
@@ -223,10 +228,10 @@ export const PropertyDetailPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 pb-5">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-                    {property.propertyType} in {property.city ?? property.area}
+                    {t(property.propertyType)} {t('in')} {property.city ?? property.area}
                   </span>
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight mt-1 font-serif-display">
-                    {property.title}
+                    {localizedProperty.title}
                   </h1>
                   <div className="flex items-center gap-1.5 text-xs text-neutral-500 mt-2">
                     <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -249,7 +254,7 @@ export const PropertyDetailPage: React.FC = () => {
                     {formatUGX(property.price, property.listingType, property.currencyCode)}
                   </p>
                   <p className="text-xs font-semibold text-neutral-400 mt-0.5">
-                    {property.listingType === 'Sale' ? 'Asking Price (Negotiable)' : 'Monthly Rental Rate'}
+                    {t(property.listingType === 'Sale' ? 'Asking Price (Negotiable)' : 'Monthly Rental Rate')}
                   </p>
                 </div>
               </div>
@@ -263,7 +268,7 @@ export const PropertyDetailPage: React.FC = () => {
                     </div>
                     <div>
                       <span className="text-base font-extrabold text-neutral-900">{property.bedrooms}</span>
-                      <p className="text-[11px] font-semibold text-neutral-500">Bedrooms</p>
+                      <p className="text-[11px] font-semibold text-neutral-500">{t('Bedrooms')}</p>
                     </div>
                   </div>
                 )}
@@ -275,7 +280,7 @@ export const PropertyDetailPage: React.FC = () => {
                     </div>
                     <div>
                       <span className="text-base font-extrabold text-neutral-900">{property.bathrooms}</span>
-                      <p className="text-[11px] font-semibold text-neutral-500">Bathrooms</p>
+                      <p className="text-[11px] font-semibold text-neutral-500">{t('Bathrooms')}</p>
                     </div>
                   </div>
                 )}
@@ -287,7 +292,7 @@ export const PropertyDetailPage: React.FC = () => {
                     </div>
                     <div>
                       <span className="text-base font-extrabold text-neutral-900">{property.parkingSpaces}</span>
-                      <p className="text-[11px] font-semibold text-neutral-500">Garages / Parking</p>
+                      <p className="text-[11px] font-semibold text-neutral-500">{t('Garages / Parking')}</p>
                     </div>
                   </div>
                 )}
@@ -299,10 +304,10 @@ export const PropertyDetailPage: React.FC = () => {
                     </div>
                     <div className="truncate">
                       <span className="text-sm font-extrabold text-neutral-900 truncate">
-                        {property.sqft ? `${property.sqft.toLocaleString()} sq ft` : property.plotSize}
+                        {property.sqft ? `${property.sqft.toLocaleString()} ${t('sq ft')}` : localizedProperty.plotSize}
                       </span>
                       <p className="text-[11px] font-semibold text-neutral-500">
-                        {property.sqft ? 'House Area' : 'Plot Size'}
+                        {t(property.sqft ? 'House Area' : 'Plot Size')}
                       </p>
                     </div>
                   </div>
@@ -314,7 +319,7 @@ export const PropertyDetailPage: React.FC = () => {
                 <div className="flex items-center gap-2 p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900">
                   <FileCheck className="w-4 h-4 text-emerald-700 shrink-0" />
                   <span>
-                    Land Title Status: <strong>{property.titleDeedStatus}</strong>. Confirm the status with the official land registry and qualified local professionals.
+                    {t('Land Title Status')}: <strong>{t(property.titleDeedStatus)}</strong>. {t('Confirm the status with the official land registry and qualified local professionals.')}
                   </span>
                 </div>
               )}
@@ -323,20 +328,25 @@ export const PropertyDetailPage: React.FC = () => {
             {/* Property Description */}
             <div className="bg-white rounded-2xl p-6 sm:p-8 border border-neutral-200/90 shadow-xs space-y-4">
               <h3 className="text-lg font-bold text-neutral-900 font-serif-display">
-                Property Description
+                {t('Property Description')}
               </h3>
+              {!localizedProperty.isTranslated && (
+                <p className="text-xs font-semibold text-amber-700">
+                  {getOriginalLanguageNotice(language, localizedProperty.sourceLanguage)}
+                </p>
+              )}
               <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed whitespace-pre-line">
-                {property.description}
+                {localizedProperty.description}
               </p>
             </div>
 
             {/* Property Features & Amenities */}
             <div className="bg-white rounded-2xl p-6 sm:p-8 border border-neutral-200/90 shadow-xs space-y-4">
               <h3 className="text-lg font-bold text-neutral-900 font-serif-display">
-                Property Features & Amenities
+                {t('Property Features & Amenities')}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {property.features.map((feature, idx) => (
+                {localizedProperty.features.map((feature, idx) => (
                   <div
                     key={idx}
                     className="flex items-center gap-2.5 p-3 rounded-xl bg-neutral-50 border border-neutral-100 text-xs font-semibold text-neutral-800"
@@ -354,10 +364,10 @@ export const PropertyDetailPage: React.FC = () => {
             <div className="bg-white rounded-2xl p-6 sm:p-8 border border-neutral-200/90 shadow-xs space-y-4">
               <div>
                 <h3 className="text-lg font-bold text-neutral-900 font-serif-display">
-                  Location & Neighborhood
+                  {t('Location & Neighborhood')}
                 </h3>
                 <p className="text-xs text-neutral-500 mt-1">
-                  Approximate location in {[property.city, property.district, property.country ?? 'Uganda'].filter(Boolean).join(', ')}. Confirm exact address details with the listing contact.
+                  {t('Approximate location in')} {[property.city, property.district, property.country ?? 'Uganda'].filter(Boolean).join(', ')}. {t('Confirm exact address details with the listing contact.')}
                 </p>
               </div>
 
@@ -374,10 +384,10 @@ export const PropertyDetailPage: React.FC = () => {
             <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-6 space-y-3">
               <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
                 <AlertTriangle className="w-5 h-5 text-amber-600" />
-                <span>Buyer & Tenant Protection Notice</span>
+                <span>{t('Buyer & Tenant Protection Notice')}</span>
               </div>
               <p className="text-xs text-amber-900/80 leading-relaxed">
-                Independently verify the property, ownership documents, and listing contact through the relevant local authorities before sending money or signing an agreement. Never pay unexpected viewing or reservation fees.
+                {t('Independently verify the property, ownership documents, and listing contact through the relevant local authorities before sending money or signing an agreement. Never pay unexpected viewing or reservation fees.')}
               </p>
               <div className="pt-2">
                 <button
@@ -385,7 +395,7 @@ export const PropertyDetailPage: React.FC = () => {
                   onClick={() => setReportModalProperty(property)}
                   className="text-xs font-bold text-rose-600 hover:text-rose-700 underline"
                 >
-                  Report suspicious listing or incorrect info →
+                  {t('Report suspicious listing or incorrect info →')}
                 </button>
               </div>
             </div>
@@ -408,7 +418,7 @@ export const PropertyDetailPage: React.FC = () => {
                   </div>
                   <p className="text-xs text-neutral-500">{agent.company}</p>
                   <p className="text-[11px] text-neutral-400 mt-0.5">
-                    {agent.experienceYears} yrs experience
+                    {agent.experienceYears} {t('yrs experience')}
                   </p>
                 </div>
               </div>
@@ -421,7 +431,7 @@ export const PropertyDetailPage: React.FC = () => {
                   className="w-full bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2"
                 >
                   <Calendar className="w-4 h-4 text-emerald-400" />
-                  <span>Schedule Physical Viewing</span>
+                  <span>{t('Schedule Physical Viewing')}</span>
                 </button>
 
                 {/* Instant WhatsApp & Call Buttons */}
@@ -441,7 +451,7 @@ export const PropertyDetailPage: React.FC = () => {
                     className="flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-bold transition"
                   >
                     <Phone className="w-4 h-4" />
-                    <span>Call Agent</span>
+                    <span>{t('Call Agent')}</span>
                   </a>
                 </div>
 
@@ -450,7 +460,7 @@ export const PropertyDetailPage: React.FC = () => {
                   onClick={() => setContactModalProperty(property)}
                   className="w-full border border-neutral-300 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold py-2.5 rounded-xl transition text-center"
                 >
-                  Send Online Message / Enquiry
+                  {t('Send Online Message / Enquiry')}
                 </button>
               </div>
 
@@ -458,15 +468,15 @@ export const PropertyDetailPage: React.FC = () => {
               <div className="text-[11px] text-neutral-500 space-y-1.5 pt-2 border-t border-neutral-100">
                 <p className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Property listing contact</span>
+                  <span>{t('Property listing contact')}</span>
                 </p>
                 <p className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Title search assistance provided</span>
+                  <span>{t('Title search assistance provided')}</span>
                 </p>
                 <p className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Zero upfront viewing fees</span>
+                  <span>{t('Zero upfront viewing fees')}</span>
                 </p>
               </div>
             </div>
@@ -478,10 +488,10 @@ export const PropertyDetailPage: React.FC = () => {
           <div className="mt-16 pt-12 border-t border-neutral-200">
             <div className="mb-6">
               <h3 className="text-xl font-bold text-neutral-900 font-serif-display">
-                More Homes in {property.area}
+                {t('More Homes in')} {property.area}
               </h3>
               <p className="text-xs text-neutral-500">
-                Other verified properties available in the immediate neighborhood.
+                {t('Other verified properties available in the immediate neighborhood.')}
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

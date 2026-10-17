@@ -9,8 +9,9 @@ import {
   ListingType
 } from '../types';
 import { mockProperties } from '../data/mockProperties';
-import { enabledLanguages } from '../i18n/languages';
+import { enabledLanguages, getInitialLanguage } from '../i18n/languages';
 import { companySettings } from '../config/company';
+import i18n from '../i18n';
 
 export interface AppContextType {
   // Navigation & Routing
@@ -102,25 +103,6 @@ const defaultUser: UserProfile = {
   email: '',
   phone: '',
   role: 'buyer'
-};
-
-const getInitialLanguage = () => {
-  try {
-    const savedLanguage = localStorage.getItem('sheltered_language');
-    if (savedLanguage && enabledLanguages.some((language) => language.code === savedLanguage)) {
-      return savedLanguage;
-    }
-  } catch {
-    // Storage may be unavailable in private browsing contexts.
-  }
-
-  const browserLanguages = typeof navigator === 'undefined' ? [] : navigator.languages;
-  const preferred = browserLanguages
-    .map((language) => language.toLowerCase().split('-')[0])
-    .find((code) => enabledLanguages.some((language) => language.code === code));
-  return preferred ?? (enabledLanguages.some((language) => language.code === companySettings.defaultLanguage)
-    ? companySettings.defaultLanguage
-    : 'en');
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -230,7 +212,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // User authentication
   const [currentUser, setCurrentUser] = useState<UserProfile>(defaultUser);
   const isAdmin = currentUser.role === 'admin' && currentUser.id !== 'guest';
-  const [language, setLanguage] = useState<string>(getInitialLanguage);
+  const [language, setLanguageState] = useState<string>(getInitialLanguage);
+  const setLanguage = (nextLanguage: string) => {
+    if (enabledLanguages.some((option) => option.code === nextLanguage)) {
+      setLanguageState(nextLanguage);
+    }
+  };
 
   // Search Filters
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
@@ -283,6 +270,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const selectedLanguage = enabledLanguages.find((option) => option.code === language) ?? enabledLanguages[0];
     document.documentElement.lang = selectedLanguage.code;
     document.documentElement.dir = selectedLanguage.direction;
+    void i18n.changeLanguage(selectedLanguage.code);
     try {
       localStorage.setItem('sheltered_language', selectedLanguage.code);
     } catch {

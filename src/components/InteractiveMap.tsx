@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { Property } from '../types';
 import { formatUGX, formatCompactUGX } from '../utils/format';
 import { useApp } from '../context/AppContext';
+import { getLocalizedProperty } from '../utils/propertyLocalization';
 
 interface InteractiveMapProps {
   properties: Property[];
@@ -20,7 +21,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [id: string]: L.Marker }>({});
-  const { openPropertyDetail } = useApp();
+  const { openPropertyDetail, language } = useApp();
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -62,6 +63,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     const bounds = L.latLngBounds([]);
 
     validProps.forEach((prop) => {
+      const localizedProperty = getLocalizedProperty(prop, language);
       const isSelected = highlightedPropertyId === prop.id;
       const priceText = formatCompactUGX(prop.price, prop.listingType, prop.currencyCode);
       const isSale = prop.listingType === 'Sale';
@@ -85,7 +87,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       const popupHtml = `
         <div style="width: 240px; font-family: 'Plus Jakarta Sans', sans-serif;">
           <div style="position: relative; height: 130px; width: 100%; overflow: hidden;">
-            <img src="${prop.images[0]}" alt="${prop.title}" style="width: 100%; height: 100%; object-fit: cover;" />
+            <img src="${prop.images[0]}" alt="${localizedProperty.title}" style="width: 100%; height: 100%; object-fit: cover;" />
             <span style="position: absolute; top: 8px; left: 8px; background: rgba(15, 23, 42, 0.85); color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;">
               ${prop.listingType === 'Sale' ? 'For Sale' : 'For Rent'}
             </span>
@@ -95,7 +97,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
               ${formatUGX(prop.price, prop.listingType, prop.currencyCode)}
             </div>
             <div style="font-size: 12px; font-weight: 600; color: #334155; line-height: 1.3; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-              ${prop.title}
+              ${localizedProperty.title}
             </div>
             <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">
               📍 ${prop.city ?? prop.area}, ${prop.country ?? 'Uganda'}
@@ -135,7 +137,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     if (validProps.length > 0) {
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
     }
-  }, [properties, highlightedPropertyId, onSelectProperty, openPropertyDetail]);
+  }, [properties, highlightedPropertyId, onSelectProperty, openPropertyDetail, language]);
 
   // Pan to highlighted property if set
   useEffect(() => {

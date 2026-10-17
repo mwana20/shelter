@@ -1,9 +1,10 @@
 import React from 'react';
-import { Home, ShieldCheck, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
+import { Home, ShieldCheck, Phone, Mail, MapPin, AlertCircle, MessageSquare } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { companySettings } from '../config/company';
 import { mockAreas } from '../data/mockAreas';
 import { useTranslation } from '../i18n/translations';
+import { getWhatsAppLink } from '../utils/format';
 
 export const Footer: React.FC = () => {
   const t = useTranslation();
@@ -93,7 +94,35 @@ export const Footer: React.FC = () => {
                   <a href={`mailto:${companySettings.email}`} className="hover:text-white">{companySettings.email}</a>
                 </div>
               )}
+              {companySettings.whatsappNumber && (
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <a
+                    href={getWhatsAppLink(companySettings.whatsappNumber)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-white"
+                  >
+                    WhatsApp message
+                  </a>
+                </div>
+              )}
             </div>
+            {Object.entries(companySettings.socialLinks).some(([, url]) => url) && (
+              <nav aria-label="Social media" className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+                {Object.entries(companySettings.socialLinks).map(([platform, url]) => url && (
+                  <a
+                    key={platform}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="capitalize text-slate-400 hover:text-white transition"
+                  >
+                    {platform === 'twitter' ? 'Twitter / X' : platform}
+                  </a>
+                ))}
+              </nav>
+            )}
           </div>
 
           {/* Col: Featured locations */}

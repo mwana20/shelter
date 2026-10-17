@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, MessageSquare, Send, CheckCircle2 } from 'lucide-react';
+import { Mail, Phone, MapPin, MessageSquare, Send, CheckCircle2, Share2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { companySettings } from '../config/company';
+import { getTelLink, getWhatsAppLink } from '../utils/format';
 
 export const ContactPage: React.FC = () => {
   const { showNotification } = useApp();
@@ -45,7 +46,7 @@ export const ContactPage: React.FC = () => {
             Contact Sheltered
           </h1>
           <p className="text-sm text-neutral-500 max-w-xl mx-auto">
-            Our headquarters are in Mbale, Uganda. Contact channels appear here when the company has configured them.
+            Contact our team by phone, email, WhatsApp, or through our social channels.
           </p>
         </div>
 
@@ -73,7 +74,11 @@ export const ContactPage: React.FC = () => {
                   <Phone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <strong className="text-white">Telephone:</strong>
-                    {companySettings.phoneNumbers.map((number) => <p className="text-slate-400" key={number}>{number}</p>)}
+                    {companySettings.phoneNumbers.map((number) => (
+                      <p key={number}>
+                        <a href={getTelLink(number)} className="text-slate-400 hover:text-white">{number}</a>
+                      </p>
+                    ))}
                   </div>
                 </div>}
 
@@ -81,7 +86,16 @@ export const ContactPage: React.FC = () => {
                   <MessageSquare className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <strong className="text-white">WhatsApp:</strong>
-                    <p className="text-slate-400">{companySettings.whatsappNumber}</p>
+                    <p>
+                      <a
+                        href={getWhatsAppLink(companySettings.whatsappNumber)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-slate-400 hover:text-white"
+                      >
+                        Message us directly
+                      </a>
+                    </p>
                   </div>
                 </div>}
 
@@ -89,15 +103,41 @@ export const ContactPage: React.FC = () => {
                   <Mail className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <strong className="text-white">Email:</strong>
-                    <p className="text-slate-400">{companySettings.email}</p>
+                    <p>
+                      <a href={`mailto:${companySettings.email}`} className="text-slate-400 hover:text-white">
+                        {companySettings.email}
+                      </a>
+                    </p>
                   </div>
                 </div>}
+
+                {Object.entries(companySettings.socialLinks).some(([, url]) => url) && (
+                  <div className="flex items-start gap-3">
+                    <Share2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-white">Follow us:</strong>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                        {Object.entries(companySettings.socialLinks).map(([platform, url]) => url && (
+                          <a
+                            key={platform}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-400 hover:text-white capitalize"
+                          >
+                            {platform === 'twitter' ? 'Twitter / X' : platform}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {(companySettings.supportHours || companySettings.phoneNumbers.length === 0 && !companySettings.email) && <div className="pt-6 border-t border-slate-800 text-[11px] text-slate-400">
+            {(companySettings.supportHours || companySettings.phoneNumbers.length === 0 && !companySettings.email && !companySettings.whatsappNumber) && <div className="pt-6 border-t border-slate-800 text-[11px] text-slate-400">
               {companySettings.supportHours && <p>Operating hours: {companySettings.supportHours}</p>}
-              {companySettings.phoneNumbers.length === 0 && !companySettings.email && <p>Contact details have not been configured.</p>}
+              {companySettings.phoneNumbers.length === 0 && !companySettings.email && !companySettings.whatsappNumber && <p>Contact details have not been configured.</p>}
             </div>}
           </div>
 

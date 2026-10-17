@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Property } from '../types';
 import { formatUGX } from '../utils/format';
+import { getLocalizedProperty, getOriginalLanguageNotice } from '../utils/propertyLocalization';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../i18n/translations';
 
@@ -28,10 +29,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
     toggleSaveProperty,
     isSaved,
     toggleCompareProperty,
-    isCompared
+    isCompared,
+    language
   } = useApp();
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const localizedProperty = getLocalizedProperty(property, language);
   const saved = isSaved(property.id);
   const compared = isCompared(property.id);
 
@@ -68,7 +71,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
       <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-100">
         <img
           src={property.images[activeImageIndex] || property.images[0]}
-          alt={property.title}
+          alt={localizedProperty.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
         />
@@ -99,7 +102,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
 
           {isSoldOrRented && (
             <span className="px-2.5 py-1 text-xs font-bold uppercase rounded-md bg-rose-600 text-white">
-              {property.status}
+              {t(property.status)}
             </span>
           )}
         </div>
@@ -186,7 +189,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
 
           {/* Title */}
           <h4 className="text-base font-semibold text-neutral-800 line-clamp-1 mb-1 group-hover:text-emerald-700 transition-colors">
-            {property.title}
+            {localizedProperty.title}
           </h4>
 
           {/* Location */}
@@ -225,7 +228,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
             ) : property.plotSize ? (
               <span className="flex items-center gap-1.5 truncate">
                 <Maximize className="w-3.5 h-3.5 text-neutral-400" />
-                <span className="truncate">{property.plotSize}</span>
+                <span className="truncate">{localizedProperty.plotSize}</span>
               </span>
             ) : null}
             {property.parkingSpaces > 0 && (
@@ -237,9 +240,16 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
           </div>
 
           {/* Short Description */}
-          <p className="text-xs text-neutral-500 line-clamp-2 mt-2 leading-relaxed">
-            {t(property.description)}
-          </p>
+          <div className="mt-2">
+            {!localizedProperty.isTranslated && (
+              <span className="block text-[10px] font-semibold text-amber-700 mb-1">
+                {getOriginalLanguageNotice(language, localizedProperty.sourceLanguage)}
+              </span>
+            )}
+            <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">
+              {localizedProperty.description}
+            </p>
+          </div>
         </div>
 
         {/* Card Footer Actions */}

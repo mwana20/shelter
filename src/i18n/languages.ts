@@ -1,3 +1,5 @@
+import { companySettings } from '../config/company';
+
 export interface LanguageOption {
   code: string;
   label: string;
@@ -29,3 +31,25 @@ export const languageOptions: LanguageOption[] = [
 ];
 
 export const enabledLanguages = languageOptions.filter((language) => language.available);
+
+export const getInitialLanguage = (): string => {
+  try {
+    const savedLanguage = localStorage.getItem('sheltered_language');
+    if (savedLanguage && enabledLanguages.some((language) => language.code === savedLanguage)) {
+      return savedLanguage;
+    }
+  } catch {
+    // Storage may be unavailable in private browsing contexts.
+  }
+
+  const browserLanguages = typeof navigator === 'undefined' ? [] : navigator.languages ?? [];
+  const preferred = browserLanguages
+    .map((language) => language.toLowerCase().split('-')[0])
+    .find((code) => enabledLanguages.some((language) => language.code === code));
+
+  return preferred ?? (
+    enabledLanguages.some((language) => language.code === companySettings.defaultLanguage)
+      ? companySettings.defaultLanguage
+      : 'en'
+  );
+};

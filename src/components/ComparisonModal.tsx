@@ -3,6 +3,7 @@ import { X, Check, Trash2, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatUGX } from '../utils/format';
 import { ALL_AMENITIES } from '../data/mockProperties';
+import { getLocalizedProperty } from '../utils/propertyLocalization';
 
 export const ComparisonModal: React.FC = () => {
   const {
@@ -12,7 +13,8 @@ export const ComparisonModal: React.FC = () => {
     toggleCompareProperty,
     clearComparison,
     properties,
-    openPropertyDetail
+    openPropertyDetail,
+    language
   } = useApp();
 
   if (!compareModalOpen) return null;
@@ -74,11 +76,10 @@ export const ComparisonModal: React.FC = () => {
                     <th className="p-3 w-40 text-neutral-400 font-semibold uppercase tracking-wider text-[11px] border-b border-neutral-200 bg-neutral-50/60 sticky left-0 z-10">
                       Metric
                     </th>
-                    {comparedProperties.map((p) => (
-                      <th
-                        key={p.id}
-                        className="p-3 min-w-[220px] max-w-[260px] border-b border-neutral-200 bg-neutral-50/60 align-top"
-                      >
+                    {comparedProperties.map((p) => {
+                      const localizedProperty = getLocalizedProperty(p, language);
+                      return (
+                      <th key={p.id} className="p-3 min-w-[220px] max-w-[260px] border-b border-neutral-200 bg-neutral-50/60 align-top">
                         <div className="relative group">
                           <button
                             onClick={() => toggleCompareProperty(p.id)}
@@ -89,10 +90,10 @@ export const ComparisonModal: React.FC = () => {
                           </button>
                           <img
                             src={p.images[0]}
-                            alt={p.title}
+                            alt={localizedProperty.title}
                             className="w-full h-28 object-cover rounded-xl mb-2"
                           />
-                          <h4 className="font-bold text-neutral-900 text-xs line-clamp-1">{p.title}</h4>
+                          <h4 className="font-bold text-neutral-900 text-xs line-clamp-1">{localizedProperty.title}</h4>
                           <p className="text-[11px] text-emerald-700 font-extrabold mt-0.5">
                             {formatUGX(p.price, p.listingType, p.currencyCode)}
                           </p>
@@ -107,7 +108,8 @@ export const ComparisonModal: React.FC = () => {
                           </button>
                         </div>
                       </th>
-                    ))}
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">

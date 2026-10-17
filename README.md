@@ -29,6 +29,8 @@ Seeded property and agent records are sample data, not verified offers. Approval
 
 Copy `.env.example` to `.env.local` and set only public company details and service URLs. Values prefixed with `VITE_` are bundled into browser code and must never contain passwords, API secrets, payment credentials, or private keys. Leave contact, authentication, and form endpoints blank until their corresponding server services are implemented and tested. The default language is limited to locales marked available in `src/i18n/languages.ts`.
 
+Public contact details are shown on the Contact page and in the site footer. The email defaults to `info@sheltered.com`; set `VITE_COMPANY_EMAIL` to override it. Configure `VITE_COMPANY_PHONES` and/or `VITE_COMPANY_WHATSAPP` with the public phone number in international format (digits and an optional `+`); when no WhatsApp number is set, the first phone number is used for direct WhatsApp messages. Add the official profile URLs with `VITE_COMPANY_TWITTER`, `VITE_COMPANY_INSTAGRAM`, `VITE_COMPANY_LINKEDIN`, and `VITE_COMPANY_FACEBOOK`. Social links are hidden until configured.
+
 The language catalog lists the requested languages, but English is the only enabled locale. The English policy pages are drafts and require qualified legal review before production use.
 
 ## Service Endpoint Contracts

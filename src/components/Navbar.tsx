@@ -13,10 +13,12 @@ import {
 import { useApp } from '../context/AppContext';
 import { companySettings } from '../config/company';
 import { languageOptions } from '../i18n/languages';
-import { useTranslation } from '../i18n/translations';
+import { useTranslation as useLegacyTranslation } from '../i18n/translations';
+import { useTranslation } from 'react-i18next';
 
 export const Navbar: React.FC = () => {
-  const t = useTranslation();
+  const t = useLegacyTranslation();
+  const { t: tFoundation } = useTranslation('navigation');
   const {
     currentPage,
     setCurrentPage,
@@ -70,14 +72,14 @@ export const Navbar: React.FC = () => {
       <div className="bg-slate-900 text-slate-200 text-[11px] py-1 px-4 sm:px-8 flex justify-between items-center tracking-wide font-medium">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
-          <span>{t('Preview marketplace · global listings across supported countries')}</span>
+          <span>{tFoundation('previewBanner')}</span>
         </div>
         <div className="flex items-center gap-4 text-slate-300">
           <span>Headquarters: {companySettings.headquarters}</span>
           <label className="flex items-center gap-1.5">
-            <span className="sr-only">{t('Display language')}</span>
+            <span className="sr-only">{tFoundation('languageDisplay')}</span>
             <select
-              aria-label="Display language"
+              aria-label={tFoundation('languageDisplay')}
               value={language}
               onChange={(event) => setLanguage(event.target.value)}
               className="max-w-32 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-white"

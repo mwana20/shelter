@@ -76,6 +76,7 @@ export interface Property {
   parkingSpaces: number;
   sqft?: number; // House size
   plotSize?: string; // Land size e.g. "50 x 100 ft (12 decimals)", "25 decimals", "1 Acre"
+  contentLanguage?: string;
   description: string;
   features: string[]; // List of amenity IDs/names
   images: string[];
