@@ -2,113 +2,99 @@ import { AreaInfo } from '../types';
 
 export const mockAreas: AreaInfo[] = [
   {
-    id: 'Mukono Municipality',
-    name: 'Mukono',
+    id: 'mukono-municipality',
+    name: 'Mukono Municipality',
     country: 'Uganda',
-    region: 'Central Region · Mukono District',
-    tagline: 'Town homes, apartments, and land',
-    description: 'Explore sample listings around Mukono Municipality and nearby neighborhoods.',
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: 0.3533, lng: 32.7554 }
-  },
-  {
-    id: 'Kampala',
-    name: 'Kampala',
-    country: 'Uganda',
-    region: 'Central Region · Kampala District',
-    tagline: 'Homes in Uganda’s capital',
-    description: 'Browse a sample city listing for Uganda’s capital. Live listing availability may vary.',
+    tagline: 'Heart of Mukono District with vibrant commerce & UCU University',
+    description: 'The administrative and commercial nerve center of Mukono District. Home to Uganda Christian University (UCU), major banking branches, modern shopping supermarkets, and established residential estates in Anthony, Bugujju, and Nabuti.',
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: 0.3136, lng: 32.5811 }
+    distanceFromHQ: 'Central Mukono (0 km)',
+    avgSalePrice: 'UGX 380M',
+    avgRentPrice: 'UGX 1.1M / mo',
+    coordinates: { lat: 0.3541, lng: 32.7512 }
   },
   {
-    id: 'Entebbe',
-    name: 'Entebbe',
+    id: 'seeta',
+    name: 'Seeta',
     country: 'Uganda',
-    region: 'Central Region · Wakiso District',
-    tagline: 'Lakeside city homes and rentals',
-    description: 'Discover sample property listings in Entebbe, Wakiso District.',
-    image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: 0.0512, lng: 32.4637 }
-  },
-  {
-    id: 'Jinja',
-    name: 'Jinja',
-    country: 'Uganda',
-    region: 'Eastern Region · Jinja District',
-    tagline: 'Homes and land in Eastern Uganda',
-    description: 'Browse a sample land listing in Jinja District. Local inventory is still growing.',
-    image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: 0.4479, lng: 33.2026 }
-  },
-  {
-    id: 'Mbarara',
-    name: 'Mbarara',
-    country: 'Uganda',
-    region: 'Western Region · Mbarara District',
-    tagline: 'Explore homes in Western Uganda',
-    description: 'Browse a sample home listing in Mbarara. Local inventory is still growing.',
+    tagline: 'Fastest-growing residential hub with top schools & quick Kampala bypass access',
+    description: 'A prestigious residential hub just 15 km from Kampala along Jinja Road. Highly sought after by professionals and families for elite institutions like Namilyango College and Seeta High School, plus fast access to the Kampala Northern Bypass.',
     image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: -0.6072, lng: 30.6545 }
+    distanceFromHQ: '6 km west toward Kampala',
+    avgSalePrice: 'UGX 450M',
+    avgRentPrice: 'UGX 1.4M / mo',
+    coordinates: { lat: 0.3615, lng: 32.7121 }
   },
   {
-    id: 'Gulu',
-    name: 'Gulu',
+    id: 'sonde',
+    name: 'Sonde',
     country: 'Uganda',
-    region: 'Northern Region · Gulu District',
-    tagline: 'Rental homes in Northern Uganda',
-    description: 'Browse a sample apartment listing in Gulu. Local inventory is still growing.',
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: 2.7746, lng: 32.2989 }
-  },
-  {
-    id: 'Nairobi',
-    name: 'Nairobi',
-    country: 'Kenya',
-    region: 'Nairobi County',
-    tagline: 'Homes in Kenya’s capital',
-    description: 'Browse a sample home listing in Nairobi, Kenya. Local inventory is still growing.',
+    tagline: 'Peaceful, upscale residential developments & modern gated courts',
+    description: 'One of the fastest appreciating residential pockets in Mukono. Characterized by master-planned estates, wide green gardens, freshly paved connecting roads to Namugongo and Kira, and high security for young families.',
     image: 'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: -1.2864, lng: 36.8172 }
+    distanceFromHQ: '9 km north-west',
+    avgSalePrice: 'UGX 420M',
+    avgRentPrice: 'UGX 1.3M / mo',
+    coordinates: { lat: 0.3892, lng: 32.6984 }
   },
   {
-    id: 'Dar es Salaam',
-    name: 'Dar es Salaam',
-    country: 'Tanzania',
-    region: 'Dar es Salaam Region',
-    tagline: 'Apartments in Tanzania’s largest city',
-    description: 'Browse a sample rental in Dar es Salaam, Tanzania. Local inventory is still growing.',
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: -6.7924, lng: 39.2083 }
-  },
-  {
-    id: 'Cape Town',
-    name: 'Cape Town',
-    country: 'South Africa',
-    region: 'Western Cape',
-    tagline: 'Homes in South Africa’s Western Cape',
-    description: 'Browse a sample home listing in Cape Town, South Africa. Local inventory is still growing.',
-    image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: -33.9249, lng: 18.4241 }
-  },
-  {
-    id: 'London',
-    name: 'London',
-    country: 'United Kingdom',
-    region: 'Greater London',
-    tagline: 'Rental homes in the UK',
-    description: 'Browse a sample rental listing in London, United Kingdom. Local inventory is still growing.',
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: 51.5072, lng: -0.1276 }
-  },
-  {
-    id: 'New York City',
-    name: 'New York City',
-    country: 'United States',
-    region: 'New York · New York County',
-    tagline: 'Homes in the United States',
-    description: 'Browse a sample home listing in New York City. Local inventory is still growing.',
+    id: 'namugongo',
+    name: 'Namugongo (Mukono Border)',
+    country: 'Uganda',
+    tagline: 'Prime peri-urban neighborhood blending spiritual heritage & suburban comfort',
+    description: 'Situated on the Mukono-Wakiso border, offering peaceful suburban living with direct connectivity to Kira Municipality, Kireka, and the Northern Bypass. Boasts modern townhouses and private family residences.',
     image: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=800&q=80',
-    coordinates: { lat: 40.7128, lng: -74.006 }
+    distanceFromHQ: '11 km west',
+    avgSalePrice: 'UGX 480M',
+    avgRentPrice: 'UGX 1.5M / mo',
+    coordinates: { lat: 0.3956, lng: 32.6578 }
+  },
+  {
+    id: 'kyetume',
+    name: 'Kyetume',
+    country: 'Uganda',
+    tagline: 'Affordable acreage, tranquil countryside & railway corridor expansion',
+    description: 'A rapidly evolving residential zone southeast of Mukono town. Popular for larger plots (25 to 50 decimals) at attractive rates, ideal for family bungalows with orchards and garden spaces.',
+    image: 'https://images.unsplash.com/photo-1600573472591-ee6b68d14c68?auto=format&fit=crop&w=800&q=80',
+    distanceFromHQ: '5 km east toward Jinja',
+    avgSalePrice: 'UGX 260M',
+    avgRentPrice: 'UGX 750K / mo',
+    coordinates: { lat: 0.3341, lng: 32.7892 }
+  },
+  {
+    id: 'goma',
+    name: 'Goma Division',
+    country: 'Uganda',
+    tagline: 'Organized administrative sub-county with modern executive residences',
+    description: 'Encompassing thriving neighborhoods including Misindye, Bukerere, and Seeta rural. Well known for clean private Mailo titles, progressive neighborhood associations, and serene elevated views.',
+    image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=800&q=80',
+    distanceFromHQ: '4 km north-west',
+    avgSalePrice: 'UGX 390M',
+    avgRentPrice: 'UGX 1.1M / mo',
+    coordinates: { lat: 0.3712, lng: 32.7245 }
+  },
+  {
+    id: 'namanoga',
+    name: 'Namanoga',
+    country: 'Uganda',
+    tagline: 'Lush greenery, scenic hills & great long-term capital appreciation',
+    description: 'A scenic and green neighborhood favored by homeowners seeking tranquility away from the highway. Offers fertile soil, fresh air, and spacious compounds at reasonable valuations.',
+    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
+    distanceFromHQ: '7 km north',
+    avgSalePrice: 'UGX 310M',
+    avgRentPrice: 'UGX 850K / mo',
+    coordinates: { lat: 0.3842, lng: 32.7631 }
+  },
+  {
+    id: 'nakisunga',
+    name: 'Nakisunga & Katosi Road',
+    country: 'Uganda',
+    tagline: 'Lake Victoria breeze, lakefront vacation homes & commercial land',
+    description: 'Extending southwards along the tarmac Katosi highway toward Lake Victoria. Ideal for lakeside country residences, weekend getaways, farming estates, and scenic lake-view developments.',
+    image: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80',
+    distanceFromHQ: '14 km south towards Lake Victoria',
+    avgSalePrice: 'UGX 270M',
+    avgRentPrice: 'UGX 800K / mo',
+    coordinates: { lat: 0.2814, lng: 32.7611 }
   }
 ];

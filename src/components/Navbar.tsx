@@ -1,45 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Home,
-  Heart,
-  Scale,
+  Globe,
+  Coins,
+  ChevronDown,
   Menu,
   X,
   PlusCircle,
-  User,
-  Shield,
-  ChevronDown
+  Heart,
+  Scale,
+  MapPin,
+  Check
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { companySettings } from '../config/company';
-import { languageOptions } from '../i18n/languages';
-import { useTranslation as useLegacyTranslation } from '../i18n/translations';
-import { useTranslation } from 'react-i18next';
+import { SUPPORTED_CURRENCY_CODES, CurrencyCode, CURRENCIES } from '../utils/currency';
+import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 
 export const Navbar: React.FC = () => {
-  const t = useLegacyTranslation();
-  const { t: tFoundation } = useTranslation('navigation');
   const {
     currentPage,
     setCurrentPage,
     savedPropertyIds,
     comparedPropertyIds,
-    setCompareModalOpen,
-    currentUser,
-    language,
-    setLanguage,
-    setAuthModalOpen,
-    isAdmin,
     applyQuickSearch,
-    setFilters
+    setFilters,
+    userLanguage,
+    setUserLanguage,
+    userCurrency,
+    setUserCurrency,
+    t
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
+
+  // Lock body scroll when mobile drawer is open so the drawer can scroll smoothly to full length
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [mobileMenuOpen]);
+
+  // Close drawer and dropdowns whenever currentPage changes (including browser back/forward)
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setLangDropdownOpen(false);
+    setCurrencyDropdownOpen(false);
+  }, [currentPage]);
 
   const navigateTo = (page: string) => {
     setCurrentPage(page);
     setMobileMenuOpen(false);
+    setLangDropdownOpen(false);
+    setCurrencyDropdownOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -50,287 +71,293 @@ export const Navbar: React.FC = () => {
     } else if (section === 'rent') {
       applyQuickSearch({ listingType: 'Rent' });
       navigateTo('rent');
-    } else if (section === 'houses') {
-      setFilters((prev) => ({ ...prev, propertyType: 'House' }));
-      navigateTo('search');
-    } else if (section === 'apartments') {
-      setFilters((prev) => ({ ...prev, propertyType: 'Apartment' }));
+    } else if (section === 'commercial') {
+      setFilters((prev) => ({
+        ...prev,
+        propertyType: 'Commercial Property',
+        listingType: 'All',
+        country: ''
+      }));
       navigateTo('search');
     } else if (section === 'land') {
-      setFilters((prev) => ({ ...prev, propertyType: 'Land' }));
+      setFilters((prev) => ({
+        ...prev,
+        propertyType: 'Residential Land',
+        listingType: 'Sale',
+        country: ''
+      }));
       navigateTo('search');
-    } else if (section === 'new') {
-      navigateTo('new-listings');
+    } else if (section === 'explore') {
+      navigateTo('areas');
     } else {
       navigateTo(section);
     }
   };
 
+  const currentLangConfig =
+    SUPPORTED_LANGUAGES.find((l) => l.code === userLanguage) || SUPPORTED_LANGUAGES[0];
+
+  const isHomePage = currentPage === 'home';
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const isTransparent = isHomePage && !isScrolled;
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200/90 shadow-xs">
-      {/* Top micro-bar for localization announcement */}
-      <div className="bg-slate-900 text-slate-200 text-[11px] py-1 px-4 sm:px-8 flex justify-between items-center tracking-wide font-medium">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
-          <span>{tFoundation('previewBanner')}</span>
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        isTransparent
+          ? 'bg-transparent border-b border-transparent'
+          : 'bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shadow-md'
+      }`}
+    >
+      {/* Top Headquarters & Global Banner */}
+      <div
+        className={`transition-all duration-300 text-slate-300 text-[11px] py-1 px-4 sm:px-8 flex justify-between items-center tracking-wide border-b ${
+          isTransparent
+            ? 'bg-slate-950/25 backdrop-blur-xs border-white/10'
+            : 'bg-slate-950 border-slate-800'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <span className="font-semibold text-white">{t('hq_banner_title')}</span>
+          <span className="hidden md:inline text-slate-300">· {t('hq_banner_sub')}</span>
         </div>
-        <div className="flex items-center gap-4 text-slate-300">
-          <span>Headquarters: {companySettings.headquarters}</span>
-          <label className="flex items-center gap-1.5">
-            <span className="sr-only">{tFoundation('languageDisplay')}</span>
-            <select
-              aria-label={tFoundation('languageDisplay')}
-              value={language}
-              onChange={(event) => setLanguage(event.target.value)}
-              className="max-w-32 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-white"
-            >
-              {languageOptions.map((option) => (
-                <option key={option.code} value={option.code} disabled={!option.available}>
-                  {option.label}{option.available ? '' : ' · unavailable'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span className="hidden sm:inline">|</span>
-          {isAdmin && <button
-            onClick={() => navigateTo('admin')}
-            className="hidden sm:flex items-center gap-1 font-semibold px-2 py-0.5 rounded text-[10px] transition bg-amber-500 text-slate-950"
+
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Quick Saved Homes Badge */}
+          <button
+            type="button"
+            onClick={() => navigateTo('saved')}
+            className="flex items-center gap-1 text-slate-300 hover:text-white transition cursor-pointer"
+            title={t('saved_badge')}
           >
-            <Shield className="w-3 h-3" />
-            Administrator
-          </button>}
+            <Heart className="w-3 h-3 text-rose-400" />
+            <span className="hidden sm:inline">{t('saved_badge')}</span>
+            <span className="text-[10px] bg-slate-800 text-slate-200 px-1 rounded tabular-nums">
+              {savedPropertyIds.length}
+            </span>
+          </button>
+
+          {/* Quick Compare Badge */}
+          {comparedPropertyIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => navigateTo('search')}
+              className="flex items-center gap-1 text-slate-300 hover:text-white transition cursor-pointer"
+              title={t('compare_badge')}
+            >
+              <Scale className="w-3 h-3 text-blue-400" />
+              <span className="text-[10px] bg-slate-800 text-slate-200 px-1 rounded tabular-nums">
+                {comparedPropertyIds.length}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Main Nav Container */}
+      {/* Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18">
-          {/* Brand Logo */}
-          <div
+        <div className="flex items-center justify-between gap-6 h-16">
+          {/* Zone 1: Single text element wordmark */}
+          <button
+            type="button"
             onClick={() => navigateTo('home')}
-            className="flex items-center gap-2.5 cursor-pointer group select-none shrink-0"
+            className="flex items-center gap-2 text-left shrink-0 group cursor-pointer"
           >
-            <div className="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-white shadow-sm group-hover:bg-emerald-900 transition-colors">
-              <Home className="w-5 h-5 text-emerald-400" />
+            <div className="w-9 h-9 rounded-lg bg-white/15 border border-white/30 text-white flex items-center justify-center font-serif-display font-bold text-lg shadow-sm group-hover:bg-white/25 transition">
+              S
             </div>
             <div>
-              <span className="text-2xl font-extrabold tracking-tight text-neutral-900 font-serif-display uppercase">
-                {companySettings.name.toUpperCase()}
+              <span className="text-xl font-extrabold tracking-tight text-white font-serif-display block leading-none drop-shadow-sm">
+                {t('brand_name')}
               </span>
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-neutral-500 -mt-1">
-                {t('Global Marketplace')}
-              </p>
+              <span className="text-[10px] uppercase font-semibold text-slate-300 tracking-wider block mt-0.5 drop-shadow-xs">
+                {t('brand_tagline')}
+              </span>
             </div>
-          </div>
+          </button>
 
-          {/* Center Navigation Links (Desktop) */}
-          <nav className="hidden lg:flex items-center gap-1 xl:gap-2 text-sm font-medium text-neutral-600">
+          {/* Zone 2: Clean single-line text navigation links */}
+          <nav className="hidden lg:flex items-center gap-6 xl:gap-7 text-sm font-semibold text-slate-200">
             <button
+              type="button"
               onClick={() => handleNavClick('buy')}
-              className={`px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100 ${
-                currentPage === 'buy' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
+              className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
+                currentPage === 'buy' ? 'text-white font-bold' : ''
               }`}
             >
-              {t('Buy')}
+              {t('nav_buy')}
             </button>
             <button
+              type="button"
               onClick={() => handleNavClick('rent')}
-              className={`px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100 ${
-                currentPage === 'rent' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
+              className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
+                currentPage === 'rent' ? 'text-white font-bold' : ''
               }`}
             >
-              {t('Rent')}
+              {t('nav_rent')}
             </button>
             <button
-              onClick={() => handleNavClick('houses')}
-              className="px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100"
+              type="button"
+              onClick={() => handleNavClick('commercial')}
+              className="hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
             >
-              {t('Houses')}
+              {t('nav_commercial')}
             </button>
             <button
-              onClick={() => handleNavClick('apartments')}
-              className="px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100"
-            >
-              {t('Apartments')}
-            </button>
-            <button
+              type="button"
               onClick={() => handleNavClick('land')}
-              className="px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100"
+              className="hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
             >
-              {t('Land')}
+              {t('nav_land')}
             </button>
             <button
-              onClick={() => handleNavClick('new')}
-              className={`px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100 flex items-center gap-1.5 ${
-                currentPage === 'new-listings' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
-              }`}
+              type="button"
+              onClick={() => handleNavClick('explore')}
+              className="hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
             >
-              {t('New Listings')}
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            </button>
-            <button
-              onClick={() => navigateTo('areas')}
-              className={`px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100 ${
-                currentPage === 'areas' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
-              }`}
-            >
-              {t('Explore Locations')}
-            </button>
-            <button
-              onClick={() => navigateTo('agents')}
-              className={`px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100 ${
-                currentPage === 'agents' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
-              }`}
-            >
-              {t('Agents')}
-            </button>
-            <button
-              onClick={() => navigateTo('about')}
-              className={`px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100 ${
-                currentPage === 'about' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
-              }`}
-            >
-              {t('About')}
-            </button>
-            <button
-              onClick={() => navigateTo('contact')}
-              className={`px-3 py-1.5 rounded-lg transition hover:text-neutral-900 hover:bg-neutral-100 ${
-                currentPage === 'contact' ? 'text-neutral-950 font-bold bg-neutral-100' : ''
-              }`}
-            >
-              {t('Contact')}
+              {t('nav_explore')}
             </button>
           </nav>
 
-          {/* Right Action Cluster */}
-          <div className="hidden md:flex items-center gap-3">
-            {/* Compare Button */}
-            {comparedPropertyIds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setCompareModalOpen(true)}
-                className="relative p-2 rounded-lg text-neutral-700 hover:bg-neutral-100 transition"
-                title={t('Compare Properties')}
-              >
-                <Scale className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 bg-slate-900 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {comparedPropertyIds.length}
-                </span>
-              </button>
-            )}
-
-            {/* Saved Properties */}
-            <button
-              type="button"
-              onClick={() => navigateTo('saved')}
-              className="relative p-2 rounded-lg text-neutral-700 hover:bg-neutral-100 transition flex items-center gap-1.5 text-xs font-semibold"
-              title={t('Saved Properties')}
-            >
-              <Heart className="w-4 h-4 text-rose-600 fill-rose-50" />
-              <span>{t('Saved')}</span>
-              {savedPropertyIds.length > 0 && (
-                <span className="bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full ml-0.5">
-                  {savedPropertyIds.length}
-                </span>
-              )}
-            </button>
-
-            {/* User Profile / Sign In */}
+          {/* Zone 3: Selectors + Clean Auth Buttons + CTA */}
+          <div className="hidden sm:flex items-center gap-2.5 lg:gap-3 shrink-0">
+            {/* Language Selector Dropdown */}
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2 py-1.5 px-3 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition text-xs font-semibold text-neutral-800"
+                onClick={() => {
+                  setLangDropdownOpen(!langDropdownOpen);
+                  setCurrencyDropdownOpen(false);
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/20 bg-slate-950/40 hover:bg-slate-900/60 backdrop-blur-md text-xs font-semibold text-white transition cursor-pointer"
+                title={t('select_language')}
               >
-                <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-slate-700">
-                  <User className="w-3.5 h-3.5" />
-                </div>
-                    <span className="truncate max-w-[90px]">{currentUser.id === 'guest' ? t('Sign In') : currentUser.name.split(' ')[0]}</span>
-                <ChevronDown className="w-3 h-3 text-neutral-400" />
+                <Globe className="w-3.5 h-3.5 text-slate-300" />
+                <span className="uppercase">{currentLangConfig.code}</span>
+                <ChevronDown className="w-3 h-3 text-slate-300" />
               </button>
 
-              {profileDropdownOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-xl border border-neutral-200 py-2 z-50 animate-in fade-in slide-in-from-top-2"
-                  onMouseLeave={() => setProfileDropdownOpen(false)}
-                >
-                  <div className="px-4 py-2 border-b border-neutral-100">
-                    <p className="text-xs font-bold text-neutral-900">{currentUser.id === 'guest' ? t('Guest') : currentUser.name}</p>
-                    <p className="text-[11px] text-neutral-500 truncate">{currentUser.email}</p>
+              {langDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    {t('select_language')}
                   </div>
-                  <button
-                    onClick={() => {
-                      setProfileDropdownOpen(false);
-                      navigateTo('my-sheltered');
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition flex items-center justify-between"
-                  >
-                    <span>{t('My Sheltered Dashboard')}</span>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">{t('Active')}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setProfileDropdownOpen(false);
-                      navigateTo('saved');
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition"
-                  >
-                    {t('Saved Homes')} ({savedPropertyIds.length})
-                  </button>
-                  {isAdmin && <button
-                    onClick={() => {
-                      setProfileDropdownOpen(false);
-                      navigateTo('admin');
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition flex items-center gap-2"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-amber-600" />
-                    {t('Admin Control Center')}
-                  </button>}
-                  <div className="border-t border-neutral-100 mt-1 pt-1">
+                  {SUPPORTED_LANGUAGES.map((lang) => (
                     <button
+                      key={lang.code}
+                      type="button"
                       onClick={() => {
-                        setProfileDropdownOpen(false);
-                        setAuthModalOpen(true);
+                        setUserLanguage(lang.code);
+                        setLangDropdownOpen(false);
                       }}
-                      className="w-full text-left px-4 py-2 text-xs font-medium text-neutral-500 hover:bg-neutral-50 transition"
+                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50 flex items-center justify-between text-slate-700 cursor-pointer"
                     >
-                      {t('Switch User / Sign Out')}
+                      <span className="flex items-center gap-2">
+                        <span className="text-sm">{lang.flag}</span>
+                        <span className="font-medium">{lang.nativeName}</span>
+                      </span>
+                      {userLanguage === lang.code && (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
                     </button>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* List a Property Button */}
+            {/* Currency Selector Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrencyDropdownOpen(!currencyDropdownOpen);
+                  setLangDropdownOpen(false);
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/20 bg-slate-950/40 hover:bg-slate-900/60 backdrop-blur-md text-xs font-semibold text-white transition cursor-pointer"
+                title={t('select_currency')}
+              >
+                <Coins className="w-3.5 h-3.5 text-slate-300" />
+                <span>{userCurrency}</span>
+                <ChevronDown className="w-3 h-3 text-slate-300" />
+              </button>
+
+              {currencyDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    {t('select_currency')}
+                  </div>
+                  {SUPPORTED_CURRENCY_CODES.map((code) => {
+                    const cfg = CURRENCIES[code];
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => {
+                          setUserCurrency(code);
+                          setCurrencyDropdownOpen(false);
+                        }}
+                        className="w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50 flex items-center justify-between text-slate-700 cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="font-bold w-7 text-slate-900">{cfg.symbol}</span>
+                          <span>{cfg.name}</span>
+                        </span>
+                        {userCurrency === code && (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Clean Persistent Authentication Buttons (Sign In & Create Account) */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigateTo('sign-in')}
+                className="px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-white/15 transition rounded-lg cursor-pointer"
+              >
+                {t('nav_sign_in')}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('create-account')}
+                className="px-3.5 py-1.5 text-xs font-bold text-slate-950 bg-white hover:bg-slate-100 rounded-lg transition shadow-sm cursor-pointer"
+              >
+                {t('nav_create_account')}
+              </button>
+            </div>
+
+            {/* Primary Action Button: List Your Property (takes user to login page) */}
             <button
               type="button"
-              onClick={() => navigateTo('list-property')}
-              className="bg-slate-950 hover:bg-slate-900 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-xs transition flex items-center gap-2 hover:shadow-md"
+              onClick={() => navigateTo('sign-in')}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-sm transition whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <PlusCircle className="w-4 h-4 text-emerald-400" />
-              <span>{t('List a Property')}</span>
+              <PlusCircle className="w-3.5 h-3.5 text-white" />
+              <span>{t('nav_list_property')}</span>
             </button>
           </div>
 
-          {/* Mobile Menu Toggle Button */}
-          <div className="flex md:hidden items-center gap-2">
-            <button
-              onClick={() => navigateTo('saved')}
-              className="p-2 text-neutral-700 relative"
-            >
-              <Heart className="w-5 h-5 text-rose-600 fill-rose-50" />
-              {savedPropertyIds.length > 0 && (
-                <span className="absolute top-1 right-1 bg-rose-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {savedPropertyIds.length}
-                </span>
-              )}
-            </button>
+          {/* Mobile Menu Hamburger */}
+          <div className="flex lg:hidden items-center gap-2">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-neutral-700 hover:bg-neutral-100 transition"
-              aria-label={t('Toggle menu')}
+              className="p-2 text-white hover:bg-white/15 rounded-lg transition cursor-pointer"
+              aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -338,108 +365,157 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Menu Drawer */}
+      {/* Mobile Right-to-Left Slide-Over Drawer (70% width) */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-neutral-200 bg-white px-4 pt-3 pb-6 space-y-2 animate-in slide-in-from-top duration-200">
-          <div className="grid grid-cols-2 gap-2 pb-3 border-b border-neutral-100">
-            <button
-              onClick={() => handleNavClick('buy')}
-              className="py-2.5 px-3 bg-neutral-100 rounded-xl text-center text-xs font-bold text-neutral-900"
-            >
-              {t('Buy Homes')}
-            </button>
-            <button
-              onClick={() => handleNavClick('rent')}
-              className="py-2.5 px-3 bg-neutral-100 rounded-xl text-center text-xs font-bold text-neutral-900"
-            >
-              {t('Rent Homes')}
-            </button>
-          </div>
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop covering the 30% space, dismisses drawer on click */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
 
-          <div className="space-y-1 py-1 text-sm font-medium text-neutral-700">
-            <button
-              onClick={() => handleNavClick('houses')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
-            >
-              {t('Houses for Sale & Rent')}
-            </button>
-            <button
-              onClick={() => handleNavClick('apartments')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
-            >
-              {t('Apartments Worldwide')}
-            </button>
-            <button
-              onClick={() => handleNavClick('land')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
-            >
-              {t('Plots & Land with Title')}
-            </button>
-            <button
-              onClick={() => handleNavClick('new')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg flex items-center justify-between"
-            >
-              <span>{t('New Listings')}</span>
-              <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">NEW</span>
-            </button>
-            <button
-              onClick={() => navigateTo('areas')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
-            >
-              {t('Explore Locations')}
-            </button>
-            <button
-              onClick={() => navigateTo('agents')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
-            >
-              {t('Property Agents & Brokers')}
-            </button>
-            <button
-              onClick={() => navigateTo('my-sheltered')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
-            >
-              {t('My Sheltered Dashboard')}
-            </button>
-            {isAdmin && <button
-              onClick={() => navigateTo('admin')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg text-amber-700 font-semibold flex items-center gap-2"
-            >
-              <Shield className="w-4 h-4" />
-              {t('Admin Portal')}
-            </button>}
-            <button
-              onClick={() => navigateTo('about')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
-            >
-              {t('About Sheltered')}
-            </button>
-            <button
-              onClick={() => navigateTo('contact')}
-              className="w-full text-left py-2 px-2 hover:bg-neutral-50 rounded-lg"
-            >
-              {t('Contact Support')}
-            </button>
-          </div>
+          {/* Drawer Container: 70% width, sliding in from right to left, full dynamic viewport height */}
+          <div className="fixed inset-y-0 right-0 w-[70%] h-[100dvh] bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-300 ease-out border-l border-slate-200">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50/70 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-slate-950 text-white flex items-center justify-center font-serif-display font-bold text-sm shadow-xs">
+                  S
+                </div>
+                <div>
+                  <span className="font-extrabold text-sm text-slate-950 font-serif-display block leading-none">
+                    {t('brand_name')}
+                  </span>
+                  <span className="text-[9px] uppercase font-semibold text-slate-500 tracking-wider">
+                    {t('brand_tagline')}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 transition cursor-pointer"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-          <div className="pt-3 border-t border-neutral-100 space-y-2">
-            <button
-              type="button"
-              onClick={() => navigateTo('list-property')}
-              className="w-full bg-slate-950 text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2"
-            >
-              <PlusCircle className="w-4 h-4 text-emerald-400" />
-              <span>{t('List Your Property')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                setAuthModalOpen(true);
-              }}
-              className="w-full border border-neutral-300 text-neutral-800 text-xs font-semibold py-2.5 rounded-xl text-center"
-            >
-              {t('Account / Sign In')} ({currentUser.name})
-            </button>
+            {/* Scrollable Navigation Body with smooth touch scrolling and generous bottom padding */}
+            <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y p-4 space-y-4 pb-28">
+              <nav className="flex flex-col space-y-1 text-sm font-semibold text-slate-800">
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('buy')}
+                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                >
+                  {t('nav_buy')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('rent')}
+                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                >
+                  {t('nav_rent')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('commercial')}
+                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                >
+                  {t('nav_commercial')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('land')}
+                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                >
+                  {t('nav_land')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('explore')}
+                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                >
+                  {t('nav_explore')}
+                </button>
+              </nav>
+
+              <div className="pt-3 border-t border-slate-200 space-y-3">
+                {/* Mobile Auth Buttons */}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('sign-in')}
+                    className="w-full py-2.5 text-center text-xs font-semibold border border-slate-300 text-slate-800 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                  >
+                    {t('nav_sign_in')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('create-account')}
+                    className="w-full py-2.5 text-center text-xs font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition cursor-pointer shadow-xs"
+                  >
+                    {t('nav_create_account')}
+                  </button>
+                </div>
+
+                {/* Language & Currency Selectors */}
+                <div className="space-y-1.5 pt-2">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">
+                    {t('select_language')} & {t('select_currency')}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={userLanguage}
+                      onChange={(e) => setUserLanguage(e.target.value)}
+                      className="w-full text-xs py-2 px-2 border border-slate-200 rounded-xl bg-white font-medium"
+                      aria-label={t('select_language')}
+                    >
+                      {SUPPORTED_LANGUAGES.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.flag} {l.nativeName}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={userCurrency}
+                      onChange={(e) => setUserCurrency(e.target.value as CurrencyCode)}
+                      className="w-full text-xs py-2 px-2 border border-slate-200 rounded-xl bg-white font-bold"
+                      aria-label={t('select_currency')}
+                    >
+                      {SUPPORTED_CURRENCY_CODES.map((c) => (
+                        <option key={c} value={c}>
+                          {c} ({CURRENCIES[c].symbol})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Action Buttons: Both take user to login page */}
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('sign-in')}
+                    className="w-full py-2.5 text-center text-xs font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200 rounded-xl cursor-pointer transition"
+                  >
+                    {t('nav_dashboard')}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('sign-in')}
+                    className="w-full py-2.5 text-center text-xs font-semibold bg-slate-950 text-white hover:bg-slate-900 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition shadow-xs"
+                  >
+                    <PlusCircle className="w-4 h-4 text-emerald-400" />
+                    <span>{t('nav_list_property')}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

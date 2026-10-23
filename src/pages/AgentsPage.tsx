@@ -14,13 +14,13 @@ export const AgentsPage: React.FC = () => {
         <div className="max-w-2xl space-y-3">
           <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700">
             <Award className="w-4 h-4" />
-            <span>Accredited Global Realtors</span>
+            <span>Accredited Mukono Realtors</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 font-serif-display">
             Verified Property Agents & Consultants
           </h1>
           <p className="text-sm text-neutral-500 leading-relaxed">
-            Work with accredited professionals who understand local registry processes, zoning rules, and fair property valuations across supported regions.
+            Work with accredited, local real-estate professionals who understand Mukono land registry, zoning ordinances, and fair property valuations.
           </p>
         </div>
 
@@ -93,7 +93,7 @@ export const AgentsPage: React.FC = () => {
 
                   <button
                     onClick={() => {
-                      applyQuickSearch({ area: agent.areaSpecialty.split('&')[0].trim() });
+                      applyQuickSearch({ district: agent.areaSpecialty.split(',')[0].trim() });
                     }}
                     className="w-full text-xs font-bold text-neutral-800 hover:text-emerald-700 py-2 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition flex items-center justify-center gap-1.5"
                   >

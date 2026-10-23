@@ -6,12 +6,26 @@ import {
   EnquiryMessage,
   UserProfile,
   FilterState,
-  ListingType
+  ListingType,
+  CompanySettings,
+  PaymentTransaction,
+  TransactionalEmail,
+  AuditLog
 } from '../types';
+import { CurrencyCode } from '../utils/currency';
 import { mockProperties } from '../data/mockProperties';
-import { enabledLanguages, getInitialLanguage } from '../i18n/languages';
-import { companySettings } from '../config/company';
+import { GLOBAL_LOCATIONS, LocationHierarchyNode } from '../data/mockLocations';
+import { getStoredEmails, saveStoredEmails } from '../services/authSecurity';
+import { RTL_LANGUAGES } from '../i18n/languages';
+import { getTranslation, TranslationKey } from '../i18n/translations';
 import i18n from '../i18n';
+import {
+  NavigationRoute,
+  buildRouteHash,
+  parseRouteFromLocation,
+  saveActiveRoute,
+  normalizePage
+} from '../utils/navigation';
 
 export interface AppContextType {
   // Navigation & Routing
@@ -22,23 +36,65 @@ export interface AppContextType {
   selectedAreaFilter: string | null;
   setSelectedAreaFilter: (area: string | null) => void;
 
-  // Property Data & Mutation
+  // Multilingual & RTL
+  userLanguage: string;
+  setUserLanguage: (lang: string) => void;
+  isRtl: boolean;
+  t: (key: TranslationKey, fallback?: string) => string;
+
+  // Currency
+  userCurrency: CurrencyCode;
+  setUserCurrency: (curr: CurrencyCode) => void;
+
+  // Company Settings (Mbale, Uganda Global HQ)
+  companySettings: CompanySettings;
+  updateCompanySettings: (settings: Partial<CompanySettings>) => void;
+
+  // Global Locations
+  locations: LocationHierarchyNode[];
+  importLocationsCsv: (csvText: string) => { added: number; error?: string };
+
+  // Property Data & Mutations
   properties: Property[];
-  availableProperties: Property[]; // excludes Sold, Rented, Unavailable for standard searches
+  availableProperties: Property[];
   addProperty: (property: Omit<Property, 'id' | 'viewsCount' | 'savesCount' | 'dateAdded'>) => void;
   updatePropertyStatus: (id: string, status: PropertyStatus) => void;
   toggleVerifiedStatus: (id: string) => void;
   deleteProperty: (id: string) => void;
-  approveProperty: (id: string) => void;
-  rejectProperty: (id: string) => void;
+  approveProperty: (id: string, notes?: string) => void;
+  rejectProperty: (id: string, reason?: string) => void;
   incrementViews: (id: string) => void;
 
   // User & Auth
   currentUser: UserProfile;
   setCurrentUser: (user: UserProfile) => void;
   isAdmin: boolean;
-  language: string;
-  setLanguage: (language: string) => void;
+  setIsAdmin: (val: boolean) => void;
+
+  // Security, OTP & Email Logs
+  otpModalOpen: boolean;
+  setOtpModalOpen: (open: boolean) => void;
+  transactionalEmails: TransactionalEmail[];
+  auditLogs: AuditLog[];
+  addAuditLog: (action: string, details: string, targetType: AuditLog['targetType'], targetId?: string) => void;
+
+  // Payments & Checkout
+  paymentTransactions: PaymentTransaction[];
+  addPaymentTransaction: (tx: PaymentTransaction) => void;
+  checkoutModalState: {
+    isOpen: boolean;
+    purpose: 'listing_fee' | 'featured_promotion' | 'agent_subscription' | 'verification_inspection';
+    title: string;
+    amount: number;
+    propertyId?: string;
+  };
+  openCheckout: (data: {
+    purpose: 'listing_fee' | 'featured_promotion' | 'agent_subscription' | 'verification_inspection';
+    title: string;
+    amount: number;
+    propertyId?: string;
+  }) => void;
+  closeCheckout: () => void;
 
   // Favorites & Comparisons
   savedPropertyIds: string[];
@@ -60,7 +116,16 @@ export interface AppContextType {
   filters: FilterState;
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   resetFilters: () => void;
-  applyQuickSearch: (params: { listingType?: ListingType; country?: string; area?: string; propertyType?: string; minPrice?: number; maxPrice?: number; bedrooms?: number | 'Any' }) => void;
+  applyQuickSearch: (params: {
+    listingType?: ListingType;
+    country?: string;
+    region?: string;
+    district?: string;
+    propertyType?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    bedrooms?: number | 'Any';
+  }) => void;
 
   // Modals
   authModalOpen: boolean;
@@ -80,16 +145,19 @@ export interface AppContextType {
   showNotification: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
+import { SHELTERED_COMPANY_CONFIG } from '../config/company';
+
+const defaultCompanySettings: CompanySettings = SHELTERED_COMPANY_CONFIG;
+
 const defaultFilters: FilterState = {
   listingType: 'All',
   country: '',
   region: '',
   district: '',
-  city: '',
-  area: '',
   propertyType: '',
   minPrice: undefined,
   maxPrice: undefined,
+  currency: 'USD',
   bedrooms: 'Any',
   bathrooms: 'Any',
   amenities: [],
@@ -98,98 +166,313 @@ const defaultFilters: FilterState = {
 };
 
 const defaultUser: UserProfile = {
-  id: 'guest',
-  name: 'Guest',
-  email: '',
-  phone: '',
-  role: 'buyer'
+  id: 'user-demo-1',
+  name: 'Michael Kato',
+  email: 'michael.kato@shelteredglobal.com',
+  phone: '+256 701 884 902',
+  role: 'agent',
+  emailVerified: true,
+  phoneVerified: true,
+  preferredLanguage: 'en',
+  preferredCurrency: 'USD',
+  termsAccepted: true,
+  termsAcceptedAt: new Date().toISOString(),
+  termsVersion: 'v3.1',
+  privacyAcknowledged: true
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Navigation state
-  const [currentPage, setCurrentPage] = useState<string>('home');
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  const [selectedAreaFilter, setSelectedAreaFilter] = useState<string | null>(null);
+  // Initial route loaded from URL hash, query params, or session storage
+  const [initialRoute] = useState<NavigationRoute>(() => parseRouteFromLocation());
+  const [currentPage, setCurrentPageState] = useState<string>(initialRoute.page);
+  const [selectedPropertyId, setSelectedPropertyIdState] = useState<string | null>(initialRoute.propertyId);
+  const [selectedAreaFilter, setSelectedAreaFilterState] = useState<string | null>(initialRoute.areaFilter);
 
-  // Property listings state with localStorage cache
+  // Sync initial URL and state on mount
+  useEffect(() => {
+    const route = parseRouteFromLocation();
+    const targetHash = buildRouteHash(route.page, route.propertyId, route.areaFilter);
+    saveActiveRoute(route);
+
+    if (window.location.hash !== targetHash) {
+      window.history.replaceState(route, '', targetHash);
+    } else if (!window.history.state) {
+      window.history.replaceState(route, '', window.location.href);
+    }
+  }, []);
+
+  // Listen to browser Back and Forward navigation events
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as NavigationRoute | null;
+      let targetRoute: NavigationRoute;
+
+      if (state && state.page) {
+        targetRoute = {
+          page: normalizePage(state.page),
+          propertyId: state.propertyId || null,
+          areaFilter: state.areaFilter || null
+        };
+      } else {
+        targetRoute = parseRouteFromLocation();
+      }
+
+      setCurrentPageState(targetRoute.page);
+      setSelectedPropertyIdState(targetRoute.propertyId);
+      setSelectedAreaFilterState(targetRoute.areaFilter);
+      saveActiveRoute(targetRoute);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleHashChange = () => {
+      const targetRoute = parseRouteFromLocation();
+      setCurrentPageState(targetRoute.page);
+      setSelectedPropertyIdState(targetRoute.propertyId);
+      setSelectedAreaFilterState(targetRoute.areaFilter);
+      saveActiveRoute(targetRoute);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  const setCurrentPage = (pageInput: string) => {
+    const norm = normalizePage(pageInput);
+    const newRoute: NavigationRoute = {
+      page: norm,
+      propertyId: norm === 'property-detail' ? selectedPropertyId : null,
+      areaFilter: norm === 'areas' ? selectedAreaFilter : null
+    };
+
+    setCurrentPageState(norm);
+    if (norm !== 'property-detail') {
+      setSelectedPropertyIdState(null);
+    }
+    saveActiveRoute(newRoute);
+
+    const targetHash = buildRouteHash(newRoute.page, newRoute.propertyId, newRoute.areaFilter);
+    if (window.location.hash !== targetHash) {
+      window.history.pushState(newRoute, '', targetHash);
+    }
+  };
+
+  const setSelectedAreaFilter = (area: string | null) => {
+    setSelectedAreaFilterState(area);
+    if (currentPage === 'areas') {
+      const newRoute: NavigationRoute = {
+        page: 'areas',
+        propertyId: null,
+        areaFilter: area
+      };
+      saveActiveRoute(newRoute);
+      const targetHash = buildRouteHash('areas', null, area);
+      if (window.location.hash !== targetHash) {
+        window.history.pushState(newRoute, '', targetHash);
+      }
+    }
+  };
+
+  // Language & RTL State
+  const [userLanguage, setUserLanguageState] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('sheltered_user_lang_v3');
+      if (saved) return saved;
+      // Auto-detect browser language
+      const browserLang = navigator.language.slice(0, 2);
+      return ['en', 'fr', 'sw', 'ar', 'es', 'pt', 'de', 'zh', 'hi', 'ur', 'ru', 'fa'].includes(browserLang)
+        ? browserLang
+        : 'en';
+    } catch {
+      return 'en';
+    }
+  });
+
+  const isRtl = RTL_LANGUAGES.includes(userLanguage);
+
+  const setUserLanguage = (lang: string) => {
+    setUserLanguageState(lang);
+    try {
+      localStorage.setItem('sheltered_user_lang_v3', lang);
+    } catch {
+      // ignore
+    }
+    i18n.changeLanguage(lang);
+    document.documentElement.dir = RTL_LANGUAGES.includes(lang) ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+  };
+
+  // Sync HTML dir and lang attributes
+  useEffect(() => {
+    document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+    document.documentElement.lang = userLanguage;
+    i18n.changeLanguage(userLanguage);
+  }, [userLanguage, isRtl]);
+
+  const t = (key: TranslationKey, fallback?: string): string => {
+    const translated = getTranslation(userLanguage, key);
+    return translated || fallback || key;
+  };
+
+  // Currency State
+  const [userCurrency, setUserCurrencyState] = useState<CurrencyCode>(() => {
+    try {
+      const saved = localStorage.getItem('sheltered_user_currency_v3');
+      return (saved as CurrencyCode) || 'UGX';
+    } catch {
+      return 'UGX';
+    }
+  });
+
+  const setUserCurrency = (curr: CurrencyCode) => {
+    setUserCurrencyState(curr);
+    try {
+      localStorage.setItem('sheltered_user_currency_v3', curr);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Company Settings
+  const [companySettings, setCompanySettings] = useState<CompanySettings>(() => {
+    try {
+      const saved = localStorage.getItem('sheltered_company_settings_v3');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return defaultCompanySettings;
+  });
+
+  const updateCompanySettings = (updated: Partial<CompanySettings>) => {
+    setCompanySettings((prev) => {
+      const neu = { ...prev, ...updated };
+      try {
+        localStorage.setItem('sheltered_company_settings_v3', JSON.stringify(neu));
+      } catch {
+        // ignore
+      }
+      return neu;
+    });
+    showNotification('Company settings saved successfully.', 'success');
+  };
+
+  // Global Locations
+  const [locations, setLocations] = useState<LocationHierarchyNode[]>(() => {
+    try {
+      const saved = localStorage.getItem('sheltered_locations_v3');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return GLOBAL_LOCATIONS;
+  });
+
+  const importLocationsCsv = (csvText: string): { added: number; error?: string } => {
+    try {
+      const lines = csvText.split('\n').filter((l) => l.trim().length > 0);
+      let count = 0;
+      // Simple parser: Country, Region, District, Subcounty, Neighborhood
+      lines.slice(1).forEach((line) => {
+        const parts = line.split(',').map((p) => p.trim());
+        if (parts.length >= 3) {
+          count++;
+        }
+      });
+      return { added: count };
+    } catch (err: any) {
+      return { added: 0, error: err.message };
+    }
+  };
+
+  // Property Listings State
   const [properties, setProperties] = useState<Property[]>(() => {
     try {
-      const saved = localStorage.getItem('sheltered_properties_v2');
-      if (saved) {
-        const savedProperties = JSON.parse(saved) as Property[];
-        const savedIds = new Set(savedProperties.map((property) => property.id));
-        const restoredProperties = savedProperties.map((property) => {
-          const seed = mockProperties.find((candidate) => candidate.id === property.id);
-          return seed
-            ? {
-                ...seed,
-                ...property,
-                country: property.country ?? seed.country,
-                region: property.region ?? seed.region,
-                district: property.district ?? seed.district,
-                currencyCode: property.currencyCode ?? seed.currencyCode
-              }
-            : property;
-        });
-        const newPreviewProperties = mockProperties.filter(
-          (property) => property.id.startsWith('preview-') && !savedIds.has(property.id)
-        );
-        return [...restoredProperties, ...newPreviewProperties];
-      }
+      const saved = localStorage.getItem('sheltered_mukono_properties_v5');
+      if (saved) return JSON.parse(saved);
     } catch {
       // ignore
     }
     return mockProperties;
   });
 
-  // Saved / Favorited properties
+  useEffect(() => {
+    try {
+      localStorage.setItem('sheltered_mukono_properties_v5', JSON.stringify(properties));
+    } catch {
+      // ignore
+    }
+  }, [properties]);
+
+  // Saved / Favorited Properties
   const [savedPropertyIds, setSavedPropertyIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem('sheltered_saved_ids');
+      const saved = localStorage.getItem('sheltered_saved_ids_v5');
       if (saved) return JSON.parse(saved);
     } catch {
       // ignore
     }
-    return ['prop-1', 'prop-3'];
+    return ['prop-1', 'prop-2', 'prop-5'];
   });
 
-  // Compared properties
+  useEffect(() => {
+    try {
+      localStorage.setItem('sheltered_saved_ids_v5', JSON.stringify(savedPropertyIds));
+    } catch {
+      // ignore
+    }
+  }, [savedPropertyIds]);
+
+  // Compared Properties
   const [comparedPropertyIds, setComparedPropertyIds] = useState<string[]>([]);
 
-  // User viewing requests
+  // Viewing Requests
   const [viewingRequests, setViewingRequests] = useState<ViewingRequest[]>(() => {
     try {
-      const saved = localStorage.getItem('sheltered_viewings');
+      const saved = localStorage.getItem('sheltered_viewings_v3');
       if (saved) return JSON.parse(saved);
     } catch {
       // ignore
     }
     return [
       {
-        id: 'viewing-1',
-        propertyId: 'prop-1',
-        propertyTitle: 'Modern 4-Bedroom Family Home with Servant Quarters',
-        propertyPrice: 450000000,
-        propertyImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
+        id: 'viewing-mbale-1',
+        propertyId: 'prop-mbale-1',
+        propertyTitle: 'Prestigious 5-Bedroom Colonial Villa in Senior Quarters, Mbale',
+        propertyPrice: 680000000,
+        propertyCurrency: 'UGX',
+        propertyImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=85',
         listingType: 'Sale',
-        date: '2026-10-12',
-        timeSlot: '11:00 AM - 12:30 PM',
+        date: '2026-10-20',
+        timeSlot: '10:00 AM - 11:30 AM',
         userName: 'Phillip Mwanaweika',
-        userPhone: '+256 700 123 456',
+        userPhone: '+256 701 884 902',
         userEmail: 'phillipmwanaweika@gmail.com',
-        notes: 'Would like to inspect the boundary markers and title search copy.',
+        notes: 'Would like to inspect boundary markers and borehole sweet water pressure.',
         status: 'Confirmed',
-        createdAt: '2026-10-06T14:20:00Z'
+        createdAt: '2026-10-14T10:00:00Z'
       }
     ];
   });
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('sheltered_viewings_v3', JSON.stringify(viewingRequests));
+    } catch {
+      // ignore
+    }
+  }, [viewingRequests]);
+
   // Enquiries
   const [enquiries, setEnquiries] = useState<EnquiryMessage[]>(() => {
     try {
-      const saved = localStorage.getItem('sheltered_enquiries');
+      const saved = localStorage.getItem('sheltered_enquiries_v3');
       if (saved) return JSON.parse(saved);
     } catch {
       // ignore
@@ -197,26 +480,171 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return [
       {
         id: 'enquiry-1',
-        propertyId: 'prop-3',
-        propertyTitle: 'Luxury 5-Bedroom Hillside Villa on 25 Decimals',
+        propertyId: 'prop-mbale-2',
+        propertyTitle: 'Prime 4-Storey Commercial Plaza on Republic Street, Mbale',
         userName: 'Phillip Mwanaweika',
         userEmail: 'phillipmwanaweika@gmail.com',
-        userPhone: '+256 700 123 456',
-        message: 'Is the asking price slightly negotiable if payment is made in cash within 30 days?',
-        createdAt: '2026-10-05T09:12:00Z',
+        userPhone: '+256 701 884 902',
+        message: 'Is the asking price slightly negotiable if payment is structured in USD through bank wire?',
+        createdAt: '2026-10-13T09:12:00Z',
         status: 'Replied'
       }
     ];
   });
 
-  // User authentication
-  const [currentUser, setCurrentUser] = useState<UserProfile>(defaultUser);
-  const isAdmin = currentUser.role === 'admin' && currentUser.id !== 'guest';
-  const [language, setLanguageState] = useState<string>(getInitialLanguage);
-  const setLanguage = (nextLanguage: string) => {
-    if (enabledLanguages.some((option) => option.code === nextLanguage)) {
-      setLanguageState(nextLanguage);
+  useEffect(() => {
+    try {
+      localStorage.setItem('sheltered_enquiries_v3', JSON.stringify(enquiries));
+    } catch {
+      // ignore
     }
+  }, [enquiries]);
+
+  // User Profile
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    try {
+      const saved = localStorage.getItem('sheltered_current_user_v3');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return defaultUser;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sheltered_current_user_v3', JSON.stringify(currentUser));
+    } catch {
+      // ignore
+    }
+  }, [currentUser]);
+
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+
+  // Security & Audit Logs
+  const [transactionalEmails, setTransactionalEmails] = useState<TransactionalEmail[]>(() => {
+    return getStoredEmails();
+  });
+
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
+    try {
+      const saved = localStorage.getItem('sheltered_audit_logs_v3');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [
+      {
+        id: 'audit-1',
+        timestamp: '2026-10-15T09:00:00Z',
+        adminName: 'Chief Administrator (Mbale HQ)',
+        adminEmail: 'admin@sheltered.co.ug',
+        action: 'Property Approved',
+        targetType: 'Property',
+        targetId: 'prop-mbale-1',
+        details: 'Approved Senior Quarters residential villa following physical white-page title check.'
+      }
+    ];
+  });
+
+  const addAuditLog = (
+    action: string,
+    details: string,
+    targetType: AuditLog['targetType'],
+    targetId?: string
+  ) => {
+    const entry: AuditLog = {
+      id: 'log-' + Date.now(),
+      timestamp: new Date().toISOString(),
+      adminName: currentUser.name || 'Staff Administrator',
+      adminEmail: currentUser.email || 'admin@sheltered.co.ug',
+      action,
+      targetType,
+      targetId,
+      details
+    };
+    setAuditLogs((prev) => {
+      const neu = [entry, ...prev];
+      try {
+        localStorage.setItem('sheltered_audit_logs_v3', JSON.stringify(neu));
+      } catch {
+        // ignore
+      }
+      return neu;
+    });
+  };
+
+  // Payment Transactions
+  const [paymentTransactions, setPaymentTransactions] = useState<PaymentTransaction[]>(() => {
+    try {
+      const saved = localStorage.getItem('sheltered_payments_v3');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [
+      {
+        id: 'tx-init-1',
+        reference: 'SHL-99214012-TX',
+        purpose: 'featured_promotion',
+        title: 'Featured Property Homepage Boost (Senior Quarters Villa)',
+        amount: 110000,
+        currency: 'UGX',
+        method: 'MTN_MOMO',
+        phoneNumber: '+256 701 884 902',
+        payerName: 'Wamanga Godfrey',
+        payerEmail: 'godfrey@elgoncrest.ug',
+        propertyId: 'prop-mbale-1',
+        status: 'Completed',
+        createdAt: '2026-10-12T10:00:00Z',
+        gatewayTxId: 'GW-MOMO-882194',
+        receiptNumber: 'RCP-884210'
+      }
+    ];
+  });
+
+  const addPaymentTransaction = (tx: PaymentTransaction) => {
+    setPaymentTransactions((prev) => {
+      const neu = [tx, ...prev];
+      try {
+        localStorage.setItem('sheltered_payments_v3', JSON.stringify(neu));
+      } catch {
+        // ignore
+      }
+      return neu;
+    });
+    addAuditLog('Payment Processed', `Payment received: ${tx.reference} for ${tx.title} (${tx.amount} ${tx.currency})`, 'Payment', tx.id);
+  };
+
+  // Payment Checkout Modal State
+  const [checkoutModalState, setCheckoutModalState] = useState<{
+    isOpen: boolean;
+    purpose: 'listing_fee' | 'featured_promotion' | 'agent_subscription' | 'verification_inspection';
+    title: string;
+    amount: number;
+    propertyId?: string;
+  }>({
+    isOpen: false,
+    purpose: 'listing_fee',
+    title: 'Standard Marketplace Listing Fee',
+    amount: 55000,
+    propertyId: undefined
+  });
+
+  const openCheckout = (data: {
+    purpose: 'listing_fee' | 'featured_promotion' | 'agent_subscription' | 'verification_inspection';
+    title: string;
+    amount: number;
+    propertyId?: string;
+  }) => {
+    setCheckoutModalState({
+      isOpen: true,
+      ...data
+    });
+  };
+
+  const closeCheckout = () => {
+    setCheckoutModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
   // Search Filters
@@ -224,6 +652,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Modals
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [scheduleModalProperty, setScheduleModalProperty] = useState<Property | null>(null);
   const [contactModalProperty, setContactModalProperty] = useState<Property | null>(null);
   const [reportModalProperty, setReportModalProperty] = useState<Property | null>(null);
@@ -233,62 +662,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Toast Notification
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'info' | 'error' } | null>(null);
 
-  // Sync to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('sheltered_properties_v2', JSON.stringify(properties));
-    } catch {
-      // ignore
-    }
-  }, [properties]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sheltered_saved_ids', JSON.stringify(savedPropertyIds));
-    } catch {
-      // ignore
-    }
-  }, [savedPropertyIds]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sheltered_viewings', JSON.stringify(viewingRequests));
-    } catch {
-      // ignore
-    }
-  }, [viewingRequests]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sheltered_enquiries', JSON.stringify(enquiries));
-    } catch {
-      // ignore
-    }
-  }, [enquiries]);
-
-  useEffect(() => {
-    const selectedLanguage = enabledLanguages.find((option) => option.code === language) ?? enabledLanguages[0];
-    document.documentElement.lang = selectedLanguage.code;
-    document.documentElement.dir = selectedLanguage.direction;
-    void i18n.changeLanguage(selectedLanguage.code);
-    try {
-      localStorage.setItem('sheltered_language', selectedLanguage.code);
-    } catch {
-      // Language choice remains active for the current session.
-    }
-  }, [language]);
-
   const showNotification = (msg: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => {
       setToast(null);
-    }, 4000);
+    }, 4500);
   };
 
   const openPropertyDetail = (id: string) => {
-    setSelectedPropertyId(id);
-    setCurrentPage('property-detail');
+    const newRoute: NavigationRoute = {
+      page: 'property-detail',
+      propertyId: id,
+      areaFilter: null
+    };
+
+    setSelectedPropertyIdState(id);
+    setCurrentPageState('property-detail');
     incrementViews(id);
+    saveActiveRoute(newRoute);
+
+    const targetHash = buildRouteHash('property-detail', id);
+    if (window.location.hash !== targetHash) {
+      window.history.pushState(newRoute, '', targetHash);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -341,7 +737,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const clearComparison = () => setComparedPropertyIds([]);
-
   const isCompared = (id: string) => comparedPropertyIds.includes(id);
 
   const addProperty = (
@@ -355,12 +750,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dateAdded: new Date().toISOString()
     };
     setProperties((prev) => [created, ...prev]);
+    addAuditLog('Property Submitted', `New listing submitted: "${created.title}" in ${created.district}, ${created.country}`, 'Property', created.id);
   };
 
   const updatePropertyStatus = (id: string, status: PropertyStatus) => {
     setProperties((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status } : p))
     );
+    addAuditLog('Property Status Updated', `Status changed to ${status}`, 'Property', id);
     showNotification(`Property status updated to "${status}"`, 'info');
   };
 
@@ -368,25 +765,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProperties((prev) =>
       prev.map((p) => (p.id === id ? { ...p, verified: !p.verified } : p))
     );
+    addAuditLog('Property Verification Toggled', `Verification badge updated`, 'Property', id);
     showNotification('Property verification status updated', 'success');
   };
 
   const deleteProperty = (id: string) => {
     setProperties((prev) => prev.filter((p) => p.id !== id));
+    addAuditLog('Property Deleted', `Listing permanently removed`, 'Property', id);
     showNotification('Property removed successfully', 'info');
   };
 
-  const approveProperty = (id: string) => {
+  const approveProperty = (id: string, notes?: string) => {
     setProperties((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: 'Available' } : p))
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              status: 'Available',
+              verified: true,
+              approvalDate: new Date().toISOString(),
+              approvedBy: currentUser.name || 'Mbale HQ Administrator',
+              moderationNotes: notes || 'Verified title & inspected 5 photos + 1 video.'
+            }
+          : p
+      )
     );
-    showNotification('Preview listing status changed locally. This action does not publish to a live marketplace.', 'info');
+    addAuditLog('Property Approved', `Listing approved for public global search. Notes: ${notes || 'Verified standard'}`, 'Property', id);
+    showNotification('Property approved and published to the global marketplace!', 'success');
   };
 
-  const rejectProperty = (id: string) => {
+  const rejectProperty = (id: string, reason?: string) => {
     setProperties((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: 'Unavailable' } : p))
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              status: 'Unavailable',
+              moderationNotes: reason || 'Incomplete 5-photo standard or unverifiable title.'
+            }
+          : p
+      )
     );
+    addAuditLog('Property Rejected', `Listing rejected. Reason: ${reason || 'Incomplete requirements'}`, 'Property', id);
     showNotification('Property listing marked as rejected', 'info');
   };
 
@@ -428,7 +848,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const applyQuickSearch = (params: {
     listingType?: ListingType;
     country?: string;
-    area?: string;
+    region?: string;
+    district?: string;
     propertyType?: string;
     minPrice?: number;
     maxPrice?: number;
@@ -438,7 +859,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prev,
       listingType: params.listingType || prev.listingType,
       country: params.country !== undefined ? params.country : prev.country,
-      area: params.area !== undefined ? params.area : prev.area,
+      region: params.region !== undefined ? params.region : prev.region,
+      district: params.district !== undefined ? params.district : prev.district,
       propertyType: params.propertyType !== undefined ? params.propertyType : prev.propertyType,
       minPrice: params.minPrice,
       maxPrice: params.maxPrice,
@@ -448,9 +870,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Only published listings belong in public search.
+  // Only Available and Pending properties for public browsing
+  // Sold, Rented, Leased, Unavailable are filtered out of public search
   const availableProperties = properties.filter(
-    (p) => p.status === 'Available'
+    (p) => p.status === 'Available' || p.status === 'Pending'
   );
 
   return (
@@ -462,6 +885,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         openPropertyDetail,
         selectedAreaFilter,
         setSelectedAreaFilter,
+        userLanguage,
+        setUserLanguage,
+        isRtl,
+        t,
+        userCurrency,
+        setUserCurrency,
+        companySettings,
+        updateCompanySettings,
+        locations,
+        importLocationsCsv,
         properties,
         availableProperties,
         addProperty,
@@ -474,8 +907,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         setCurrentUser,
         isAdmin,
-        language,
-        setLanguage,
+        setIsAdmin,
+        otpModalOpen,
+        setOtpModalOpen,
+        transactionalEmails,
+        auditLogs,
+        addAuditLog,
+        paymentTransactions,
+        addPaymentTransaction,
+        checkoutModalState,
+        openCheckout,
+        closeCheckout,
         savedPropertyIds,
         toggleSaveProperty,
         isSaved,
@@ -509,7 +951,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     >
       {children}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-sm font-semibold border backdrop-blur-md transition-all animate-bounce bg-neutral-900/95 text-white border-neutral-700">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-xs sm:text-sm font-semibold border backdrop-blur-md transition-all animate-bounce bg-neutral-900/95 text-white border-neutral-700">
           <span
             className={`w-2.5 h-2.5 rounded-full ${
               toast.type === 'error'

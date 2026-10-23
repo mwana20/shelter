@@ -1,25 +1,18 @@
-const splitPublicContacts = (value: string | undefined) =>
-  value?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+import { CompanySettings } from '../types';
 
-const phoneNumbers = splitPublicContacts(import.meta.env.VITE_COMPANY_PHONES);
-
-export const companySettings = {
-  name: import.meta.env.VITE_COMPANY_NAME ?? 'Sheltered',
-  headquarters: 'Global operations with Uganda headquarters',
-  defaultLanguage: import.meta.env.VITE_DEFAULT_LANGUAGE ?? 'en',
-  officeAddress: import.meta.env.VITE_COMPANY_ADDRESS ?? '',
-  phoneNumbers,
-  whatsappNumber: import.meta.env.VITE_COMPANY_WHATSAPP || phoneNumbers[0] || '',
-  email: import.meta.env.VITE_COMPANY_EMAIL || 'info@sheltered.com',
-  supportHours: import.meta.env.VITE_COMPANY_SUPPORT_HOURS ?? '',
-  contactFormEndpoint: import.meta.env.VITE_CONTACT_FORM_ENDPOINT ?? '',
-  authApiUrl: (import.meta.env.VITE_AUTH_API_URL ?? '').replace(/\/$/, ''),
-  mediaUploadEndpoint: import.meta.env.VITE_MEDIA_UPLOAD_ENDPOINT ?? '',
-  listingSubmissionEndpoint: import.meta.env.VITE_LISTING_SUBMISSION_ENDPOINT ?? '',
-  socialLinks: {
-    twitter: import.meta.env.VITE_COMPANY_TWITTER ?? '',
-    facebook: import.meta.env.VITE_COMPANY_FACEBOOK ?? '',
-    instagram: import.meta.env.VITE_COMPANY_INSTAGRAM ?? '',
-    linkedin: import.meta.env.VITE_COMPANY_LINKEDIN ?? ''
-  }
+export const SHELTERED_COMPANY_CONFIG: CompanySettings = {
+  companyName: 'Sheltered Real Estate Marketplace',
+  hqCity: 'Mbale City',
+  hqCountry: 'Uganda',
+  hqAddress: 'Plot 14-16 Republic Street, Central Business District, Mbale City, Uganda',
+  primaryPhone: '+256 700 892 100',
+  secondaryPhone: '+256 772 400 920',
+  whatsapp: '256700892100',
+  officialEmail: 'info@shelteredglobal.com',
+  supportEmail: 'support@shelteredglobal.com',
+  businessHours: 'Monday – Saturday: 8:00 AM – 6:30 PM (EAT / UTC+3)',
+  registrationNumber: 'UG-VR-2024-88912',
+  defaultCurrency: 'USD',
+  defaultLanguage: 'en',
+  smtpConfigured: false
 };

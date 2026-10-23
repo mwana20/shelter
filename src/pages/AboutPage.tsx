@@ -1,38 +1,42 @@
 import React from 'react';
-import { ShieldCheck, MapPin, CheckCircle2, Award, FileText, Phone } from 'lucide-react';
+import { ShieldCheck, MapPin, CheckCircle2, Award, FileText, Phone, Globe, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useTranslation } from '../i18n/translations';
+import { SHELTERED_COMPANY_CONFIG } from '../config/company';
 
 export const AboutPage: React.FC = () => {
   const { setCurrentPage } = useApp();
-  const t = useTranslation();
 
   return (
-    <div className="bg-neutral-50/50 py-12 px-4 sm:px-6 lg:px-8 min-h-screen">
+    <div className="bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8 min-h-screen">
       <div className="max-w-4xl mx-auto space-y-12">
         {/* Hero */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider">
-            <span>{t('Global property marketplace')}</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold uppercase tracking-wider">
+            <Globe className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Sheltered Global Marketplace · HQ Mbale, Uganda</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-neutral-900 font-serif-display">
-            {t('Find a place to call home.')}
+            Find Your Place in the World.
           </h1>
           <p className="text-base text-neutral-600 max-w-2xl mx-auto leading-relaxed">
-            {t('Sheltered is building a global property marketplace for people searching across borders, from Uganda to other countries and major metro areas.')}
+            Sheltered is a premier international property marketplace connecting property buyers, diaspora investors, landlords, and licensed brokers worldwide, headquartered from <strong>Mbale City, Uganda</strong>.
           </p>
         </div>
 
-        {/* Mission Card */}
+        {/* Global Mission Card */}
         <div className="bg-slate-950 text-white rounded-3xl p-8 sm:p-12 space-y-6 shadow-xl">
-          <h2 className="text-2xl font-bold font-serif-display text-emerald-400">
-            {t('A marketplace built for every country')}
+          <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider">
+            <MapPin className="w-4 h-4" />
+            <span>Global Operations & Headquarters</span>
+          </div>
+          <h2 className="text-2xl font-bold font-serif-display text-white">
+            Connecting Real Estate Markets Worldwide
           </h2>
           <p className="text-sm text-slate-300 leading-relaxed">
-            {t('Our goal is to make property discovery clearer for buyers, tenants, owners, and agents. Property locations are separate from our company headquarters, and available markets will depend on approved listings and configured local services.')}
+            Headquartered at {SHELTERED_COMPANY_CONFIG.hqAddress}, Sheltered bridges local East African real estate with high-value international property corridors in the United Arab Emirates, the United Kingdom, the United States, Kenya, South Africa, and Tanzania.
           </p>
           <p className="text-sm text-slate-300 leading-relaxed">
-            {t('Listings shown in this preview are sample data and have not been independently verified. Before making a decision, visit the property, check documents with the appropriate local authorities, and use independent professional advice.')}
+            Whether a diaspora professional acquiring titled land in Uganda or Kenya, or an international investor securing a luxury penthouse in Dubai or London, Sheltered provides verified title deed information, high-definition photography, video walkthroughs, and seamless multi-currency support.
           </p>
         </div>
 
@@ -42,9 +46,19 @@ export const AboutPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-base text-neutral-900">{t('Independent due diligence')}</h3>
+            <h3 className="font-bold text-base text-neutral-900">Title Deed & Ownership Due Diligence</h3>
             <p className="text-xs text-neutral-600 leading-relaxed">
-              {t("Confirm ownership, boundaries, permitted use, and any restrictions with the appropriate authorities and qualified professionals in the property's jurisdiction.")}
+              We uphold uncompromising title transparency across Freehold, Mailo, Leasehold, and Torrens title registers. Buyers and investors view verified deed documentation before committing.
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl border border-neutral-200/90 space-y-3 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+              <Globe className="w-5 h-5" />
+            </div>
+            <h3 className="font-bold text-base text-neutral-900">Worldwide Multi-Currency & Language</h3>
+            <p className="text-xs text-neutral-600 leading-relaxed">
+              Browse listings with real-time currency conversions (UGX, USD, GBP, EUR, KES, TZS, ZAR) and seamless multilingual interfaces with right-to-left layout support for Arabic speakers.
             </p>
           </div>
 
@@ -52,19 +66,9 @@ export const AboutPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-base text-neutral-900">{t('Careful in-person inspections')}</h3>
+            <h3 className="font-bold text-base text-neutral-900">Verified Seller & Broker Directory</h3>
             <p className="text-xs text-neutral-600 leading-relaxed">
-              {t('Inspect a property before committing funds. Confirm any viewing arrangements and fees directly with the listing contact.')}
-            </p>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-neutral-200/90 space-y-3 shadow-xs">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <MapPin className="w-5 h-5" />
-            </div>
-            <h3 className="font-bold text-base text-neutral-900">{t('Location-aware discovery')}</h3>
-            <p className="text-xs text-neutral-600 leading-relaxed">
-              {t('Administrative areas and local requirements vary by country. Supported listings depend on approved local data and active administrator-managed locations.')}
+              Connect directly with verified property owners, licensed real estate agents, and registered corporate brokers without predatory fee structures.
             </p>
           </div>
 
@@ -72,42 +76,37 @@ export const AboutPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
               <Award className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-base text-neutral-900">{t('Verify listing contacts')}</h3>
+            <h3 className="font-bold text-base text-neutral-900">Complete Property Spectrum</h3>
             <p className="text-xs text-neutral-600 leading-relaxed">
-              {t("Check an agent's identity, professional credentials, and authority to represent a property independently. A profile or badge on a website is not proof of ownership.")}
+              From family houses and urban condominiums to industrial warehouses, agricultural plantations, commercial retail plazas, and luxury holiday villas.
             </p>
           </div>
         </div>
 
-        {/* Safety Guide for Land Buyers in Uganda */}
-        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-8 space-y-4">
-          <div className="flex items-center gap-2 text-amber-900 font-bold text-base">
-            <FileText className="w-5 h-5 text-amber-700" />
-            <span>{t("Buyer's Checklist for Buying Land or Houses Safely")}</span>
+        {/* Global HQ Office Box */}
+        <div className="bg-white rounded-3xl border border-neutral-200 p-8 shadow-xs space-y-4">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-500">
+            <MapPin className="w-4 h-4 text-emerald-600" />
+            <span>Corporate Headquarters</span>
           </div>
-          <ul className="text-xs text-amber-900/90 space-y-2 list-disc pl-5 leading-relaxed">
-            <li>
-              <strong>{t('Physical Site Visit:')}</strong> {t('Never buy land based only on photos or video clips. Inspect the ground, terrain, access road, and boundaries.')}
-            </li>
-            <li>
-              <strong>{t('Search the official land registry:')}</strong> {t('Confirm that the seller’s name matches the official records and that there are no mortgages, caveats, or restrictions.')}
-            </li>
-            <li>
-              <strong>{t('Boundary Opening by Registered Surveyor:')}</strong> {t('Hire an independent registered surveyor to confirm deed coordinates against ground beacons.')}
-            </li>
-            <li>
-              <strong>{t('LC1 Chairperson & Neighbors Check:')}</strong> {t('Consult local village leadership (LC1) to ensure the seller is known and there are no family disputes.')}
-            </li>
-          </ul>
-        </div>
-
-        <div className="text-center pt-4">
-          <button
-            onClick={() => setCurrentPage('search')}
-            className="bg-slate-950 text-white font-bold text-xs py-3.5 px-8 rounded-xl hover:bg-slate-800 transition shadow-md"
-          >
-            {t('Start Exploring Global Homes')}
-          </button>
+          <h3 className="text-xl font-bold text-neutral-900 font-serif-display">
+            Mbale City, Uganda Global Headquarters
+          </h3>
+          <p className="text-xs text-neutral-600 leading-relaxed">
+            Sheltered Real Estate Marketplace Ltd<br />
+            {SHELTERED_COMPANY_CONFIG.hqAddress}<br />
+            Telephone: {SHELTERED_COMPANY_CONFIG.primaryPhone} · {SHELTERED_COMPANY_CONFIG.secondaryPhone}<br />
+            Official Email: {SHELTERED_COMPANY_CONFIG.officialEmail}
+          </p>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage('contact')}
+              className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800"
+            >
+              Contact Global Advisory
+            </button>
+          </div>
         </div>
       </div>
     </div>

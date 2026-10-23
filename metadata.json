@@ -1,6 +1,6 @@
 {
-  "name": "Sheltered - Mukono Real Estate & Property Marketplace",
-  "description": "Premium real estate platform for buying, renting, and advertising houses and properties across Mukono, Uganda.",
+  "name": "Sheltered - Global Real Estate Marketplace",
+  "description": "International property marketplace headquartered in Mbale, Uganda. Discover houses, villas, apartments, commercial spaces, and land worldwide.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

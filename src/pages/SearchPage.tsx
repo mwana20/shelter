@@ -1,22 +1,24 @@
 import React, { useState, useMemo } from 'react';
 import {
   Search,
-  SlidersHorizontal,
   RotateCcw,
   Map,
   List,
   Columns,
   X,
-  Filter
+  Filter,
+  MapPin,
+  Globe,
+  SlidersHorizontal,
+  Coins,
+  ChevronDown
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { PropertyCard } from '../components/PropertyCard';
 import { InteractiveMap } from '../components/InteractiveMap';
 import { ALL_AMENITIES } from '../data/mockProperties';
-import { GLOBAL_COUNTRIES } from '../data/globalLocations';
-import { mockAreas } from '../data/mockAreas';
-import { ListingType } from '../types';
-import { useTranslation } from '../i18n/translations';
+import { ListingType, PropertyType } from '../types';
+import { POPULAR_COUNTRIES, COUNTRY_ADMIN_CONFIGS, GLOBAL_LOCATIONS } from '../data/mockLocations';
 
 interface SearchPageProps {
   initialListingType?: ListingType | 'All';
@@ -29,20 +31,25 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   title,
   subtitle
 }) => {
-  const { availableProperties, filters, setFilters, resetFilters } = useApp();
-  const t = useTranslation();
+  const { availableProperties, filters, setFilters, resetFilters, userCurrency, t } = useApp();
 
-  // View mode: 'split' (side-by-side on desktop), 'list' (cards grid), 'map' (full map)
   const [viewMode, setViewMode] = useState<'split' | 'list' | 'map'>('split');
   const [highlightedPropertyId, setHighlightedPropertyId] = useState<string | null>(null);
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const [priceDropdownOpen, setPriceDropdownOpen] = useState(false);
 
-  // Sync initialListingType if provided by parent (e.g. Buy or Rent page)
+  // Sync initialListingType if provided
   React.useEffect(() => {
     if (initialListingType && filters.listingType !== initialListingType) {
       setFilters((prev) => ({ ...prev, listingType: initialListingType }));
     }
   }, [initialListingType, setFilters]);
+
+  // Dynamic regions for selected country
+  const countryNode = GLOBAL_LOCATIONS.find(
+    (n) => n.name.toLowerCase() === (filters.country || '').toLowerCase()
+  );
+  const availableRegions = countryNode?.children || [];
 
   // Compute filtered properties
   const filteredProperties = useMemo(() => {
@@ -53,18 +60,24 @@ export const SearchPage: React.FC<SearchPageProps> = ({
       }
 
       // 2. Country
-      if (filters.country && filters.country !== '') {
-        if ((item.country ?? 'Uganda') !== filters.country) return false;
+      if (filters.country && filters.country !== '' && filters.country !== 'All') {
+        if (item.country.toLowerCase() !== filters.country.toLowerCase()) {
+          return false;
+        }
       }
 
-      // 3. Area
-      if (filters.area && filters.area !== '') {
-        if (item.area !== filters.area) return false;
+      // 3. Region or District
+      if (filters.region && filters.region !== '') {
+        const regLower = filters.region.toLowerCase();
+        const itemText = (item.region + ' ' + item.district + ' ' + (item.neighborhood || '')).toLowerCase();
+        if (!itemText.includes(regLower)) return false;
       }
 
-      // 4. Property Type
+      // 4. Property Category
       if (filters.propertyType && filters.propertyType !== '') {
-        if (item.propertyType !== filters.propertyType) return false;
+        if (item.propertyType.toLowerCase() !== filters.propertyType.toLowerCase()) {
+          return false;
+        }
       }
 
       // 5. Min Price
@@ -79,49 +92,42 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
       // 7. Bedrooms
       if (filters.bedrooms && filters.bedrooms !== 'Any') {
-        const requiredBeds = Number(filters.bedrooms);
-        if (item.bedrooms < requiredBeds) return false;
+        if (item.bedrooms < Number(filters.bedrooms)) return false;
       }
 
       // 8. Bathrooms
       if (filters.bathrooms && filters.bathrooms !== 'Any') {
-        const requiredBaths = Number(filters.bathrooms);
-        if (item.bathrooms < requiredBaths) return false;
+        if (item.bathrooms < Number(filters.bathrooms)) return false;
       }
 
       // 9. Amenities
       if (filters.amenities && filters.amenities.length > 0) {
-        const hasAll = filters.amenities.every((amenity) =>
-          item.features.includes(amenity)
-        );
+        const hasAll = filters.amenities.every((am) => item.features.includes(am));
         if (!hasAll) return false;
       }
 
-      // 10. Free-text Search Query
+      // 10. Search query text
       if (filters.searchQuery && filters.searchQuery.trim() !== '') {
         const q = filters.searchQuery.toLowerCase();
-        const matchesTitle = item.title.toLowerCase().includes(q);
-        const matchesLocation = item.locationDetails.toLowerCase().includes(q) || item.area.toLowerCase().includes(q);
-        const matchesDesc = item.description.toLowerCase().includes(q);
-        if (!matchesTitle && !matchesLocation && !matchesDesc) return false;
+        const full = (
+          item.title +
+          ' ' +
+          item.description +
+          ' ' +
+          item.country +
+          ' ' +
+          item.region +
+          ' ' +
+          item.district +
+          ' ' +
+          (item.neighborhood || '') +
+          ' ' +
+          item.locationDetails
+        ).toLowerCase();
+        if (!full.includes(q)) return false;
       }
 
       return true;
-    }).sort((a, b) => {
-      if (filters.sortBy === 'newest') {
-        return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
-      }
-      if (filters.sortBy === 'price-asc') {
-        return a.price - b.price;
-      }
-      if (filters.sortBy === 'price-desc') {
-        return b.price - a.price;
-      }
-      if (filters.sortBy === 'views') {
-        return b.viewsCount - a.viewsCount;
-      }
-      // recommended: featured first, then saves count
-      return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || b.savesCount - a.savesCount;
     });
   }, [availableProperties, filters]);
 
@@ -137,199 +143,339 @@ export const SearchPage: React.FC<SearchPageProps> = ({
     });
   };
 
-  const activeFilterCount =
-    (filters.listingType && filters.listingType !== 'All' ? 1 : 0) +
-    (filters.country ? 1 : 0) +
-    (filters.area ? 1 : 0) +
+  const activeFiltersCount =
+    (filters.country && filters.country !== 'All' ? 1 : 0) +
+    (filters.region ? 1 : 0) +
     (filters.propertyType ? 1 : 0) +
     (filters.minPrice ? 1 : 0) +
     (filters.maxPrice ? 1 : 0) +
     (filters.bedrooms && filters.bedrooms !== 'Any' ? 1 : 0) +
-    (filters.bathrooms && filters.bathrooms !== 'Any' ? 1 : 0) +
-    filters.amenities.length +
-    (filters.searchQuery ? 1 : 0);
-  const locationOptions = mockAreas.filter(
-    (location) => !filters.country || location.country === filters.country
-  );
-  const countryOptions = Array.from(new Set([
-    ...GLOBAL_COUNTRIES,
-    ...availableProperties.map((property) => property.country ?? 'Uganda')
-  ])).sort((a, b) => a.localeCompare(b));
+    filters.amenities.length;
 
   return (
-    <div className="flex flex-col min-h-screen bg-neutral-50/50">
-      {/* Top Filter Bar (Sticky Zillow style) */}
-      <div className="sticky top-18 z-30 bg-white border-b border-neutral-200/90 shadow-xs px-4 sm:px-6 lg:px-8 py-3">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          {/* Quick Filters Group */}
-          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
-            {/* Search Input */}
-            <div className="relative min-w-[180px] max-w-xs flex-1">
-              <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder={t('Search city, district, address...')}
-                value={filters.searchQuery || ''}
-                onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))}
-                className="w-full text-xs font-medium border border-neutral-200 rounded-lg py-2 pl-9 pr-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-neutral-50/60 focus:bg-white"
-              />
-              {filters.searchQuery && (
+    <div className="min-h-screen bg-neutral-100 flex flex-col">
+      {/* Top Filter Bar */}
+      <div className="bg-white border-b border-neutral-200 sticky top-16 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            {/* Left Controls: Country, Type, Search Input */}
+            <div className="flex items-center flex-wrap gap-2 flex-1">
+              {/* Buy / Rent / All */}
+              <select
+                value={filters.listingType || 'All'}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    listingType: e.target.value as ListingType | 'All'
+                  }))
+                }
+                className="text-xs font-semibold px-2.5 py-1.5 border border-neutral-300 rounded-lg bg-neutral-50 text-neutral-800"
+              >
+                <option value="All">Buy & Rent</option>
+                <option value="Sale">Buy</option>
+                <option value="Rent">Rent</option>
+              </select>
+
+              {/* Country Selector */}
+              <select
+                value={filters.country || 'All'}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    country: e.target.value === 'All' ? '' : e.target.value,
+                    region: ''
+                  }))
+                }
+                className="text-xs font-semibold px-2.5 py-1.5 border border-neutral-300 rounded-lg bg-neutral-50 text-neutral-800"
+              >
+                <option value="All">{t('all_countries')}</option>
+                {POPULAR_COUNTRIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+
+              {/* Property Category */}
+              <select
+                value={filters.propertyType || ''}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, propertyType: e.target.value }))
+                }
+                className="text-xs font-semibold px-2.5 py-1.5 border border-neutral-300 rounded-lg bg-neutral-50 text-neutral-800"
+              >
+                <option value="">{t('all_categories')}</option>
+                <option value="House">{t('cat_house')}</option>
+                <option value="Apartment">{t('cat_apartment')}</option>
+                <option value="Villa">{t('cat_villa')}</option>
+                <option value="Townhouse">{t('cat_townhouse')}</option>
+                <option value="Residential Land">{t('cat_land')}</option>
+                <option value="Commercial Property">{t('cat_commercial')}</option>
+                <option value="Farm & Agricultural Land">{t('cat_farm')}</option>
+                <option value="Industrial Property">{t('cat_industrial')}</option>
+                <option value="Holiday Home">{t('cat_holiday')}</option>
+              </select>
+
+              {/* Price Filter Dropdown */}
+              <div className="relative">
                 <button
-                  onClick={() => setFilters((prev) => ({ ...prev, searchQuery: '' }))}
-                  className="absolute right-2.5 top-2.5 text-neutral-400 hover:text-neutral-700"
+                  type="button"
+                  onClick={() => setPriceDropdownOpen(!priceDropdownOpen)}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 border rounded-lg transition cursor-pointer whitespace-nowrap ${
+                    filters.minPrice || filters.maxPrice
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-950 font-bold'
+                      : 'border-neutral-300 bg-neutral-50 text-neutral-800 hover:bg-neutral-100'
+                  }`}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <Coins className="w-3.5 h-3.5 text-neutral-500" />
+                  <span>
+                    {filters.minPrice || filters.maxPrice
+                      ? `${filters.minPrice ? filters.minPrice.toLocaleString() : '0'} – ${filters.maxPrice ? filters.maxPrice.toLocaleString() : t('price_any')}`
+                      : t('price_filter_title')}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-neutral-400" />
+                </button>
+
+                {priceDropdownOpen && (
+                  <div className="absolute left-0 mt-2 w-72 bg-white border border-neutral-200 rounded-2xl shadow-xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3">
+                    <div className="flex items-center justify-between pb-1 border-b border-neutral-100">
+                      <span className="text-xs font-bold text-neutral-900">
+                        {t('price_filter_title')} ({userCurrency})
+                      </span>
+                      {(filters.minPrice || filters.maxPrice) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilters((prev) => ({ ...prev, minPrice: undefined, maxPrice: undefined }));
+                          }}
+                          className="text-[11px] font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
+                        >
+                          {t('reset_filters')}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">
+                          {t('price_min_placeholder')}
+                        </label>
+                        <input
+                          type="number"
+                          value={filters.minPrice ?? ''}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              minPrice: e.target.value ? Number(e.target.value) : undefined
+                            }))
+                          }
+                          placeholder="0"
+                          className="w-full text-xs p-2 border border-neutral-300 rounded-lg bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">
+                          {t('price_max_placeholder')}
+                        </label>
+                        <input
+                          type="number"
+                          value={filters.maxPrice ?? ''}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              maxPrice: e.target.value ? Number(e.target.value) : undefined
+                            }))
+                          }
+                          placeholder={t('price_any')}
+                          className="w-full text-xs p-2 border border-neutral-300 rounded-lg bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
+                        {t('price_quick_ranges')}
+                      </span>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setFilters((prev) => ({ ...prev, minPrice: undefined, maxPrice: 100000 }))}
+                          className="text-[11px] py-1 px-2 rounded-md bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-700 text-left font-medium cursor-pointer"
+                        >
+                          {t('price_under_100k')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFilters((prev) => ({ ...prev, minPrice: 100000, maxPrice: 500000 }))}
+                          className="text-[11px] py-1 px-2 rounded-md bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-700 text-left font-medium cursor-pointer"
+                        >
+                          {t('price_100k_500k')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFilters((prev) => ({ ...prev, minPrice: 500000, maxPrice: 1000000 }))}
+                          className="text-[11px] py-1 px-2 rounded-md bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-700 text-left font-medium cursor-pointer"
+                        >
+                          {t('price_500k_1m')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFilters((prev) => ({ ...prev, minPrice: 1000000, maxPrice: undefined }))}
+                          className="text-[11px] py-1 px-2 rounded-md bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-700 text-left font-medium cursor-pointer"
+                        >
+                          {t('price_above_1m')}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPriceDropdownOpen(false)}
+                      className="w-full py-2 bg-slate-950 text-white rounded-lg text-xs font-bold hover:bg-slate-900 transition mt-2 cursor-pointer"
+                    >
+                      {t('apply_price_filter')}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Text Search Bar */}
+              <div className="relative flex-1 min-w-[160px]">
+                <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={filters.searchQuery || ''}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))
+                  }
+                  placeholder={t('search_placeholder')}
+                  className="w-full text-xs pl-8 pr-3 py-1.5 border border-neutral-300 rounded-lg bg-neutral-50"
+                />
+              </div>
+
+              {/* More Filters Modal Trigger */}
+              <button
+                type="button"
+                onClick={() => setMoreFiltersOpen(!moreFiltersOpen)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer ${
+                  activeFiltersCount > 0
+                    ? 'border-slate-900 bg-slate-900 text-white'
+                    : 'border-neutral-300 bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>{t('filters_label')}</span>
+                {activeFiltersCount > 0 && (
+                  <span className="ml-1 bg-white text-slate-900 text-[10px] px-1 rounded-full font-bold">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+
+              {activeFiltersCount > 0 && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-800 px-2 py-1 cursor-pointer"
+                  title={t('reset_filters')}
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>{t('reset_filters')}</span>
                 </button>
               )}
             </div>
 
-            {/* Buy / Rent */}
-            <select
-              value={filters.listingType || 'All'}
-              onChange={(e) => setFilters((prev) => ({ ...prev, listingType: e.target.value as any }))}
-              className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-            >
-              <option value="All">{t('Buy & Rent')}</option>
-              <option value="Sale">{t('For Sale')}</option>
-              <option value="Rent">{t('For Rent')}</option>
-            </select>
-
-            {/* Country */}
-            <select
-              value={filters.country || ''}
-              onChange={(e) => setFilters((prev) => ({ ...prev, country: e.target.value, area: '' }))}
-              className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-            >
-              <option value="">{t('All Countries')}</option>
-              {countryOptions.map((countryName) => (
-                <option key={countryName} value={countryName}>{countryName}</option>
-              ))}
-            </select>
-
-            {/* Area */}
-            <select
-              value={filters.area || ''}
-              onChange={(e) => setFilters((prev) => ({ ...prev, area: e.target.value }))}
-              className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-            >
-              <option value="">{t('All Locations')}</option>
-              {locationOptions.map((location) => (
-                <option key={`${location.country}:${location.id}`} value={location.id}>
-                  {location.name} · {location.country}
-                </option>
-              ))}
-            </select>
-
-            {/* Property Type */}
-            <select
-              value={filters.propertyType || ''}
-              onChange={(e) => setFilters((prev) => ({ ...prev, propertyType: e.target.value }))}
-              className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white hidden sm:inline-block"
-            >
-              <option value="">{t('All Types')}</option>
-              <option value="House">{t('Houses')}</option>
-              <option value="Apartment">{t('Apartments')}</option>
-              <option value="Villa">{t('Villas')}</option>
-              <option value="Townhouse">{t('Townhouses')}</option>
-              <option value="Bungalow">{t('Bungalows')}</option>
-              <option value="Land">{t('Land / Plots')}</option>
-              <option value="Commercial Property">{t('Commercial')}</option>
-            </select>
-
-            {/* Bedrooms */}
-            <select
-              value={filters.bedrooms || 'Any'}
-              onChange={(e) => setFilters((prev) => ({ ...prev, bedrooms: e.target.value as any }))}
-              className="text-xs font-semibold border border-neutral-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white hidden md:inline-block"
-            >
-              <option value="Any">{t('Beds: Any')}</option>
-              <option value="1">1+ {t('Bed')}</option>
-              <option value="2">2+ {t('Beds')}</option>
-              <option value="3">3+ {t('Beds')}</option>
-              <option value="4">4+ {t('Beds')}</option>
-              <option value="5">5+ {t('Beds')}</option>
-            </select>
-
-            {/* More Filters Toggle */}
-            <button
-              type="button"
-              onClick={() => setMoreFiltersOpen(!moreFiltersOpen)}
-              className={`flex items-center gap-1.5 text-xs font-semibold py-2 px-3 rounded-lg border transition ${
-                moreFiltersOpen || filters.amenities.length > 0
-                  ? 'border-slate-900 bg-slate-900 text-white'
-                  : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>{t('More Filters')}</span>
-              {filters.amenities.length > 0 && (
-                <span className="w-4 h-4 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-bold flex items-center justify-center">
-                  {filters.amenities.length}
-                </span>
-              )}
-            </button>
-
-            {/* Reset Filters */}
-            {activeFilterCount > 0 && (
+            {/* Right: View Mode Switcher */}
+            <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-lg border border-neutral-200 shrink-0">
               <button
                 type="button"
-                onClick={resetFilters}
-                className="text-xs font-semibold text-neutral-500 hover:text-rose-600 flex items-center gap-1 py-1.5 px-2 rounded hover:bg-neutral-100 transition"
-                title={t('Reset all filters')}
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span className="hidden sm:inline">{t('Reset')}</span>
-              </button>
-            )}
-          </div>
-
-          {/* Right Layout View Mode Controls */}
-          <div className="flex items-center gap-2">
-            {/* View Mode Toggle */}
-            <div className="flex rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 text-neutral-600">
-              <button
                 onClick={() => setViewMode('split')}
-                title={t('Split View (List + Map)')}
-                className={`p-1.5 rounded-md transition ${
-                  viewMode === 'split' ? 'bg-white text-neutral-900 shadow-xs' : 'hover:text-neutral-900'
-                } hidden lg:inline-flex`}
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition ${
+                  viewMode === 'split'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-neutral-600 hover:text-neutral-900'
+                }`}
               >
-                <Columns className="w-4 h-4" />
+                <Columns className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Split</span>
               </button>
               <button
+                type="button"
                 onClick={() => setViewMode('list')}
-                title={t('List View')}
-                className={`p-1.5 rounded-md transition ${
-                  viewMode === 'list' ? 'bg-white text-neutral-900 shadow-xs' : 'hover:text-neutral-900'
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition ${
+                  viewMode === 'list'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-neutral-600 hover:text-neutral-900'
                 }`}
               >
-                <List className="w-4 h-4" />
+                <List className="w-3.5 h-3.5" />
+                <span>Grid</span>
               </button>
               <button
+                type="button"
                 onClick={() => setViewMode('map')}
-                title={t('Map View')}
-                className={`p-1.5 rounded-md transition ${
-                  viewMode === 'map' ? 'bg-white text-neutral-900 shadow-xs' : 'hover:text-neutral-900'
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-md transition ${
+                  viewMode === 'map'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-neutral-600 hover:text-neutral-900'
                 }`}
               >
-                <Map className="w-4 h-4" />
+                <Map className="w-3.5 h-3.5" />
+                <span>Map</span>
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Expandable "More Filters" Drawer */}
-        {moreFiltersOpen && (
-          <div className="mt-4 pt-4 border-t border-neutral-200 grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-2">
-            {/* Price Ranges */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">{t('Price Filter (UGX)')}</h4>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] text-neutral-500">{t('Min Price')}</label>
+          {/* More Filters Drawer */}
+          {moreFiltersOpen && (
+            <div className="mt-4 pt-4 border-t border-neutral-200 grid grid-cols-1 sm:grid-cols-3 gap-4 pb-2">
+              {/* Bedrooms & Bathrooms */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-neutral-800">Bedrooms & Bathrooms</span>
+                <div className="flex gap-2">
+                  <select
+                    value={filters.bedrooms || 'Any'}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        bedrooms: e.target.value === 'Any' ? 'Any' : Number(e.target.value)
+                      }))
+                    }
+                    className="w-1/2 text-xs border border-neutral-300 rounded-lg p-2 bg-neutral-50"
+                  >
+                    <option value="Any">Any Beds</option>
+                    <option value="1">1+ Beds</option>
+                    <option value="2">2+ Beds</option>
+                    <option value="3">3+ Beds</option>
+                    <option value="4">4+ Beds</option>
+                    <option value="5">5+ Beds</option>
+                  </select>
+
+                  <select
+                    value={filters.bathrooms || 'Any'}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        bathrooms: e.target.value === 'Any' ? 'Any' : Number(e.target.value)
+                      }))
+                    }
+                    className="w-1/2 text-xs border border-neutral-300 rounded-lg p-2 bg-neutral-50"
+                  >
+                    <option value="Any">Any Baths</option>
+                    <option value="1">1+ Baths</option>
+                    <option value="2">2+ Baths</option>
+                    <option value="3">3+ Baths</option>
+                    <option value="4">4+ Baths</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Price Constraints */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-neutral-800">
+                  {t('price_filter_title')} ({userCurrency})
+                </span>
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    placeholder="e.g. 500000"
                     value={filters.minPrice || ''}
                     onChange={(e) =>
                       setFilters((prev) => ({
@@ -337,14 +483,12 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                         minPrice: e.target.value ? Number(e.target.value) : undefined
                       }))
                     }
-                    className="w-full text-xs border border-neutral-200 rounded-lg p-2 focus:ring-1 focus:ring-slate-900"
+                    placeholder={t('price_min_placeholder')}
+                    className="w-1/2 text-xs border border-neutral-300 rounded-lg p-2 bg-neutral-50"
                   />
-                </div>
-                <div>
-                  <label className="text-[11px] text-neutral-500">{t('Max Price')}</label>
+                  <span className="text-neutral-400">–</span>
                   <input
                     type="number"
-                    placeholder="e.g. 500000000"
                     value={filters.maxPrice || ''}
                     onChange={(e) =>
                       setFilters((prev) => ({
@@ -352,186 +496,140 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                         maxPrice: e.target.value ? Number(e.target.value) : undefined
                       }))
                     }
-                    className="w-full text-xs border border-neutral-200 rounded-lg p-2 focus:ring-1 focus:ring-slate-900"
+                    placeholder={t('price_max_placeholder')}
+                    className="w-1/2 text-xs border border-neutral-300 rounded-lg p-2 bg-neutral-50"
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Bathrooms */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">{t('Bathrooms')}</h4>
-              <div className="flex gap-1.5">
-                {['Any', '1', '2', '3', '4'].map((b) => (
-                  <button
-                    key={b}
-                    onClick={() => setFilters((prev) => ({ ...prev, bathrooms: b as any }))}
-                    className={`py-1.5 px-3 text-xs font-semibold rounded-lg border transition ${
-                      filters.bathrooms === b || (b === 'Any' && !filters.bathrooms)
-                        ? 'bg-slate-900 text-white border-slate-900'
-                        : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
-                    }`}
-                  >
-                    {b === 'Any' ? t('Any') : `${b}+`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Amenities Checklist */}
-            <div className="md:col-span-2 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700">
-                  {t('Amenities & Facilities')}
-                </h4>
-                {filters.amenities.length > 0 && (
-                  <button
-                    onClick={() => setFilters((prev) => ({ ...prev, amenities: [] }))}
-                    className="text-[11px] text-rose-600 hover:underline"
-                  >
-                    {t('Clear Amenities')}
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {ALL_AMENITIES.map((amenity) => {
-                  const checked = filters.amenities.includes(amenity);
-                  return (
-                    <label
-                      key={amenity}
-                      className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer select-none hover:text-neutral-900"
+              {/* Amenities Checklist */}
+              <div className="space-y-2 sm:col-span-3">
+                <span className="text-xs font-bold text-neutral-800">Amenities & Features</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_AMENITIES.map((am) => (
+                    <button
+                      key={am}
+                      type="button"
+                      onClick={() => toggleAmenity(am)}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border transition ${
+                        filters.amenities.includes(am)
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-white text-neutral-700 border-neutral-200 hover:border-neutral-300'
+                      }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleAmenity(amenity)}
-                        className="rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
-                      />
-                      <span className="truncate">{amenity}</span>
-                    </label>
-                  );
-                })}
+                      {am}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Main Results Container */}
-      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
-        {/* Page Title & Sort Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-neutral-200/80 gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-900 font-serif-display">
-              {title ? t(title) : (filters.listingType === 'Rent' ? t('Rental Properties') : t('Property Listings'))}
-            </h1>
-            <p className="text-xs font-semibold text-neutral-500 mt-0.5">
-              {filteredProperties.length} {t(filteredProperties.length === 1 ? 'Property' : 'Properties')} {t('Matching Your Criteria')}
-              {filters.area ? ` ${t('in')} ${filters.area}` : ''}
-              {filters.country ? `, ${filters.country}` : ''}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <label className="text-xs font-medium text-neutral-500">{t('Sort by:')}</label>
-            <select
-              value={filters.sortBy}
-              onChange={(e) => setFilters((prev) => ({ ...prev, sortBy: e.target.value as any }))}
-              className="text-xs font-bold border border-neutral-200 rounded-lg py-1.5 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
-            >
-              <option value="recommended">{t('Recommended')}</option>
-              <option value="newest">{t('Newest First')}</option>
-              <option value="price-asc">{t('Price: Low to High')}</option>
-              <option value="price-desc">{t('Price: High to Low')}</option>
-              <option value="views">{t('Most Viewed')}</option>
-            </select>
-          </div>
-        </div>
-
-        {/* View Mode Implementations */}
-
-        {/* 1. SPLIT VIEW (List + Interactive Map) */}
+      {/* Main View Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* VIEW 1: SPLIT VIEW (Listings on Left, Leaflet Map on Right) */}
         {viewMode === 'split' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[650px]">
-            {/* Left Property List */}
-            <div className="lg:col-span-7 xl:col-span-7 overflow-y-auto pr-1 space-y-4">
+          <div className="flex-1 flex flex-col lg:flex-row h-[calc(100vh-125px)]">
+            {/* Left Property Cards Scroll Panel */}
+            <div className="w-full lg:w-1/2 overflow-y-auto p-4 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
+                <div>
+                  <h2 className="text-lg font-bold text-neutral-900">
+                    {title || 'Properties for Sale & Rent Worldwide'}
+                  </h2>
+                  <p className="text-xs text-neutral-500">
+                    Showing <span className="font-semibold text-neutral-800 tabular-nums">{filteredProperties.length}</span> verified properties matching criteria
+                  </p>
+                </div>
+              </div>
+
               {filteredProperties.length === 0 ? (
-                <EmptyResults resetFilters={resetFilters} />
+                <div className="text-center py-16 bg-white rounded-2xl border border-neutral-200 p-8">
+                  <MapPin className="w-10 h-10 text-neutral-300 mx-auto mb-2" />
+                  <h3 className="text-sm font-bold text-neutral-800">No properties match your filter</h3>
+                  <p className="text-xs text-neutral-500 mt-1">Try resetting your country or price filters.</p>
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredProperties.map((property) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {filteredProperties.map((prop) => (
                     <PropertyCard
-                      key={property.id}
-                      property={property}
-                      onHover={setHighlightedPropertyId}
+                      key={prop.id}
+                      property={prop}
+                      onHover={(id) => setHighlightedPropertyId(id)}
                     />
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Right Sticky Interactive Map */}
-            <div className="hidden lg:block lg:col-span-5 xl:col-span-5 h-[calc(100vh-180px)] sticky top-38">
+            {/* Right Map View */}
+            <div className="hidden lg:block lg:w-1/2 h-full sticky top-0 border-l border-neutral-200">
               <InteractiveMap
                 properties={filteredProperties}
                 highlightedPropertyId={highlightedPropertyId}
-                onSelectProperty={setHighlightedPropertyId}
-                className="h-full w-full"
+                onSelectProperty={(id) => setHighlightedPropertyId(id)}
               />
             </div>
           </div>
         )}
 
-        {/* 2. LIST VIEW (Cards Grid) */}
+        {/* VIEW 2: FULL GRID VIEW */}
         {viewMode === 'list' && (
-          <div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-neutral-900">
+                  {title || 'Global Property Listings'}
+                </h2>
+                <p className="text-xs text-neutral-500">
+                  {filteredProperties.length} properties discovered worldwide
+                </p>
+              </div>
+            </div>
+
             {filteredProperties.length === 0 ? (
-              <EmptyResults resetFilters={resetFilters} />
+              <div className="text-center py-20 bg-white rounded-2xl border border-neutral-200 p-8">
+                <MapPin className="w-10 h-10 text-neutral-300 mx-auto mb-2" />
+                <h3 className="text-base font-bold text-neutral-800">No properties match your filter</h3>
+                <p className="text-xs text-neutral-500 mt-1">Try resetting your filters to explore global listings.</p>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold"
+                >
+                  Clear All Filters
+                </button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProperties.map((property) => (
-                  <PropertyCard
-                    key={property.id}
-                    property={property}
-                    onHover={setHighlightedPropertyId}
-                  />
+                {filteredProperties.map((prop) => (
+                  <PropertyCard key={prop.id} property={prop} />
                 ))}
               </div>
             )}
           </div>
         )}
 
-        {/* 3. MAP VIEW (Full-Screen Map) */}
+        {/* VIEW 3: FULL MAP VIEW */}
         {viewMode === 'map' && (
-          <div className="h-[75vh] w-full rounded-2xl overflow-hidden shadow-lg border border-neutral-200">
+          <div className="flex-1 h-[calc(100vh-125px)] w-full">
             <InteractiveMap
               properties={filteredProperties}
               highlightedPropertyId={highlightedPropertyId}
-              onSelectProperty={setHighlightedPropertyId}
-              className="h-full w-full"
+              onSelectProperty={(id) => setHighlightedPropertyId(id)}
             />
           </div>
         )}
       </div>
     </div>
   );
-};
-
-const EmptyResults: React.FC<{ resetFilters: () => void }> = ({ resetFilters }) => {
-  const t = useTranslation();
-  return <div className="bg-white rounded-2xl p-12 text-center border border-neutral-200 space-y-4 max-w-md mx-auto my-8">
-    <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 mx-auto">
-      <Filter className="w-6 h-6" />
-    </div>
-    <h3 className="text-base font-bold text-neutral-800">{t('No matching properties found')}</h3>
-    <p className="text-xs text-neutral-500 leading-relaxed">
-      {t('Try loosening your price filters, selecting "All Locations", or clearing amenities to see more properties.')}
-    </p>
-    <button
-      onClick={resetFilters}
-      className="bg-slate-950 text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-slate-800 transition"
-    >
-      {t('Reset All Filters')}
-    </button>
-  </div>
 };

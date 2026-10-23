@@ -9,13 +9,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Scale,
-  Car
+  Car,
+  Video
 } from 'lucide-react';
 import { Property } from '../types';
-import { formatUGX } from '../utils/format';
-import { getLocalizedProperty, getOriginalLanguageNotice } from '../utils/propertyLocalization';
+import { formatDisplayPrice } from '../utils/format';
 import { useApp } from '../context/AppContext';
-import { useTranslation } from '../i18n/translations';
 
 interface PropertyCardProps {
   property: Property;
@@ -23,18 +22,17 @@ interface PropertyCardProps {
 }
 
 export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover }) => {
-  const t = useTranslation();
   const {
     openPropertyDetail,
     toggleSaveProperty,
     isSaved,
     toggleCompareProperty,
     isCompared,
-    language
+    userCurrency,
+    t
   } = useApp();
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const localizedProperty = getLocalizedProperty(property, language);
   const saved = isSaved(property.id);
   const compared = isCompared(property.id);
 
@@ -58,57 +56,65 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
     toggleCompareProperty(property.id);
   };
 
-  const isSoldOrRented = property.status === 'Sold' || property.status === 'Rented';
+  const isSoldOrRented =
+    property.status === 'Sold' || property.status === 'Rented' || property.status === 'Leased';
+
+  const priceObj = formatDisplayPrice(
+    property.price,
+    property.currency,
+    userCurrency,
+    property.listingType
+  );
 
   return (
     <div
       onMouseEnter={() => onHover && onHover(property.id)}
       onMouseLeave={() => onHover && onHover(null)}
       onClick={() => openPropertyDetail(property.id)}
-      className="group cursor-pointer rounded-2xl bg-white border border-neutral-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col overflow-hidden hover:-translate-y-1"
+      className="group cursor-pointer rounded-3xl bg-white border border-neutral-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col overflow-hidden hover:-translate-y-1.5"
     >
       {/* Property Image Container */}
-      <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-100">
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-900">
         <img
           src={property.images[activeImageIndex] || property.images[0]}
-          alt={localizedProperty.title}
+          alt={property.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
         />
 
         {/* Status & Badges Overlay */}
-        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10 pointer-events-none">
+        <div className="absolute top-3.5 left-3.5 flex flex-wrap gap-1.5 z-10 pointer-events-none">
           <span
-            className={`px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-md backdrop-blur-md shadow-sm ${
+            className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg backdrop-blur-md shadow-xs ${
               property.listingType === 'Sale'
-                ? 'bg-slate-900/90 text-white'
-                : 'bg-emerald-700/90 text-white'
+                ? 'bg-slate-950/90 text-white'
+                : property.listingType === 'Rent'
+                ? 'bg-emerald-700/90 text-white'
+                : 'bg-indigo-700/90 text-white'
             }`}
           >
-            {t(property.listingType === 'Sale' ? 'For Sale' : 'For Rent')}
+            {property.listingType === 'Sale'
+              ? t('search_buy')
+              : property.listingType === 'Rent'
+              ? t('search_rent')
+              : t('search_lease')}
           </span>
 
           {property.isNew && (
-            <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-md bg-amber-500 text-slate-950 shadow-sm">
+            <span className="px-2.5 py-1 text-xs font-bold uppercase tracking-wider rounded-lg bg-amber-500 text-slate-950 shadow-xs">
               NEW
             </span>
           )}
 
-          {property.status === 'Pending' && (
-            <span className="px-2 py-1 text-xs font-semibold rounded-md bg-amber-600/90 text-white">
-              {t('Under Offer')}
-            </span>
-          )}
-
           {isSoldOrRented && (
-            <span className="px-2.5 py-1 text-xs font-bold uppercase rounded-md bg-rose-600 text-white">
-              {t(property.status)}
+            <span className="px-2.5 py-1 text-xs font-bold uppercase rounded-lg bg-rose-600 text-white">
+              {property.status}
             </span>
           )}
         </div>
 
         {/* Favorite & Compare Action Buttons */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+        <div className="absolute top-3.5 right-3.5 flex items-center gap-1.5 z-10">
           <button
             type="button"
             onClick={handleCompareClick}
@@ -116,7 +122,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
             className={`p-2 rounded-full backdrop-blur-md transition-all shadow-md ${
               compared
                 ? 'bg-slate-900 text-white ring-2 ring-white'
-                : 'bg-white/85 text-neutral-700 hover:bg-white hover:text-neutral-900'
+                : 'bg-white/90 text-neutral-700 hover:bg-white hover:text-neutral-900'
             }`}
           >
             <Scale className="w-4 h-4" />
@@ -129,7 +135,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
             className={`p-2 rounded-full backdrop-blur-md transition-all shadow-md ${
               saved
                 ? 'bg-rose-600 text-white ring-2 ring-white'
-                : 'bg-white/85 text-neutral-700 hover:bg-white hover:text-rose-600'
+                : 'bg-white/90 text-neutral-700 hover:bg-white hover:text-rose-600'
             }`}
           >
             <Heart className={`w-4 h-4 ${saved ? 'fill-white' : ''}`} />
@@ -158,45 +164,58 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
           </div>
         )}
 
-        {/* Photo Counter */}
-        {property.images.length > 1 && (
-          <div className="absolute bottom-2.5 right-3 bg-black/60 text-white px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide">
-            {activeImageIndex + 1}/{property.images.length}
-          </div>
-        )}
+        {/* 5-Photo Indicator & Video Badge */}
+        <div className="absolute bottom-2.5 right-3 flex items-center gap-1.5 z-10">
+          {property.videoUrl && (
+            <span className="bg-slate-950/80 text-emerald-400 px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide flex items-center gap-1 backdrop-blur-xs">
+              <Video className="w-3 h-3" />
+              <span>{t('video_badge')}</span>
+            </span>
+          )}
+          <span className="bg-black/70 text-white px-2 py-0.5 rounded-md text-[11px] font-semibold tracking-wide backdrop-blur-xs">
+            {activeImageIndex + 1}/{property.images.length} {t('photos_label')}
+          </span>
+        </div>
 
         {/* Verified Badge */}
         {property.verified && (
-          <div className="absolute bottom-2.5 left-3 bg-emerald-600/95 text-white text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm backdrop-blur-sm">
+          <div className="absolute bottom-2.5 left-3 bg-emerald-600/95 text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm backdrop-blur-sm">
             <ShieldCheck className="w-3.5 h-3.5" />
-            {t('Verified Listing')}
+            <span>{t('title_verified')}</span>
           </div>
         )}
       </div>
 
       {/* Details Container */}
-      <div className="p-4 flex-1 flex flex-col justify-between">
+      <div className="p-5 flex-1 flex flex-col justify-between">
         <div>
           {/* Price Header */}
-          <div className="flex items-baseline justify-between mb-1.5">
-            <h3 className="text-xl font-bold tracking-tight text-neutral-900">
-              {formatUGX(property.price, property.listingType, property.currencyCode)}
-            </h3>
-            <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
-              {t(property.propertyType)}
-            </span>
+          <div className="mb-2">
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-xl font-extrabold tracking-tight text-neutral-900 font-serif-display">
+                {priceObj.text}
+              </h3>
+              <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider bg-neutral-100 px-2 py-0.5 rounded-md">
+                {property.propertyType}
+              </span>
+            </div>
+            {priceObj.subtext && (
+              <p className="text-[11px] text-neutral-400 font-medium">
+                {priceObj.subtext}
+              </p>
+            )}
           </div>
 
           {/* Title */}
-          <h4 className="text-base font-semibold text-neutral-800 line-clamp-1 mb-1 group-hover:text-emerald-700 transition-colors">
-            {localizedProperty.title}
+          <h4 className="text-sm sm:text-base font-bold text-neutral-800 line-clamp-1 mb-1.5 group-hover:text-emerald-700 transition-colors">
+            {property.title}
           </h4>
 
           {/* Location */}
-          <div className="flex items-center text-xs text-neutral-500 mb-3 gap-1">
-            <MapPin className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+          <div className="flex items-center text-xs text-neutral-500 mb-3.5 gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="truncate">
-              {property.country ?? 'Uganda'}, {property.area} · <span className="text-neutral-400">{property.locationDetails}</span>
+              <strong className="text-neutral-800">{property.country}</strong> · {property.neighborhood || property.district || property.region}
             </span>
           </div>
 
@@ -206,7 +225,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
               <span className="flex items-center gap-1.5">
                 <Bed className="w-3.5 h-3.5 text-neutral-400" />
                 <span>
-                  <strong className="text-neutral-800">{property.bedrooms}</strong> {t('Beds')}
+                  <strong className="text-neutral-800">{property.bedrooms}</strong> {t('beds_label')}
                 </span>
               </span>
             )}
@@ -214,7 +233,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
               <span className="flex items-center gap-1.5">
                 <Bath className="w-3.5 h-3.5 text-neutral-400" />
                 <span>
-                  <strong className="text-neutral-800">{property.bathrooms}</strong> {t('Baths')}
+                  <strong className="text-neutral-800">{property.bathrooms}</strong> {t('baths_label')}
                 </span>
               </span>
             )}
@@ -222,13 +241,13 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
               <span className="flex items-center gap-1.5">
                 <Maximize className="w-3.5 h-3.5 text-neutral-400" />
                 <span>
-                  <strong className="text-neutral-800">{property.sqft.toLocaleString()}</strong> sq ft
+                  <strong className="text-neutral-800">{property.sqft.toLocaleString()}</strong> {t('sqft_label')}
                 </span>
               </span>
             ) : property.plotSize ? (
               <span className="flex items-center gap-1.5 truncate">
                 <Maximize className="w-3.5 h-3.5 text-neutral-400" />
-                <span className="truncate">{localizedProperty.plotSize}</span>
+                <span className="truncate">{property.plotSize}</span>
               </span>
             ) : null}
             {property.parkingSpaces > 0 && (
@@ -240,40 +259,33 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
           </div>
 
           {/* Short Description */}
-          <div className="mt-2">
-            {!localizedProperty.isTranslated && (
-              <span className="block text-[10px] font-semibold text-amber-700 mb-1">
-                {getOriginalLanguageNotice(language, localizedProperty.sourceLanguage)}
-              </span>
-            )}
-            <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">
-              {localizedProperty.description}
-            </p>
-          </div>
+          <p className="text-xs text-neutral-500 line-clamp-2 mt-2.5 leading-relaxed">
+            {property.description}
+          </p>
         </div>
 
         {/* Card Footer Actions */}
-        <div className="mt-4 pt-3 flex items-center gap-2 border-t border-neutral-100">
+        <div className="mt-4 pt-3.5 flex items-center gap-2 border-t border-neutral-100">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               openPropertyDetail(property.id);
             }}
-            className="flex-1 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold py-2.5 px-3 rounded-lg transition text-center shadow-xs"
+            className="flex-1 bg-slate-950 hover:bg-slate-900 text-white text-xs font-bold py-2.5 px-3 rounded-xl transition text-center shadow-xs cursor-pointer"
           >
-            {t('View Property')}
+            {t('view_property_btn')}
           </button>
           <button
             type="button"
             onClick={handleFavoriteClick}
-            className={`py-2 px-3 text-xs font-semibold rounded-lg border transition ${
+            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition cursor-pointer ${
               saved
                 ? 'border-rose-300 bg-rose-50 text-rose-700'
                 : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
             }`}
           >
-            {t(saved ? 'Saved' : 'Save')}
+            {saved ? t('saved_btn') : t('save_btn')}
           </button>
         </div>
       </div>

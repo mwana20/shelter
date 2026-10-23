@@ -7,13 +7,17 @@ import { SearchPage } from './pages/SearchPage';
 import { PropertyDetailPage } from './pages/PropertyDetailPage';
 import { ListPropertyPage } from './pages/ListPropertyPage';
 import { SavedHomesPage } from './pages/SavedHomesPage';
-import { MyShelteredPage } from './pages/MyShelteredPage';
 import { AreasPage } from './pages/AreasPage';
 import { AgentsPage } from './pages/AgentsPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
-import { PolicyPage } from './pages/PolicyPage';
+import { SellerDashboardPage } from './pages/SellerDashboardPage';
+import { SignInPage } from './pages/SignInPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { EmailVerificationPage } from './pages/EmailVerificationPage';
+import { TermsOfServicePage } from './pages/TermsOfServicePage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 
 // Modals
 import { ImageGalleryModal } from './components/ImageGalleryModal';
@@ -22,9 +26,10 @@ import { ContactAgentModal } from './components/ContactAgentModal';
 import { ReportListingModal } from './components/ReportListingModal';
 import { ComparisonModal } from './components/ComparisonModal';
 import { AuthModal } from './components/AuthModal';
+import { FloatingActions } from './components/FloatingActions';
 
 const AppContent: React.FC = () => {
-  const { currentPage, isAdmin, setCurrentPage } = useApp();
+  const { currentPage } = useApp();
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -37,33 +42,50 @@ const AppContent: React.FC = () => {
           <SearchPage
             initialListingType="Sale"
             title="Properties for Sale Worldwide"
-            subtitle="Explore verified houses, villas, land, and investment properties across Uganda and other countries."
+            subtitle="Explore verified houses, villas, condominiums, and land plots for sale across international markets."
           />
         );
       case 'rent':
         return (
           <SearchPage
             initialListingType="Rent"
-            title="Find a Home to Rent"
-            subtitle="Browse apartments, houses, and rentals in major cities and neighborhoods around the world."
+            title="Properties for Rent Worldwide"
+            subtitle="Explore apartments, serviced condominiums, and luxury short-term rental homes globally."
           />
         );
-      case 'new-listings':
+      case 'commercial':
         return (
           <SearchPage
-            title="New Listings"
-            subtitle="Recently published homes and properties from supported global markets."
+            title="Commercial Properties & Offices Worldwide"
+            subtitle="Explore office buildings, retail shops, business premises, and industrial warehouses."
+          />
+        );
+      case 'land':
+        return (
+          <SearchPage
+            title="Residential & Agricultural Land Worldwide"
+            subtitle="Discover verified titled building plots, farmland, and prime investment acreage."
           />
         );
       case 'property-detail':
         return <PropertyDetailPage />;
       case 'list-property':
         return <ListPropertyPage />;
+      case 'seller-dashboard':
+      case 'my-sheltered':
+        return <SellerDashboardPage />;
+      case 'sign-in':
+        return <SignInPage />;
+      case 'create-account':
+        return <RegisterPage />;
+      case 'forgot-password':
+        return <ForgotPasswordPage />;
+      case 'email-verification':
+        return <EmailVerificationPage />;
       case 'saved':
         return <SavedHomesPage />;
-      case 'my-sheltered':
-        return <MyShelteredPage />;
       case 'areas':
+      case 'explore':
         return <AreasPage />;
       case 'agents':
         return <AgentsPage />;
@@ -71,20 +93,10 @@ const AppContent: React.FC = () => {
         return <AboutPage />;
       case 'contact':
         return <ContactPage />;
-      case 'admin':
-        return isAdmin ? <AdminDashboardPage /> : (
-          <section className="min-h-[55vh] grid place-items-center px-6 text-center">
-            <div className="max-w-lg space-y-3">
-              <h1 className="text-2xl font-bold text-neutral-900">Administrator access required</h1>
-              <p className="text-sm text-neutral-600">This preview does not provide an administrator session. Sign in through a configured authentication service to continue.</p>
-              <button onClick={() => setCurrentPage('home')} className="text-sm font-semibold text-emerald-800 underline">Return to marketplace</button>
-            </div>
-          </section>
-        );
-      case 'privacy':
       case 'terms':
-      case 'marketplace-policy':
-        return <PolicyPage kind={currentPage} />;
+        return <TermsOfServicePage />;
+      case 'privacy':
+        return <PrivacyPolicyPage />;
       default:
         return <HomePage />;
     }
@@ -95,6 +107,9 @@ const AppContent: React.FC = () => {
       <Navbar />
       <main className="flex-1">{renderCurrentPage()}</main>
       <Footer />
+
+      {/* Floating Quick WhatsApp Chat & Back to Top Arrow */}
+      <FloatingActions />
 
       {/* Global Modals */}
       <ImageGalleryModal />

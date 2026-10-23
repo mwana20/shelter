@@ -1,87 +1,80 @@
 import React from 'react';
-import { MapPin, ArrowRight, Home, Building2 } from 'lucide-react';
-import { mockAreas } from '../data/mockAreas';
+import { MapPin, ArrowRight, Building, Globe, CheckCircle2 } from 'lucide-react';
+import { GLOBAL_DESTINATIONS } from '../data/mockProperties';
 import { useApp } from '../context/AppContext';
-import { useTranslation } from '../i18n/translations';
 
 export const AreasPage: React.FC = () => {
-  const t = useTranslation();
-  const { availableProperties, applyQuickSearch, setSelectedAreaFilter } = useApp();
+  const { availableProperties, applyQuickSearch } = useApp();
 
-  const handleSelectArea = (areaId: string) => {
-    setSelectedAreaFilter(areaId);
-    const area = mockAreas.find((location) => location.id === areaId);
-    applyQuickSearch({ country: area?.country, area: areaId });
+  const handleSelectDestination = (country: string, name: string) => {
+    applyQuickSearch({ country, district: name });
   };
-  const featuredLocations = [
-    ...mockAreas.filter((location) => location.country === 'Uganda').slice(0, 2),
-    ...mockAreas.filter((location) => location.country !== 'Uganda').slice(0, 2),
-    ...mockAreas.filter((location) => location.country === 'Uganda').slice(2),
-    ...mockAreas.filter((location) => location.country !== 'Uganda').slice(2)
-  ];
 
   return (
-    <div className="bg-neutral-50/50 py-12 px-4 sm:px-6 lg:px-8 min-h-screen">
+    <div className="bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-10">
         {/* Header */}
-        <div className="max-w-2xl space-y-3">
+        <div className="max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700">
-            <MapPin className="w-4 h-4" />
-            <span>{t('Sample locations across supported markets')}</span>
+            <Globe className="w-4 h-4" />
+            <span>Worldwide Real Estate Market Guide</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 font-serif-display">
-            {t('Explore Districts, Cities & Towns')}
+            Explore Global Destinations & Property Hubs
           </h1>
-          <p className="text-sm text-neutral-500 leading-relaxed">
-            {t('Browse sample listings in several Ugandan districts and selected locations around the world. Local availability depends on active listings.')}
+          <p className="text-sm text-neutral-600 leading-relaxed">
+            Discover verified family residences, waterfront luxury retreats, and commercial opportunities across world markets. Headquarters located in Mbale City, Uganda with active international listings.
           </p>
         </div>
 
-        {/* Neighborhood Cards Grid */}
+        {/* Global Destinations Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {featuredLocations.map((area) => {
-            const areaProps = availableProperties.filter(
-              (p) => p.area === area.id && (p.country ?? 'Uganda') === area.country
+          {GLOBAL_DESTINATIONS.map((dest) => {
+            const destProps = availableProperties.filter(
+              (p) => p.country.toLowerCase() === dest.country.toLowerCase()
             );
-            const saleCount = areaProps.filter((p) => p.listingType === 'Sale').length;
-            const rentCount = areaProps.filter((p) => p.listingType === 'Rent').length;
+            const saleCount = destProps.filter((p) => p.listingType === 'Sale').length;
+            const rentCount = destProps.filter((p) => p.listingType === 'Rent').length;
 
             return (
               <div
-                key={`${area.country}:${area.id}`}
+                key={dest.id}
                 className="bg-white rounded-3xl overflow-hidden border border-neutral-200/90 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
               >
                 <div>
-                  <div className="relative h-56 overflow-hidden">
+                  <div className="relative h-60 overflow-hidden bg-neutral-900">
                     <img
-                      src={area.image}
-                      alt={area.name}
+                      src={dest.image}
+                      alt={dest.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
                     <div className="absolute bottom-4 left-4 right-4 text-white">
-                      <h3 className="text-xl font-bold">{area.name}</h3>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide">{area.country}</p>
-                      <p className="text-xs text-slate-300 line-clamp-1">{area.tagline}</p>
+                      <span className="text-[11px] font-semibold text-emerald-300 uppercase tracking-wider block">
+                        {dest.country}
+                      </span>
+                      <h3 className="text-xl font-bold font-serif-display">{dest.name}</h3>
+                      <p className="text-xs text-slate-300 line-clamp-1">{dest.tagline}</p>
                     </div>
                   </div>
 
                   <div className="p-6 space-y-4">
                     <p className="text-xs text-neutral-600 leading-relaxed">
-                      {area.description}
+                      {dest.description}
                     </p>
 
-                    <div className="bg-neutral-50 rounded-2xl p-4 space-y-2 border border-neutral-100 text-xs">
-                      <p className="text-neutral-700 font-semibold">{area.region}</p>
-                      <p className="text-neutral-500">{t('Preview data only; this is not an estimate of local market prices.')}</p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                      <div className="p-2 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-100 font-semibold">
-                        {saleCount} {t('For Sale')}
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-100 text-xs">
+                      <div className="p-2.5 bg-neutral-50 rounded-xl">
+                        <span className="text-[11px] text-neutral-500 font-medium block">Properties for Sale</span>
+                        <span className="text-sm font-bold text-neutral-900 tabular-nums">
+                          {saleCount} Available
+                        </span>
                       </div>
-                      <div className="p-2 bg-slate-100 text-slate-800 rounded-xl border border-slate-200 font-semibold">
-                        {rentCount} {t('For Rent')}
+                      <div className="p-2.5 bg-neutral-50 rounded-xl">
+                        <span className="text-[11px] text-neutral-500 font-medium block">Rental Homes</span>
+                        <span className="text-sm font-bold text-neutral-900 tabular-nums">
+                          {rentCount} Available
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -89,11 +82,12 @@ export const AreasPage: React.FC = () => {
 
                 <div className="p-6 pt-0">
                   <button
-                    onClick={() => handleSelectArea(area.id)}
-                    className="w-full bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-xs group-hover:shadow-md"
+                    type="button"
+                    onClick={() => handleSelectDestination(dest.country, dest.name)}
+                    className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"
                   >
-                    <span>{t('Browse Listings in')} {area.name}</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Explore {dest.name} Listings</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>

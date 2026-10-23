@@ -1,45 +1,48 @@
 import { ListingType } from '../types';
+import { CurrencyCode, RentalPeriod, formatPrice, formatCompactPrice, convertPrice } from './currency';
 
-export function formatUGX(amount: number, listingType?: ListingType, currencyCode = 'UGX'): string {
-  if (!amount && amount !== 0) return 'Price on Request';
-  const formatted = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currencyCode,
-    maximumFractionDigits: 0
-  }).format(amount);
-  if (listingType === 'Rent') {
-    return `${formatted} / month`;
-  }
-  return formatted;
+export function formatUGX(amount: number, listingType?: ListingType, rentalPeriod?: RentalPeriod): string {
+  return formatPrice(amount, 'UGX', listingType, rentalPeriod);
 }
 
-export function formatCompactUGX(amount: number, listingType?: ListingType, currencyCode = 'UGX'): string {
-  const currency = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currencyCode,
-    maximumFractionDigits: 0
-  });
-  if (!amount) return currency.format(0);
-  if (amount >= 1_000_000_000) {
-    const b = (amount / 1_000_000_000).toFixed(1).replace(/\.0$/, '');
-    return listingType === 'Rent' ? `${currency.format(Number(b))}B/mo` : `${currency.format(Number(b))} Billion`;
+export function formatCompactUGX(amount: number, listingType?: ListingType, rentalPeriod?: RentalPeriod): string {
+  return formatCompactPrice(amount, 'UGX', listingType, rentalPeriod);
+}
+
+export function formatDisplayPrice(
+  amount: number,
+  originalCurrency: CurrencyCode = 'USD',
+  userCurrency: CurrencyCode = 'USD',
+  listingType?: ListingType,
+  rentalPeriod: RentalPeriod = 'month'
+): { text: string; subtext?: string; originalAsking: string; isConverted: boolean } {
+  const originalAsking = formatPrice(amount, originalCurrency, listingType, rentalPeriod);
+
+  if (originalCurrency === userCurrency || !amount) {
+    return {
+      text: originalAsking,
+      originalAsking,
+      isConverted: false
+    };
   }
-  if (amount >= 1_000_000) {
-    const m = (amount / 1_000_000).toFixed(1).replace(/\.0$/, '');
-    return listingType === 'Rent' ? `${currency.format(Number(m))}M/mo` : `${currency.format(Number(m))}M`;
-  }
-  if (amount >= 1_000) {
-    const k = (amount / 1_000).toFixed(0);
-    return listingType === 'Rent' ? `${currency.format(Number(k))}K/mo` : `${currency.format(Number(k))}K`;
-  }
-  return currency.format(amount);
+
+  // Convert to user's selected viewing currency
+  const { converted } = convertPrice(amount, originalCurrency, userCurrency);
+  const convertedText = formatPrice(converted, userCurrency, listingType, rentalPeriod);
+
+  return {
+    text: originalAsking,
+    subtext: `≈ ${convertedText} (estimated at indicative benchmark)`,
+    originalAsking,
+    isConverted: true
+  };
 }
 
 export function getWhatsAppLink(phone: string, propertyTitle?: string): string {
   const cleanPhone = phone.replace(/[^0-9]/g, '');
   const text = propertyTitle
-    ? `Hello! I am inquiring about the property on Sheltered: "${propertyTitle}". Is it still available for inspection?`
-    : `Hello! I found your listing on Sheltered and would like to inquire about available properties.`;
+    ? `Hello! I am inquiring about the property listed on Sheltered Global Real Estate: "${propertyTitle}". Is it currently available for viewing and purchase/lease?`
+    : `Hello! I found your agent profile on Sheltered Global Real Estate Marketplace and would like to inquire about available properties.`;
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
 }
 
