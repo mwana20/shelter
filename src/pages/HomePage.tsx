@@ -14,6 +14,7 @@ import { GLOBAL_DESTINATIONS } from '../data/mockProperties';
 import { mockAgents } from '../data/mockAgents';
 import { ListingType, PropertyType } from '../types';
 import { POPULAR_COUNTRIES, COUNTRY_ADMIN_CONFIGS, GLOBAL_LOCATIONS } from '../data/mockLocations';
+import heroImage from '../assets/images/hero_global_realestate_1792690930558.jpg';
 
 export const HomePage: React.FC = () => {
   const {
@@ -93,7 +94,7 @@ export const HomePage: React.FC = () => {
         {/* Background Photography with Reduced Darkness for High Visibility */}
         <div className="absolute inset-0 z-0">
           <img
-            src="/src/assets/images/hero_global_realestate_1792690930558.jpg"
+            src={heroImage}
             alt="Global Real Estate Architecture"
             className="w-full h-full object-cover object-center brightness-95 contrast-105 scale-102 transition duration-700"
           />

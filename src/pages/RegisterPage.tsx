@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 import { mockAuthService } from '../services/mockAuthService';
 import { POPULAR_COUNTRIES } from '../data/mockLocations';
+import authBackground from '../assets/images/auth_background_1792768204016.jpg';
 
 export const RegisterPage: React.FC = () => {
   const { setCurrentPage, setCurrentUser, showNotification, t } = useApp();
@@ -59,7 +60,7 @@ export const RegisterPage: React.FC = () => {
       {/* Background Photography with Ambient Gradient */}
       <div className="absolute inset-0 z-0">
         <img
-          src="/src/assets/images/auth_background_1792768204016.jpg"
+          src={authBackground}
           alt="Luxury Architectural Estate"
           className="w-full h-full object-cover object-center scale-102 transition duration-700"
         />
