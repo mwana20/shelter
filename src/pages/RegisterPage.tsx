@@ -20,6 +20,7 @@ import { UserRole } from '../types';
 import { POPULAR_COUNTRIES } from '../data/mockLocations';
 import { calculateAge, validatePasswordStrength } from '../services/backendApi';
 import { registerWithBackend } from '../services/authApi';
+import { propertyImages } from '../assets/propertyImages';
 
 export const RegisterPage: React.FC = () => {
   const { setCurrentPage, setCurrentUser, showNotification, t } = useApp();
@@ -156,7 +157,7 @@ export const RegisterPage: React.FC = () => {
       {/* Background Photography with Ambient Gradient */}
       <div className="absolute inset-0 z-0">
         <img
-          src="/src/assets/images/auth_background_1792768204016.jpg"
+          src={propertyImages.authBackground}
           alt="Luxury Architectural Estate"
           className="w-full h-full object-cover object-center scale-102 transition duration-700"
         />

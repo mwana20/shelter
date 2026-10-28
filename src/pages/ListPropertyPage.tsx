@@ -24,6 +24,7 @@ import { ALL_AMENITIES } from '../data/mockProperties';
 import { ListingType, PropertyType, Property } from '../types';
 import { CurrencyCode, RentalPeriod, formatPrice } from '../utils/currency';
 import { GLOBAL_LOCATIONS, COUNTRY_ADMIN_CONFIGS, POPULAR_COUNTRIES } from '../data/mockLocations';
+import { propertyImages } from '../assets/propertyImages';
 
 export const ListPropertyPage: React.FC = () => {
   const { addProperty, currentUser, setCurrentPage, openPropertyDetail, showNotification } = useApp();
@@ -65,7 +66,7 @@ export const ListPropertyPage: React.FC = () => {
 
   // Step 3: Media & Video
   const [photoSlots, setPhotoSlots] = useState<string[]>([
-    '/src/assets/images/hero_global_realestate_1792690930558.jpg',
+    propertyImages.hero,
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
     'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
     'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80',

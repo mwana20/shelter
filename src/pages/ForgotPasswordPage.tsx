@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, ArrowLeft, CheckCircle2, ShieldAlert, KeyRound, ExternalLink } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { backendApi } from '../services/backendApi';
+import { propertyImages } from '../assets/propertyImages';
 
 export const ForgotPasswordPage: React.FC = () => {
   const { setCurrentPage } = useApp();
@@ -33,7 +34,7 @@ export const ForgotPasswordPage: React.FC = () => {
       {/* Background Photography with Ambient Gradient */}
       <div className="absolute inset-0 z-0">
         <img
-          src="/src/assets/images/auth_background_1792768204016.jpg"
+          src={propertyImages.authBackground}
           alt="Luxury Architectural Estate"
           className="w-full h-full object-cover object-center scale-102 transition duration-700"
         />

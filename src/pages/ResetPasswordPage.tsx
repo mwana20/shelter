@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { backendApi, validatePasswordStrength } from '../services/backendApi';
+import { propertyImages } from '../assets/propertyImages';
 
 export const ResetPasswordPage: React.FC = () => {
   const { setCurrentPage, showNotification, activeRouteToken } = useApp();
@@ -84,7 +85,7 @@ export const ResetPasswordPage: React.FC = () => {
       {/* Background Photography with Ambient Gradient */}
       <div className="absolute inset-0 z-0">
         <img
-          src="/src/assets/images/auth_background_1792768204016.jpg"
+          src={propertyImages.authBackground}
           alt="Luxury Architectural Estate"
           className="w-full h-full object-cover object-center scale-102 transition duration-700"
         />
