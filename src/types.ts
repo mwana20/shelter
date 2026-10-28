@@ -165,6 +165,11 @@ export interface UserProfile {
   name: string;
   email: string;
   phone: string;
+  country?: string;
+  region?: string;
+  district?: string;
+  neighborhood?: string;
+  bio?: string;
   role: UserRole;
   avatar?: string;
   emailVerified: boolean;
@@ -176,8 +181,6 @@ export interface UserProfile {
   sellerType?: 'individual_owner' | 'landlord' | 'licensed_agent' | 'property_broker' | 'property_developer';
   verificationStatus?: 'Unverified' | 'Pending Review' | 'Verified';
   verificationDocuments?: string[];
-  bio?: string;
-  country?: string;
   city?: string;
   termsAccepted: boolean;
   termsAcceptedAt?: string;
@@ -273,6 +276,7 @@ export interface FilterState {
   country?: string;
   region?: string;
   district?: string;
+  neighborhood?: string;
   propertyType?: string;
   minPrice?: number;
   maxPrice?: number;

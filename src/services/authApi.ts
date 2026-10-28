@@ -9,18 +9,30 @@ const ACCESS_TOKEN_KEY = 'sheltered_access_token';
 
 type BackendRole = 'BUYER' | 'SELLER' | 'AGENT' | 'ADMIN';
 
+interface BackendUser {
+  id: string;
+  email: string;
+  fullName: string;
+  phone?: string | null;
+  dateOfBirth?: string | null;
+  country?: string | null;
+  region?: string | null;
+  district?: string | null;
+  neighborhood?: string | null;
+  bio?: string | null;
+  role: BackendRole;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  companyName?: string | null;
+  agencyLicense?: string | null;
+  avatarUrl?: string | null;
+}
+
 interface LoginResponse {
   success: boolean;
   message?: string;
   data?: {
-    user?: {
-      id: string;
-      email: string;
-      fullName: string;
-      role: BackendRole;
-      emailVerified: boolean;
-      phoneVerified: boolean;
-    };
+    user?: BackendUser;
     accessToken?: string;
   };
 }
@@ -71,19 +83,26 @@ export const getAccessToken = (): string | null => sessionStorage.getItem(ACCESS
 
 export const clearAuthSession = (): void => sessionStorage.removeItem(ACCESS_TOKEN_KEY);
 
-function mapBackendUser(backendUser: NonNullable<LoginResponse['data']>['user']): UserProfile {
-  if (!backendUser) throw new Error('Backend response did not include a user.');
-
+function mapBackendUser(backendUser: BackendUser): UserProfile {
   return {
     id: backendUser.id,
     name: backendUser.fullName,
     email: backendUser.email,
-    phone: '',
+    phone: backendUser.phone || '',
+    dob: backendUser.dateOfBirth || undefined,
+    country: backendUser.country || undefined,
+    region: backendUser.region || undefined,
+    district: backendUser.district || undefined,
+    neighborhood: backendUser.neighborhood || undefined,
+    bio: backendUser.bio || undefined,
     role: roleMap[backendUser.role],
     emailVerified: backendUser.emailVerified,
     phoneVerified: backendUser.phoneVerified,
     preferredLanguage: 'en',
     preferredCurrency: 'USD',
+    companyName: backendUser.companyName || undefined,
+    agencyLicense: backendUser.agencyLicense || undefined,
+    avatar: backendUser.avatarUrl || undefined,
     termsAccepted: false,
     privacyAcknowledged: false
   };
@@ -93,15 +112,15 @@ export async function getAuthenticatedUser(): Promise<UserProfile> {
   const token = getAccessToken();
   if (!token) throw new Error('No active session.');
 
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+  const response = await fetch(`${API_BASE_URL}/users/profile`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  const result = (await response.json().catch(() => null)) as ApiResponse<LoginResponse['data'] extends { user: infer U } ? U : never> | null;
+  const result = (await response.json().catch(() => null)) as ApiResponse<BackendUser> | null;
   if (!response.ok || !result?.success || !result.data) {
     throw new Error(result?.message || 'Your session has expired. Please sign in again.');
   }
 
-  return mapBackendUser(result.data as NonNullable<LoginResponse['data']>['user']);
+  return mapBackendUser(result.data);
 }
 
 export async function signInWithBackend(email: string, password: string): Promise<UserProfile> {
@@ -113,7 +132,12 @@ export async function signInWithBackend(email: string, password: string): Promis
 
   const backendUser = result.data.user;
   sessionStorage.setItem(ACCESS_TOKEN_KEY, result.data.accessToken);
-  return mapBackendUser(backendUser);
+  try {
+    return await getAuthenticatedUser();
+  } catch (error) {
+    clearAuthSession();
+    throw error;
+  }
 }
 
 export async function registerWithBackend(payload: {
@@ -125,6 +149,10 @@ export async function registerWithBackend(payload: {
   confirmPassword: string;
   role: UserRole;
   country?: string;
+  region?: string;
+  district?: string;
+  neighborhood?: string;
+  bio?: string;
   companyName?: string;
   agencyLicense?: string;
 }): Promise<{ userId: string; email: string; fullName: string; token?: string; message?: string }> {
@@ -143,11 +171,45 @@ export async function registerWithBackend(payload: {
     confirmPassword: payload.confirmPassword,
     role,
     country: payload.country,
+    region: payload.region,
+    district: payload.district,
+    neighborhood: payload.neighborhood,
+    bio: payload.bio,
     companyName: payload.companyName,
     agencyLicense: payload.agencyLicense
   });
 
   return { ...result.data!, message: result.message };
+}
+
+export async function updateProfileWithBackend(payload: {
+  fullName: string;
+  phone: string;
+  country?: string;
+  region?: string;
+  district?: string;
+  neighborhood?: string;
+  bio?: string;
+  companyName?: string;
+  agencyLicense?: string;
+  avatarUrl?: string;
+}): Promise<UserProfile> {
+  const token = getAccessToken();
+  if (!token) throw new Error('Sign in before updating your profile.');
+
+  const response = await fetch(`${API_BASE_URL}/users/profile`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+  const result = (await response.json().catch(() => null)) as ApiResponse<BackendUser> | null;
+  if (!response.ok || !result?.success || !result.data) {
+    throw new Error(result?.message || 'Profile update failed.');
+  }
+  return mapBackendUser(result.data);
 }
 
 export async function verifyEmailWithBackend(params: {

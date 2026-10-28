@@ -13,6 +13,10 @@ export class UserService {
         phone: true,
         dateOfBirth: true,
         country: true,
+        region: true,
+        district: true,
+        neighborhood: true,
+        bio: true,
         role: true,
         companyName: true,
         agencyLicense: true,
@@ -38,12 +42,16 @@ export class UserService {
 
   static async updateProfile(userId, updateData) {
     const allowed = {};
-    if (updateData.fullName) allowed.fullName = updateData.fullName.trim();
-    if (updateData.phone) allowed.phone = updateData.phone.trim();
-    if (updateData.country) allowed.country = updateData.country.trim();
-    if (updateData.companyName) allowed.companyName = updateData.companyName.trim();
-    if (updateData.agencyLicense) allowed.agencyLicense = updateData.agencyLicense.trim();
-    if (updateData.avatarUrl) allowed.avatarUrl = updateData.avatarUrl;
+    if (updateData.fullName !== undefined) allowed.fullName = updateData.fullName.trim();
+    if (updateData.phone !== undefined) allowed.phone = updateData.phone.trim() || null;
+    if (updateData.country !== undefined) allowed.country = updateData.country.trim() || null;
+    if (updateData.region !== undefined) allowed.region = updateData.region.trim() || null;
+    if (updateData.district !== undefined) allowed.district = updateData.district.trim() || null;
+    if (updateData.neighborhood !== undefined) allowed.neighborhood = updateData.neighborhood.trim() || null;
+    if (updateData.bio !== undefined) allowed.bio = updateData.bio.trim() || null;
+    if (updateData.companyName !== undefined) allowed.companyName = updateData.companyName.trim() || null;
+    if (updateData.agencyLicense !== undefined) allowed.agencyLicense = updateData.agencyLicense.trim() || null;
+    if (updateData.avatarUrl !== undefined) allowed.avatarUrl = updateData.avatarUrl;
 
     const updated = await prisma.user.update({
       where: { id: userId },
@@ -54,6 +62,10 @@ export class UserService {
         fullName: true,
         phone: true,
         country: true,
+        region: true,
+        district: true,
+        neighborhood: true,
+        bio: true,
         role: true,
         companyName: true,
         agencyLicense: true,

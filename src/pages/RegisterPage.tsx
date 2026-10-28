@@ -13,11 +13,12 @@ import {
   EyeOff,
   CheckCircle2,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  MapPin
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
-import { POPULAR_COUNTRIES } from '../data/mockLocations';
+import { POPULAR_COUNTRIES, GLOBAL_LOCATIONS } from '../data/mockLocations';
 import { calculateAge, validatePasswordStrength } from '../services/backendApi';
 import { registerWithBackend } from '../services/authApi';
 import { propertyImages } from '../assets/propertyImages';
@@ -31,6 +32,9 @@ export const RegisterPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [country, setCountry] = useState('Uganda');
+  const [region, setRegion] = useState('');
+  const [district, setDistrict] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [agencyLicense, setAgencyLicense] = useState('');
   const [password, setPassword] = useState('');
@@ -55,6 +59,12 @@ export const RegisterPage: React.FC = () => {
   }, [dob]);
 
   const isUnderage = calculatedAge !== null && calculatedAge < 18;
+  const countryNode = GLOBAL_LOCATIONS.find((node) => node.name === country);
+  const regions = countryNode?.children || [];
+  const regionNode = regions.find((node) => node.name === region);
+  const districts = regionNode?.children || [];
+  const districtNode = districts.find((node) => node.name === district);
+  const neighborhoods = districtNode?.children || [];
 
   // Real-time password requirement checklist
   const pwStrength = useMemo(() => {
@@ -120,6 +130,9 @@ export const RegisterPage: React.FC = () => {
         confirmPassword,
         role,
         country,
+        region,
+        district,
+        neighborhood,
         companyName: role === 'agent' || role === 'broker' ? companyName.trim() : undefined,
         agencyLicense: role === 'agent' || role === 'broker' ? agencyLicense.trim() : undefined
       });
@@ -134,6 +147,9 @@ export const RegisterPage: React.FC = () => {
           age,
           role,
           country,
+          region,
+          district,
+          neighborhood,
           companyName: role === 'agent' || role === 'broker' ? companyName : undefined,
           agencyLicense: role === 'agent' || role === 'broker' ? agencyLicense : undefined,
           emailVerified: false,
@@ -321,24 +337,73 @@ export const RegisterPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Country */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                {t('country_label')}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
-                  <Globe className="w-4 h-4" />
+            {/* Preferred Location */}
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
+                <MapPin className="w-4 h-4 text-emerald-400" />
+                <span>Preferred Location</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">{t('country_label')}</label>
+                  <select
+                    value={country}
+                    onChange={(e) => {
+                      setCountry(e.target.value);
+                      setRegion('');
+                      setDistrict('');
+                      setNeighborhood('');
+                    }}
+                    className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 [&>option]:bg-slate-900 [&>option]:text-white"
+                  >
+                    {POPULAR_COUNTRIES.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
                 </div>
-                <select
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 backdrop-blur-md cursor-pointer transition [&>option]:bg-slate-900 [&>option]:text-white"
-                >
-                  {POPULAR_COUNTRIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Region / State</label>
+                  {regions.length > 0 ? (
+                    <select
+                      value={region}
+                      onChange={(e) => { setRegion(e.target.value); setDistrict(''); setNeighborhood(''); }}
+                      className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 [&>option]:bg-slate-900 [&>option]:text-white"
+                    >
+                      <option value="">Select a region</option>
+                      {regions.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                    </select>
+                  ) : (
+                    <input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Region / State" className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-slate-400" />
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">City / District</label>
+                  {districts.length > 0 ? (
+                    <select
+                      value={district}
+                      onChange={(e) => { setDistrict(e.target.value); setNeighborhood(''); }}
+                      className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 [&>option]:bg-slate-900 [&>option]:text-white"
+                    >
+                      <option value="">Select a city / district</option>
+                      {districts.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                    </select>
+                  ) : (
+                    <input value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="City / District" className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-slate-400" />
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Neighborhood</label>
+                  {neighborhoods.length > 0 ? (
+                    <select
+                      value={neighborhood}
+                      onChange={(e) => setNeighborhood(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 [&>option]:bg-slate-900 [&>option]:text-white"
+                    >
+                      <option value="">Any neighborhood</option>
+                      {neighborhoods.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                    </select>
+                  ) : (
+                    <input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} placeholder="Neighborhood / Locality" className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-slate-400" />
+                  )}
+                </div>
               </div>
             </div>
 

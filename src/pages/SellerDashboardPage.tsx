@@ -25,6 +25,8 @@ import { Property, PropertyStatus, UserRole } from '../types';
 import { formatPrice } from '../utils/currency';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 import { SUPPORTED_CURRENCY_CODES } from '../utils/currency';
+import { POPULAR_COUNTRIES } from '../data/mockLocations';
+import { updateProfileWithBackend } from '../services/authApi';
 
 type DashboardTab =
   | 'overview'
@@ -55,11 +57,16 @@ export const SellerDashboardPage: React.FC = () => {
 
   // Profile form state
   const [profileName, setProfileName] = useState(currentUser.name);
-  const [profileEmail, setProfileEmail] = useState(currentUser.email);
   const [profilePhone, setProfilePhone] = useState(currentUser.phone);
+  const [profileCountry, setProfileCountry] = useState(currentUser.country || '');
+  const [profileRegion, setProfileRegion] = useState(currentUser.region || '');
+  const [profileDistrict, setProfileDistrict] = useState(currentUser.district || '');
+  const [profileNeighborhood, setProfileNeighborhood] = useState(currentUser.neighborhood || '');
   const [companyName, setCompanyName] = useState(currentUser.companyName || '');
   const [agencyLicense, setAgencyLicense] = useState(currentUser.agencyLicense || '');
   const [profileBio, setProfileBio] = useState(currentUser.bio || '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Verification request form state
   const [idDocUploaded, setIdDocUploaded] = useState(false);
@@ -92,18 +99,29 @@ export const SellerDashboardPage: React.FC = () => {
     }
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentUser({
-      ...currentUser,
-      name: profileName,
-      email: profileEmail,
-      phone: profilePhone,
-      companyName,
-      agencyLicense,
-      bio: profileBio
-    });
-    showNotification('Account profile updated successfully.', 'success');
+    setIsSavingProfile(true);
+    setProfileError(null);
+    try {
+      const updatedProfile = await updateProfileWithBackend({
+        fullName: profileName,
+        phone: profilePhone,
+        country: profileCountry,
+        region: profileRegion,
+        district: profileDistrict,
+        neighborhood: profileNeighborhood,
+        companyName,
+        agencyLicense,
+        bio: profileBio
+      });
+      setCurrentUser(updatedProfile);
+      showNotification('Profile and preferred location saved.', 'success');
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Could not save your profile.');
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleSendReply = (enquiryId: string) => {
@@ -153,7 +171,7 @@ export const SellerDashboardPage: React.FC = () => {
               </div>
               <p className="text-xs text-slate-500 mt-1">
                 {currentUser.companyName ? `${currentUser.companyName} · ` : ''}
-                {currentUser.email} · HQ: Mbale City, Uganda
+                  {currentUser.email} · {[currentUser.neighborhood, currentUser.district, currentUser.country].filter(Boolean).join(', ')}
               </p>
             </div>
           </div>
@@ -183,7 +201,7 @@ export const SellerDashboardPage: React.FC = () => {
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'my-properties', label: `My Properties (${myProperties.length})`, icon: Building },
             { id: 'enquiries', label: `Enquiries (${enquiries.length})`, icon: Mail },
-            { id: 'agency-profile', label: 'Agency Profile', icon: User },
+            { id: 'agency-profile', label: 'Profile & Location', icon: User },
             { id: 'verification-request', label: 'Verification Request', icon: ShieldCheck },
             { id: 'settings', label: 'Account Settings', icon: Settings },
           ].map((tab) => {
@@ -529,11 +547,12 @@ export const SellerDashboardPage: React.FC = () => {
         {activeTab === 'agency-profile' && (
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-6">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Agency & Professional Profile</h3>
-              <p className="text-xs text-slate-500">Public profile details displayed to buyers worldwide</p>
+              <h3 className="text-base font-bold text-slate-900">Personal Profile & Preferred Location</h3>
+              <p className="text-xs text-slate-500">Your profile is saved to your account. Buyers use their preferred area to filter listings.</p>
             </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-4 max-w-2xl">
+              {profileError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{profileError}</p>}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -547,15 +566,42 @@ export const SellerDashboardPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Email Address
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Account Email
                   </label>
                   <input
                     type="email"
-                    value={profileEmail}
-                    onChange={(e) => setProfileEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                    value={currentUser.email}
+                    readOnly
+                    aria-describedby="profile-email-note"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-slate-50 text-slate-500"
                   />
+                  <p id="profile-email-note" className="mt-1 text-[10px] text-slate-500">Contact support to change your sign-in email.</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+                <h4 className="text-xs font-bold text-slate-800">Preferred search area</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Country
+                    <select value={profileCountry} onChange={(e) => setProfileCountry(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs">
+                      <option value="">Choose a country</option>
+                      {POPULAR_COUNTRIES.map((country) => <option key={country} value={country}>{country}</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Region / State
+                    <input value={profileRegion} onChange={(e) => setProfileRegion(e.target.value)} maxLength={120} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs" />
+                  </label>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    City / District
+                    <input value={profileDistrict} onChange={(e) => setProfileDistrict(e.target.value)} maxLength={120} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs" />
+                  </label>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Neighborhood
+                    <input value={profileNeighborhood} onChange={(e) => setProfileNeighborhood(e.target.value)} maxLength={120} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs" />
+                  </label>
                 </div>
               </div>
 
@@ -614,7 +660,7 @@ export const SellerDashboardPage: React.FC = () => {
                 type="submit"
                 className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs"
               >
-                Save Agency Profile
+                {isSavingProfile ? 'Saving…' : 'Save Profile & Location'}
               </button>
             </form>
           </div>

@@ -31,6 +31,10 @@ export const registerSchema = z.object({
     ),
 
   country: z.string().trim().optional(),
+  region: z.string().trim().max(120).optional(),
+  district: z.string().trim().max(120).optional(),
+  neighborhood: z.string().trim().max(120).optional(),
+  bio: z.string().trim().max(2000).optional(),
 
   role: z.enum(['BUYER', 'SELLER', 'AGENT']).optional().default('BUYER'),
 

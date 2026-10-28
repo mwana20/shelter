@@ -137,6 +137,7 @@ export interface AppContextType {
     country?: string;
     region?: string;
     district?: string;
+    neighborhood?: string;
     propertyType?: string;
     minPrice?: number;
     maxPrice?: number;
@@ -786,6 +787,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Search Filters
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
 
+  useEffect(() => {
+    if (!isAuthenticated || (currentUser.role !== 'buyer' && currentUser.role !== 'tenant')) return;
+    setFilters((prev) => ({
+      ...prev,
+      country: currentUser.country || '',
+      region: currentUser.region || '',
+      district: currentUser.district || '',
+      neighborhood: currentUser.neighborhood || ''
+    }));
+  }, [isAuthenticated, currentUser.id, currentUser.role, currentUser.country, currentUser.region, currentUser.district, currentUser.neighborhood]);
+
   // Modals
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [otpModalOpen, setOtpModalOpen] = useState(false);
@@ -986,6 +998,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     country?: string;
     region?: string;
     district?: string;
+    neighborhood?: string;
     propertyType?: string;
     minPrice?: number;
     maxPrice?: number;
@@ -997,6 +1010,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       country: params.country !== undefined ? params.country : prev.country,
       region: params.region !== undefined ? params.region : prev.region,
       district: params.district !== undefined ? params.district : prev.district,
+      neighborhood: params.neighborhood !== undefined ? params.neighborhood : prev.neighborhood,
       propertyType: params.propertyType !== undefined ? params.propertyType : prev.propertyType,
       minPrice: params.minPrice,
       maxPrice: params.maxPrice,

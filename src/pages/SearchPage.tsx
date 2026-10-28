@@ -26,6 +26,21 @@ interface SearchPageProps {
   subtitle?: string;
 }
 
+const normalizeArea = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\b(region|city|district|county|municipality|state)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const areaMatches = (listingValue: string, preferredValue: string): boolean => {
+  const listingArea = normalizeArea(listingValue);
+  const preferredArea = normalizeArea(preferredValue);
+  return Boolean(listingArea && preferredArea) &&
+    (listingArea === preferredArea || listingArea.includes(preferredArea) || preferredArea.includes(listingArea));
+};
+
 export const SearchPage: React.FC<SearchPageProps> = ({
   initialListingType,
   title,
@@ -68,10 +83,12 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
       // 3. Region or District
       if (filters.region && filters.region !== '') {
-        const regLower = filters.region.toLowerCase();
-        const itemText = (item.region + ' ' + item.district + ' ' + (item.neighborhood || '')).toLowerCase();
-        if (!itemText.includes(regLower)) return false;
+        if (![item.region, item.district, item.neighborhood || ''].some((area) => areaMatches(area, filters.region!))) return false;
       }
+
+      if (filters.district && !areaMatches(item.district, filters.district) && !areaMatches(item.cityOrTown || '', filters.district)) return false;
+
+      if (filters.neighborhood && !areaMatches(item.neighborhood || '', filters.neighborhood)) return false;
 
       // 4. Property Category
       if (filters.propertyType && filters.propertyType !== '') {
@@ -146,6 +163,8 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   const activeFiltersCount =
     (filters.country && filters.country !== 'All' ? 1 : 0) +
     (filters.region ? 1 : 0) +
+    (filters.district ? 1 : 0) +
+    (filters.neighborhood ? 1 : 0) +
     (filters.propertyType ? 1 : 0) +
     (filters.minPrice ? 1 : 0) +
     (filters.maxPrice ? 1 : 0) +

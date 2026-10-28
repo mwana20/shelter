@@ -53,6 +53,10 @@ model User {
   phone               String?
   dateOfBirth         DateTime
   country             String?
+  region              String?
+  district            String?
+  neighborhood        String?
+  bio                 String?              @db.Text
   role                Role                 @default(BUYER)
   emailVerified       Boolean              @default(false)
   phoneVerified       Boolean              @default(false)
