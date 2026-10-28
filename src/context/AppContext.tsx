@@ -10,7 +10,9 @@ import {
   CompanySettings,
   PaymentTransaction,
   TransactionalEmail,
-  AuditLog
+  AuditLog,
+  LocationLockSettings,
+  UnlockedLocationData
 } from '../types';
 import { CurrencyCode } from '../utils/currency';
 import { mockProperties } from '../data/mockProperties';
@@ -26,15 +28,28 @@ import {
   saveActiveRoute,
   normalizePage
 } from '../utils/navigation';
+import { backendApi, DEFAULT_LOCK_SETTINGS } from '../services/backendApi';
 
 export interface AppContextType {
   // Navigation & Routing
   currentPage: string;
-  setCurrentPage: (page: string) => void;
+  setCurrentPage: (page: string, token?: string | null) => void;
   selectedPropertyId: string | null;
   openPropertyDetail: (id: string) => void;
   selectedAreaFilter: string | null;
   setSelectedAreaFilter: (area: string | null) => void;
+  activeRouteToken: string | null;
+  setActiveRouteToken: (token: string | null) => void;
+
+  // Location Locking & Paid Unlocking
+  locationLockSettings: LocationLockSettings;
+  updateLocationLockSettings: (settings: Partial<LocationLockSettings>) => Promise<boolean>;
+  isPropertyLocationLocked: (propertyId: string) => boolean;
+  unlockedLocations: Record<string, UnlockedLocationData>;
+  unlockModalProperty: Property | null;
+  openLocationUnlock: (property: Property) => void;
+  closeLocationUnlock: () => void;
+  refreshLocationData: (propertyId: string) => Promise<void>;
 
   // Multilingual & RTL
   userLanguage: string;
@@ -68,8 +83,9 @@ export interface AppContextType {
   // User & Auth
   currentUser: UserProfile;
   setCurrentUser: (user: UserProfile) => void;
+  isAuthenticated: boolean;
+  logout: () => void;
   isAdmin: boolean;
-  setIsAdmin: (val: boolean) => void;
 
   // Security, OTP & Email Logs
   otpModalOpen: boolean;
@@ -146,6 +162,7 @@ export interface AppContextType {
 }
 
 import { SHELTERED_COMPANY_CONFIG } from '../config/company';
+import { clearAuthSession, getAccessToken, getAuthenticatedUser } from '../services/authApi';
 
 const defaultCompanySettings: CompanySettings = SHELTERED_COMPANY_CONFIG;
 
@@ -165,20 +182,18 @@ const defaultFilters: FilterState = {
   sortBy: 'recommended'
 };
 
-const defaultUser: UserProfile = {
-  id: 'user-demo-1',
-  name: 'Michael Kato',
-  email: 'michael.kato@shelteredglobal.com',
-  phone: '+256 701 884 902',
-  role: 'agent',
-  emailVerified: true,
-  phoneVerified: true,
+const guestUser: UserProfile = {
+  id: '',
+  name: '',
+  email: '',
+  phone: '',
+  role: 'buyer',
+  emailVerified: false,
+  phoneVerified: false,
   preferredLanguage: 'en',
   preferredCurrency: 'USD',
-  termsAccepted: true,
-  termsAcceptedAt: new Date().toISOString(),
-  termsVersion: 'v3.1',
-  privacyAcknowledged: true
+  termsAccepted: false,
+  privacyAcknowledged: false
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -189,11 +204,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentPage, setCurrentPageState] = useState<string>(initialRoute.page);
   const [selectedPropertyId, setSelectedPropertyIdState] = useState<string | null>(initialRoute.propertyId);
   const [selectedAreaFilter, setSelectedAreaFilterState] = useState<string | null>(initialRoute.areaFilter);
+  const [activeRouteToken, setActiveRouteToken] = useState<string | null>(initialRoute.token || null);
 
   // Sync initial URL and state on mount
   useEffect(() => {
     const route = parseRouteFromLocation();
-    const targetHash = buildRouteHash(route.page, route.propertyId, route.areaFilter);
+    const targetHash = buildRouteHash(route.page, route.propertyId, route.areaFilter, route.token);
     saveActiveRoute(route);
 
     if (window.location.hash !== targetHash) {
@@ -213,7 +229,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetRoute = {
           page: normalizePage(state.page),
           propertyId: state.propertyId || null,
-          areaFilter: state.areaFilter || null
+          areaFilter: state.areaFilter || null,
+          token: state.token || null
         };
       } else {
         targetRoute = parseRouteFromLocation();
@@ -222,6 +239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentPageState(targetRoute.page);
       setSelectedPropertyIdState(targetRoute.propertyId);
       setSelectedAreaFilterState(targetRoute.areaFilter);
+      setActiveRouteToken(targetRoute.token || null);
       saveActiveRoute(targetRoute);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -231,6 +249,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentPageState(targetRoute.page);
       setSelectedPropertyIdState(targetRoute.propertyId);
       setSelectedAreaFilterState(targetRoute.areaFilter);
+      setActiveRouteToken(targetRoute.token || null);
       saveActiveRoute(targetRoute);
     };
 
@@ -243,21 +262,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  const setCurrentPage = (pageInput: string) => {
+  const setCurrentPage = (pageInput: string, tokenParam?: string | null) => {
     const norm = normalizePage(pageInput);
+    const token = tokenParam !== undefined ? tokenParam : norm === 'reset-password' || norm === 'email-verification' ? activeRouteToken : null;
     const newRoute: NavigationRoute = {
       page: norm,
       propertyId: norm === 'property-detail' ? selectedPropertyId : null,
-      areaFilter: norm === 'areas' ? selectedAreaFilter : null
+      areaFilter: norm === 'areas' ? selectedAreaFilter : null,
+      token
     };
 
     setCurrentPageState(norm);
+    setActiveRouteToken(token);
     if (norm !== 'property-detail') {
       setSelectedPropertyIdState(null);
     }
     saveActiveRoute(newRoute);
 
-    const targetHash = buildRouteHash(newRoute.page, newRoute.propertyId, newRoute.areaFilter);
+    const targetHash = buildRouteHash(newRoute.page, newRoute.propertyId, newRoute.areaFilter, newRoute.token);
     if (window.location.hash !== targetHash) {
       window.history.pushState(newRoute, '', targetHash);
     }
@@ -501,25 +523,139 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [enquiries]);
 
   // User Profile
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    try {
-      const saved = localStorage.getItem('sheltered_current_user_v3');
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore
+  const [currentUser, setCurrentUser] = useState<UserProfile>(guestUser);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    localStorage.removeItem('sheltered_current_user_v3');
+    if (!getAccessToken()) {
+      setAuthReady(true);
+      return;
     }
-    return defaultUser;
+
+    let active = true;
+    getAuthenticatedUser()
+      .then((user) => {
+        if (active) setCurrentUser(user);
+      })
+      .catch(() => {
+        clearAuthSession();
+        if (active) setCurrentUser(guestUser);
+      })
+      .finally(() => {
+        if (active) setAuthReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const isAuthenticated = authReady && Boolean(currentUser.id) && Boolean(getAccessToken());
+  const isAdmin = isAuthenticated && (currentUser.role === 'admin' || currentUser.role === 'superadmin');
+
+  const logout = () => {
+    clearAuthSession();
+    setCurrentUser(guestUser);
+    setCurrentPage('home');
+  };
+
+  // Location Locking Settings: DISABLED BY DEFAULT
+  const [locationLockSettings, setLocationLockSettings] = useState<LocationLockSettings>(() => {
+    try {
+      const raw = localStorage.getItem('sheltered_backend_lock_settings_v4');
+      if (raw) return { ...DEFAULT_LOCK_SETTINGS, ...JSON.parse(raw) };
+    } catch {
+      // fallback
+    }
+    return DEFAULT_LOCK_SETTINGS;
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem('sheltered_current_user_v3', JSON.stringify(currentUser));
-    } catch {
-      // ignore
-    }
-  }, [currentUser]);
+    if (!isAdmin) return;
+    backendApi.getAdminSettings(true).then((result) => {
+      if (result.success && result.settings) setLocationLockSettings(result.settings);
+    });
+  }, [isAdmin]);
 
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const updateLocationLockSettings = async (
+    settings: Partial<LocationLockSettings>
+  ): Promise<boolean> => {
+    const res = await backendApi.updateAdminSettings(isAdmin, settings);
+    if (res.success && res.settings) {
+      setLocationLockSettings(res.settings);
+      showNotification('Location lock & payment settings updated successfully.', 'success');
+      return true;
+    }
+    showNotification(res.error || 'Failed to update settings', 'error');
+    return false;
+  };
+
+  // Unlocked Locations Mapping (persisted)
+  const [unlockedLocations, setUnlockedLocations] = useState<Record<string, UnlockedLocationData>>(() => {
+    try {
+      const raw = localStorage.getItem('sheltered_backend_unlocked_locations_v4');
+      if (raw) return JSON.parse(raw);
+    } catch {
+      // fallback
+    }
+    return {
+      'user-demo-1:prop-mbale-1': {
+        propertyId: 'prop-mbale-1',
+        streetAddress: 'Plot 14-16, Wanale Road, Senior Quarters',
+        locationDetails: 'Senior Quarters, Northern City Division, Mbale City, Uganda',
+        coordinates: { lat: 1.0833, lng: 34.1750 },
+        directionsUrl: 'https://maps.google.com/?q=1.0833,34.1750',
+        unlockedAt: '2026-10-24T14:21:00Z'
+      }
+    };
+  });
+
+  // Check if a property's exact location is currently locked for the active user
+  const isPropertyLocationLocked = (propertyId: string): boolean => {
+    if (isAdmin) return false; // Admin always sees full coordinates & address
+    const prop = properties.find((p) => p.id === propertyId);
+    if (!prop) return false;
+
+    // Disabled by default
+    const isLockedByPolicy =
+      locationLockSettings.enabledGlobally ||
+      locationLockSettings.lockedPropertyIds.includes(propertyId) ||
+      locationLockSettings.lockedRegions.includes(prop.region) ||
+      locationLockSettings.lockedRegions.includes(prop.district);
+
+    if (!isLockedByPolicy) return false;
+
+    // Check if user has unlocked it
+    const key = `${currentUser.id}:${propertyId}`;
+    return !unlockedLocations[key];
+  };
+
+  const refreshLocationData = async (propertyId: string) => {
+    const res = await backendApi.getPropertyLocation(propertyId, currentUser.id, isAdmin);
+    if (res.exactLocation) {
+      setUnlockedLocations((prev) => {
+        const neu = { ...prev, [`${currentUser.id}:${propertyId}`]: res.exactLocation! };
+        try {
+          localStorage.setItem('sheltered_backend_unlocked_locations_v4', JSON.stringify(neu));
+        } catch {
+          // ignore
+        }
+        return neu;
+      });
+    }
+  };
+
+  // Location Unlock Modal
+  const [unlockModalProperty, setUnlockModalProperty] = useState<Property | null>(null);
+
+  const openLocationUnlock = (property: Property) => {
+    setUnlockModalProperty(property);
+  };
+
+  const closeLocationUnlock = () => {
+    setUnlockModalProperty(null);
+  };
 
   // Security & Audit Logs
   const [transactionalEmails, setTransactionalEmails] = useState<TransactionalEmail[]>(() => {
@@ -885,6 +1021,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         openPropertyDetail,
         selectedAreaFilter,
         setSelectedAreaFilter,
+        activeRouteToken,
+        setActiveRouteToken,
+        locationLockSettings,
+        updateLocationLockSettings,
+        isPropertyLocationLocked,
+        unlockedLocations,
+        unlockModalProperty,
+        openLocationUnlock,
+        closeLocationUnlock,
+        refreshLocationData,
         userLanguage,
         setUserLanguage,
         isRtl,
@@ -906,8 +1052,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         incrementViews,
         currentUser,
         setCurrentUser,
+        isAuthenticated,
+        logout,
         isAdmin,
-        setIsAdmin,
         otpModalOpen,
         setOtpModalOpen,
         transactionalEmails,

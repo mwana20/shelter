@@ -1,21 +1,30 @@
 import React, { useState } from 'react';
-import { Mail, ArrowLeft, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle2, ShieldAlert, KeyRound, ExternalLink } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { mockAuthService } from '../services/mockAuthService';
-import authBackground from '../assets/images/auth_background_1792768204016.jpg';
+import { backendApi } from '../services/backendApi';
 
 export const ForgotPasswordPage: React.FC = () => {
   const { setCurrentPage } = useApp();
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState('');
+  const [previewToken, setPreviewToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) return;
 
-    const result = await mockAuthService.requestPasswordReset(email);
+    setIsLoading(true);
+    // POST /auth/forgot-password: Always returns neutral response to prevent user enumeration
+    const result = await backendApi.forgotPassword(cleanEmail);
+    setIsLoading(false);
+
     setMessage(result.message);
+    if (result.previewToken) {
+      setPreviewToken(result.previewToken);
+    }
     setSubmitted(true);
   };
 
@@ -24,7 +33,7 @@ export const ForgotPasswordPage: React.FC = () => {
       {/* Background Photography with Ambient Gradient */}
       <div className="absolute inset-0 z-0">
         <img
-          src={authBackground}
+          src="/src/assets/images/auth_background_1792768204016.jpg"
           alt="Luxury Architectural Estate"
           className="w-full h-full object-cover object-center scale-102 transition duration-700"
         />
@@ -52,14 +61,36 @@ export const ForgotPasswordPage: React.FC = () => {
               <div className="w-14 h-14 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 rounded-full flex items-center justify-center mx-auto shadow-inner">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-bold text-white">Recovery Email Dispatched</h3>
+              <h3 className="text-lg font-bold text-white">Instructions Dispatched</h3>
               <p className="text-xs text-slate-200 leading-relaxed max-w-xs mx-auto">
                 {message}
               </p>
+
+              {/* Dev Simulation: Quick token test link */}
+              {previewToken && (
+                <div className="mt-3 p-3 bg-emerald-950/50 border border-emerald-500/30 rounded-xl text-left">
+                  <div className="text-[11px] font-semibold text-emerald-300 flex items-center gap-1.5 mb-1.5">
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Development Email Simulation:</span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 mb-2">
+                    In production, this link is delivered via email with a 15-minute expiration token.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage('reset-password', previewToken)}
+                    className="w-full py-2 px-3 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <span>Test Reset Password Link</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => setCurrentPage('sign-in')}
-                className="w-full mt-4 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-950/40 transition cursor-pointer"
+                className="w-full mt-4 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
               >
                 Return to Sign In
               </button>
@@ -87,9 +118,10 @@ export const ForgotPasswordPage: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-950/40 transition cursor-pointer"
+                disabled={isLoading}
+                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-950/40 transition cursor-pointer disabled:opacity-50"
               >
-                Send Password Reset Link
+                {isLoading ? 'Processing request...' : 'Send Password Reset Link'}
               </button>
 
               <button

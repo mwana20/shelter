@@ -15,7 +15,10 @@ import { SellerDashboardPage } from './pages/SellerDashboardPage';
 import { SignInPage } from './pages/SignInPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { EmailVerificationPage } from './pages/EmailVerificationPage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { MyPaymentsPage } from './pages/MyPaymentsPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 
@@ -29,7 +32,7 @@ import { AuthModal } from './components/AuthModal';
 import { FloatingActions } from './components/FloatingActions';
 
 const AppContent: React.FC = () => {
-  const { currentPage } = useApp();
+  const { currentPage, isAuthenticated, isAdmin } = useApp();
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -73,17 +76,24 @@ const AppContent: React.FC = () => {
         return <ListPropertyPage />;
       case 'seller-dashboard':
       case 'my-sheltered':
-        return <SellerDashboardPage />;
+        return isAuthenticated ? <SellerDashboardPage /> : <SignInPage />;
       case 'sign-in':
         return <SignInPage />;
       case 'create-account':
         return <RegisterPage />;
       case 'forgot-password':
         return <ForgotPasswordPage />;
+      case 'reset-password':
+        return <ResetPasswordPage />;
       case 'email-verification':
         return <EmailVerificationPage />;
+      case 'admin':
+      case 'admin-dashboard':
+        return isAdmin ? <AdminDashboardPage /> : <SignInPage />;
+      case 'my-payments':
+        return isAuthenticated ? <MyPaymentsPage /> : <SignInPage />;
       case 'saved':
-        return <SavedHomesPage />;
+        return isAuthenticated ? <SavedHomesPage /> : <SignInPage />;
       case 'areas':
       case 'explore':
         return <AreasPage />;

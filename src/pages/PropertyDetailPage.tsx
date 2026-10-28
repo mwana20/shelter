@@ -17,12 +17,16 @@ import {
   Check,
   FileCheck,
   Video,
-  CreditCard
+  CreditCard,
+  Lock,
+  Navigation,
+  CheckCircle2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatDisplayPrice, getWhatsAppLink, getTelLink } from '../utils/format';
 import { PropertyCard } from '../components/PropertyCard';
 import { InteractiveMap } from '../components/InteractiveMap';
+import { LocationUnlockModal } from '../components/LocationUnlockModal';
 import { getLocalizedPropertyDescription, getLocalizedAmenity } from '../i18n/propertyDescriptions';
 
 export const PropertyDetailPage: React.FC = () => {
@@ -42,12 +46,19 @@ export const PropertyDetailPage: React.FC = () => {
     userCurrency,
     userLanguage,
     showNotification,
-    t
+    t,
+    isPropertyLocationLocked,
+    unlockedLocations,
+    locationLockSettings,
+    currentUser
   } = useApp();
 
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
 
   const property = properties.find((p) => p.id === selectedPropertyId) || properties[0];
+  const isLocked = property ? isPropertyLocationLocked(property.id) : false;
+  const unlockedData = property ? unlockedLocations[`${currentUser.id}:${property.id}`] : undefined;
 
   if (!property) {
     return (
@@ -309,9 +320,31 @@ export const PropertyDetailPage: React.FC = () => {
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight mt-1 font-serif-display">
                     {property.title}
                   </h1>
-                  <div className="flex items-center gap-1.5 text-xs text-neutral-500 mt-2">
-                    <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{property.locationDetails}, {property.district}, {property.country}</span>
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-500 mt-2">
+                    {isLocked ? (
+                      <>
+                        <MapPin className="w-4 h-4 text-amber-500 shrink-0" />
+                        <span className="font-semibold text-neutral-800">
+                          Approximate Area: {property.district}, {property.country}
+                        </span>
+                        <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ml-1">
+                          <Lock className="w-3 h-3" /> Exact Address Locked
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>
+                          {unlockedData?.streetAddress ? `${unlockedData.streetAddress}, ` : ''}
+                          {unlockedData?.locationDetails || property.locationDetails}, {property.district}, {property.country}
+                        </span>
+                        {unlockedData && (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ml-1">
+                            <CheckCircle2 className="w-3 h-3" /> Location Unlocked
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -467,24 +500,96 @@ export const PropertyDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Location Map */}
+            {/* Location Map Section */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-xs space-y-4">
-              <div>
-                <h3 className="text-lg font-bold text-neutral-900 font-serif-display">
-                  {t('location_map_title')}
-                </h3>
-                <p className="text-xs text-neutral-500 mt-1">
-                  {t('approx_location_desc')} ({property.district}, {property.country})
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-bold text-neutral-900 font-serif-display flex items-center gap-2">
+                    <span>{t('location_map_title')}</span>
+                    {isLocked ? (
+                      <span className="text-[11px] bg-amber-100 text-amber-800 font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Locked
+                      </span>
+                    ) : (
+                      <span className="text-[11px] bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Verified Coordinates
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {isLocked
+                      ? `General vicinity: ${property.district}, ${property.country} (Specific map pin & address withheld by backend until unlocked)`
+                      : `${unlockedData?.streetAddress || property.streetAddress || property.neighborhood || property.district}, ${property.district}, ${property.country}`}
+                  </p>
+                </div>
+
+                {!isLocked && (
+                  <a
+                    href={`https://maps.google.com/?q=${unlockedData?.coordinates.lat || property.coordinates.lat},${unlockedData?.coordinates.lng || property.coordinates.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition"
+                  >
+                    <Navigation className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Get Directions</span>
+                  </a>
+                )}
               </div>
 
-              <div className="h-72 w-full rounded-2xl overflow-hidden border border-neutral-200 shadow-inner">
-                <InteractiveMap
-                  properties={[property]}
-                  highlightedPropertyId={property.id}
-                  className="h-full w-full"
-                />
-              </div>
+              {isLocked ? (
+                /* Locked/Blurred Map Placeholder */
+                <div className="relative h-80 w-full rounded-2xl overflow-hidden border border-amber-200 shadow-sm bg-neutral-900">
+                  <div className="absolute inset-0 filter blur-md opacity-30 scale-105 pointer-events-none">
+                    <InteractiveMap
+                      properties={[property]}
+                      highlightedPropertyId={property.id}
+                      className="h-full w-full"
+                    />
+                  </div>
+
+                  <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center text-white">
+                    <div className="w-14 h-14 bg-amber-500/20 border border-amber-400/40 text-amber-300 rounded-full flex items-center justify-center mb-3 shadow-lg">
+                      <Lock className="w-7 h-7" />
+                    </div>
+                    <h4 className="text-xl font-bold font-serif-display tracking-tight text-white mb-1.5">
+                      Exact location is locked. Pay to unlock.
+                    </h4>
+                    <p className="text-xs text-slate-200 max-w-md leading-relaxed mb-5">
+                      The exact GPS coordinates, cadastral boundary lines, street address, and directions for this property are protected. Pay the unlock fee to permanently reveal full location data.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => setUnlockModalOpen(true)}
+                      className="py-3 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-950/50 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>
+                        Pay to Unlock Location ({locationLockSettings.unlockFeeCurrency} {locationLockSettings.unlockFeeAmount})
+                      </span>
+                    </button>
+
+                    <div className="mt-4 flex items-center gap-2 text-[11px] text-slate-300">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Supports Visa, Mastercard, PayPal &amp; Merchant Code</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Unlocked Full Map */
+                <div className="h-80 w-full rounded-2xl overflow-hidden border border-neutral-200 shadow-inner">
+                  <InteractiveMap
+                    properties={[
+                      {
+                        ...property,
+                        coordinates: unlockedData?.coordinates || property.coordinates
+                      }
+                    ]}
+                    highlightedPropertyId={property.id}
+                    className="h-full w-full"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Trust, Safety and Anti-Fraud Banner */}
@@ -623,6 +728,14 @@ export const PropertyDetailPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Location Unlock Modal (Gateway & Merchant Code) */}
+        <LocationUnlockModal
+          property={property}
+          isOpen={unlockModalOpen}
+          onClose={() => setUnlockModalOpen(false)}
+          onUnlocked={() => setUnlockModalOpen(false)}
+        />
       </div>
     </div>
   );

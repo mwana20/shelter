@@ -183,6 +183,9 @@ export interface UserProfile {
   termsAcceptedAt?: string;
   termsVersion?: string;
   privacyAcknowledged: boolean;
+  dob?: string;
+  age?: number;
+  unlockedPropertyIds?: string[];
 }
 
 export interface OtpSession {
@@ -280,3 +283,72 @@ export interface FilterState {
   searchQuery?: string;
   sortBy: 'recommended' | 'newest' | 'price-asc' | 'price-desc' | 'views';
 }
+
+export interface LocationLockSettings {
+  enabledGlobally: boolean; // MUST BE FALSE BY DEFAULT
+  lockedPropertyIds: string[]; // Specific property overrides
+  lockedRegions: string[]; // Specific region/area overrides
+  unlockFeeAmount: number; // e.g. 15 or 55000
+  unlockFeeCurrency: CurrencyCode; // e.g. 'USD' or 'UGX'
+  gatewayEnabled: boolean; // Professional gateway option (Visa, Mastercard, PayPal)
+  merchantCodeEnabled: boolean; // Merchant code option
+  merchantCode: string; // e.g. "SHELTER-MBL-784"
+  merchantName: string; // e.g. "Sheltered Global Escrow Services Ltd"
+  paymentInstructions: string;
+  supportedChannels: string[]; // e.g. ["MTN MoMo (Pay *165*3#)", "Airtel Money (*185*9#)", "Bank Wire / Swift", "Stanbic FlexiPay"]
+  txIdRules: {
+    minLength: number;
+    maxLength: number;
+    pattern: string; // Regex string e.g. "^[A-Za-z0-9_-]+$"
+    description: string;
+  };
+  verificationMode: 'automatic' | 'manual'; // Automatic via provider vs manual admin review
+}
+
+export interface LocationUnlockPayment {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  propertyId: string;
+  propertyTitle: string;
+  propertyImage?: string;
+  amount: number;
+  currency: CurrencyCode;
+  paymentMethod: 'GATEWAY_CARD' | 'GATEWAY_PAYPAL' | 'MERCHANT_CODE';
+  gatewayReference?: string;
+  submittedTransactionId?: string;
+  status: 'pending' | 'paid' | 'verified' | 'rejected' | 'duplicate' | 'failed' | 'expired';
+  submissionDate: string; // ISO date string
+  verificationDate?: string;
+  adminNotes?: string;
+  rejectionReason?: string;
+  manualUnlockReason?: string;
+  clientIp?: string;
+}
+
+export interface UnlockedLocationData {
+  propertyId: string;
+  streetAddress: string;
+  locationDetails: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  directionsUrl?: string;
+  unlockedAt: string;
+}
+
+export interface UserRegistrationPayload {
+  name: string;
+  email: string;
+  phone: string;
+  dob: string; // YYYY-MM-DD
+  password: string;
+  confirmPassword: string;
+  country: string;
+  role: UserRole;
+  companyName?: string;
+  agencyLicense?: string;
+}
+

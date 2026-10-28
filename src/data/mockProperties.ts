@@ -1,10 +1,5 @@
 import { Property } from '../types';
 import { mockAgents } from './mockAgents';
-import mbaleImage from '../assets/images/dest_mbale_uganda_1792690931379.jpg';
-import heroImage from '../assets/images/hero_global_realestate_1792690930558.jpg';
-import dubaiImage from '../assets/images/dest_dubai_penthouse_1792690932049.jpg';
-import londonImage from '../assets/images/dest_london_residence_1792690932522.jpg';
-import floridaImage from '../assets/images/dest_florida_villa_1792690932573.jpg';
 
 export const ALL_AMENITIES = [
   'Gated Community',
@@ -65,8 +60,8 @@ export const mockProperties: Property[] = [
       'High-Speed Internet / Fiber'
     ],
     images: [
-      mbaleImage,
-      heroImage,
+      '/src/assets/images/dest_mbale_uganda_1792690931379.jpg',
+      '/src/assets/images/hero_global_realestate_1792690930558.jpg',
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80'
@@ -119,7 +114,7 @@ export const mockProperties: Property[] = [
       'Fully Furnished'
     ],
     images: [
-      dubaiImage,
+      '/src/assets/images/dest_dubai_penthouse_1792690932049.jpg',
       'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80',
@@ -170,7 +165,7 @@ export const mockProperties: Property[] = [
       'Perimeter Wall & Fence'
     ],
     images: [
-      londonImage,
+      '/src/assets/images/dest_london_residence_1792690932522.jpg',
       'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1600573472550-8090b5e0745e?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1200&q=80',
@@ -224,7 +219,7 @@ export const mockProperties: Property[] = [
       'Dedicated Parking'
     ],
     images: [
-      floridaImage,
+      '/src/assets/images/dest_florida_villa_1792690932573.jpg',
       'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=80',
@@ -480,7 +475,7 @@ export const mockProperties: Property[] = [
       'Dedicated Parking'
     ],
     images: [
-      heroImage,
+      '/src/assets/images/hero_global_realestate_1792690930558.jpg',
       'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80',
@@ -649,7 +644,7 @@ export const GLOBAL_DESTINATIONS = [
     country: 'Uganda',
     tagline: 'Headquarters City & Mountain Foot Hills',
     description: 'Home to Sheltered headquarters, Wanale Ridge scenic properties, Republic Street commercial investments, and fertile agricultural estates.',
-    image: mbaleImage,
+    image: '/src/assets/images/dest_mbale_uganda_1792690931379.jpg',
     listingCount: 3,
     popularTypes: ['Villa', 'Commercial Property', 'Farm & Agricultural Land'],
     coordinates: { lat: 1.0784, lng: 34.1756 }
@@ -660,7 +655,7 @@ export const GLOBAL_DESTINATIONS = [
     country: 'United Arab Emirates',
     tagline: 'Global Waterfronts & High-Yield Penthouses',
     description: 'Iconic architectural high-rises, Palm Jumeirah waterfront residences, and tax-efficient luxury real estate investments.',
-    image: dubaiImage,
+    image: '/src/assets/images/dest_dubai_penthouse_1792690932049.jpg',
     listingCount: 1,
     popularTypes: ['Apartment', 'Villa'],
     coordinates: { lat: 25.0805, lng: 55.1403 }
@@ -671,7 +666,7 @@ export const GLOBAL_DESTINATIONS = [
     country: 'United Kingdom',
     tagline: 'Historic Freeholds & Prime Central Living',
     description: 'Prestige Victorian townhouses in Kensington & Chelsea, Mayfair penthouses, and Canary Wharf corporate apartments.',
-    image: londonImage,
+    image: '/src/assets/images/dest_london_residence_1792690932522.jpg',
     listingCount: 1,
     popularTypes: ['Townhouse', 'Apartment'],
     coordinates: { lat: 51.4988, lng: -0.1990 }
@@ -682,7 +677,7 @@ export const GLOBAL_DESTINATIONS = [
     country: 'United States',
     tagline: 'Oceanfront Mansions & Coastal Yacht Estates',
     description: 'Luxury deep-water villas with private boat docks, Brickell modern condominiums, and sunny resort communities.',
-    image: floridaImage,
+    image: '/src/assets/images/dest_florida_villa_1792690932573.jpg',
     listingCount: 1,
     popularTypes: ['Villa', 'Apartment'],
     coordinates: { lat: 25.7781, lng: -80.1585 }
@@ -704,7 +699,7 @@ export const GLOBAL_DESTINATIONS = [
     country: 'South Africa',
     tagline: 'Dramatic Oceanfronts & Wine Country Estates',
     description: 'Camps Bay cliffside architectural villas, Constantia historical vineyards, and V&A Waterfront residences.',
-    image: heroImage,
+    image: '/src/assets/images/hero_global_realestate_1792690930558.jpg',
     listingCount: 1,
     popularTypes: ['Holiday Home', 'Villa'],
     coordinates: { lat: -33.9515, lng: 18.3780 }

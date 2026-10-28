@@ -1,0 +1,257 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  BUYER
+  SELLER
+  AGENT
+  ADMIN
+}
+
+enum PropertyStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  ACTIVE
+  REJECTED
+  SOLD
+  RENTED
+  ARCHIVED
+}
+
+enum PaymentMethod {
+  GATEWAY_STRIPE
+  MERCHANT_CODE
+  MANUAL_ADMIN_OVERRIDE
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  DUPLICATE
+  FAILED
+  EXPIRED
+}
+
+enum VerificationMode {
+  AUTOMATIC
+  MANUAL_ADMIN_REVIEW
+}
+
+model User {
+  id                  String               @id @default(uuid())
+  email               String               @unique
+  passwordHash        String
+  fullName            String
+  phone               String?
+  dateOfBirth         DateTime
+  country             String?
+  role                Role                 @default(BUYER)
+  emailVerified       Boolean              @default(false)
+  phoneVerified       Boolean              @default(false)
+  companyName         String?
+  agencyLicense       String?
+  avatarUrl           String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  properties          Property[]           @relation("OwnerProperties")
+  payments            Payment[]
+  unlockedProperties  LocationUnlock[]
+  auditLogs           AuditLog[]
+  verificationTokens  VerificationToken[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  code      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_tokens")
+}
+
+model Property {
+  id                  String                 @id @default(uuid())
+  slug                String                 @unique
+  title               String
+  description         String
+  propertyType        String
+  listingType         String                 // SALE, RENT, LEASE
+  price               Decimal                @db.Decimal(14, 2)
+  currency            String                 @default("USD")
+  status              PropertyStatus         @default(PENDING_REVIEW)
+  bedrooms            Int?
+  bathrooms           Decimal?               @db.Decimal(3, 1)
+  landSizeSqFt        Decimal?               @db.Decimal(12, 2)
+  builtYear           Int?
+  featured            Boolean                @default(false)
+  viewsCount          Int                    @default(0)
+
+  // Approximate Public Location (Always visible to all users)
+  country             String
+  region              String
+  district            String
+  neighborhood        String?
+
+  // Exact Confidential Location (Withheld by backend if locked until unlocked/paid)
+  exactAddress        String?
+  latitude            Float?
+  longitude           Float?
+  directionsGuide     String?
+  cadastralPlotNumber String?
+
+  ownerId             String
+  owner               User                   @relation("OwnerProperties", fields: [ownerId], references: [id])
+
+  media               Media[]
+  payments            Payment[]
+  locationUnlocks     LocationUnlock[]
+  lockOverride        PropertyLockOverride?
+
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  @@map("properties")
+}
+
+model PropertyLockOverride {
+  id          String   @id @default(uuid())
+  propertyId  String   @unique
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  isLocked    Boolean  @default(true)
+  customFee   Decimal? @db.Decimal(10, 2)
+  reason      String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("property_lock_overrides")
+}
+
+model LocationLockSetting {
+  id                  String           @id @default("global_setting")
+  enabledGlobally     Boolean          @default(false) // MUST BE FALSE BY DEFAULT
+  unlockFeeAmount     Decimal          @default(15.00) @db.Decimal(10, 2)
+  unlockFeeCurrency   String           @default("USD")
+  gatewayEnabled      Boolean          @default(true)
+  merchantCodeEnabled Boolean          @default(true)
+  merchantCode        String           @default("SHELTER-MBL-784")
+  merchantName        String           @default("Sheltered Global Escrow Services Ltd")
+  paymentInstructions String           @db.Text
+  supportedChannels   String[]         @default(["MTN Mobile Money", "Airtel Money", "Stanbic FlexiPay", "Bank Wire"])
+  txIdMinLength       Int              @default(6)
+  txIdMaxLength       Int              @default(30)
+  txIdRegexPattern    String           @default("^[A-Za-z0-9_-]+$")
+  verificationMode    VerificationMode @default(AUTOMATIC)
+  updatedAt           DateTime         @updatedAt
+
+  @@map("location_lock_settings")
+}
+
+model Payment {
+  id                 String         @id @default(uuid())
+  userId             String
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId         String
+  property           Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  paymentMethod      PaymentMethod
+  amount             Decimal        @db.Decimal(10, 2)
+  currency           String         @default("USD")
+  status             PaymentStatus  @default(PENDING)
+  purpose            String         @default("LOCATION_UNLOCK")
+
+  // Gateway specifics
+  gatewaySessionId   String?        @unique
+  gatewayReference   String?
+  gatewayReceiptUrl  String?
+
+  // Merchant code specifics
+  merchantCode       String?
+  submittedTxId      String?
+  rejectionReason    String?
+
+  // Verification metadata
+  verifiedAt         DateTime?
+  verifiedByAdminId  String?
+  auditNotes         String?
+
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  locationUnlock     LocationUnlock?
+
+  @@index([userId, status])
+  @@index([propertyId, status])
+  @@index([submittedTxId])
+  @@map("payments")
+}
+
+model LocationUnlock {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId   String
+  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  paymentId    String?       @unique
+  payment      Payment?      @relation(fields: [paymentId], references: [id])
+  unlockMethod PaymentMethod
+  unlockedAt   DateTime      @default(now())
+
+  @@unique([userId, propertyId])
+  @@map("location_unlocks")
+}
+
+model Media {
+  id           String   @id @default(uuid())
+  propertyId   String
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  storageKey   String   @unique
+  publicUrl    String
+  mimeType     String
+  fileSize     Int
+  sortOrder    Int      @default(0)
+  isFeatured   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@map("property_media")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  details    String   @db.Text
+  targetType String
+  targetId   String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
+}

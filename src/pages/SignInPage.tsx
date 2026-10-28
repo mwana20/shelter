@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Sparkles, Building2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Building2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { mockAuthService } from '../services/mockAuthService';
-import authBackground from '../assets/images/auth_background_1792768204016.jpg';
+import { signInWithBackend } from '../services/authApi';
 
 export const SignInPage: React.FC = () => {
   const { setCurrentPage, setCurrentUser, showNotification, t } = useApp();
@@ -21,26 +20,16 @@ export const SignInPage: React.FC = () => {
     }
 
     setIsLoading(true);
-    const result = await mockAuthService.login(email, password);
-    setIsLoading(false);
-
-    if (result.success && result.user) {
-      setCurrentUser(result.user);
-      showNotification(`Welcome back, ${result.user.name}!`, 'success');
-      setCurrentPage('seller-dashboard');
-    } else {
-      setError(result.error || 'Failed to sign in.');
+    try {
+      const user = await signInWithBackend(email, password);
+      setCurrentUser(user);
+      showNotification(`Welcome back, ${user.name}!`, 'success');
+      setCurrentPage(user.role === 'admin' || user.role === 'superadmin' ? 'admin' : 'seller-dashboard');
+    } catch (signInError) {
+      setError(signInError instanceof Error ? signInError.message : 'Failed to sign in.');
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const handleQuickDemoLogin = (role: 'agent' | 'owner' | 'buyer') => {
-    const demoEmails = {
-      agent: 'michael.kato@shelteredglobal.com',
-      owner: 'landlord.paul@shelteredglobal.com',
-      buyer: 'claire.investor@gmail.com'
-    };
-    setEmail(demoEmails[role]);
-    setPassword('ShelteredGlobal2026!');
   };
 
   return (
@@ -48,7 +37,7 @@ export const SignInPage: React.FC = () => {
       {/* Background Photography with Ambient Gradient */}
       <div className="absolute inset-0 z-0">
         <img
-          src={authBackground}
+          src="/src/assets/images/auth_background_1792768204016.jpg"
           alt="Luxury Architectural Estate"
           className="w-full h-full object-cover object-center scale-102 transition duration-700"
         />
@@ -68,37 +57,6 @@ export const SignInPage: React.FC = () => {
           <p className="mt-2 text-sm text-slate-200 drop-shadow-xs">
             {t('sign_in_desc')}
           </p>
-        </div>
-
-        {/* Demo Quick-Fill Bar */}
-        <div className="mb-6 p-3.5 bg-slate-900/40 backdrop-blur-xl border border-white/20 rounded-2xl text-xs text-slate-200 shadow-xl">
-          <div className="flex items-center gap-1.5 font-semibold text-white mb-2.5">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span>Fast Preview Demo Account:</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => handleQuickDemoLogin('agent')}
-              className="px-3 py-1.5 bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl text-[11px] font-medium text-white transition cursor-pointer shadow-xs"
-            >
-              {t('role_agent')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemoLogin('owner')}
-              className="px-3 py-1.5 bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl text-[11px] font-medium text-white transition cursor-pointer shadow-xs"
-            >
-              {t('role_seller')}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickDemoLogin('buyer')}
-              className="px-3 py-1.5 bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl text-[11px] font-medium text-white transition cursor-pointer shadow-xs"
-            >
-              {t('role_buyer')}
-            </button>
-          </div>
         </div>
 
         {/* Glassmorphic Form Card */}

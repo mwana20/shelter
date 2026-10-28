@@ -1,10 +1,25 @@
-import React, { useState } from 'react';
-import { User, Mail, Phone, Lock, Building2, Globe, ArrowRight, UserPlus } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  User,
+  Mail,
+  Phone,
+  Lock,
+  Building2,
+  Globe,
+  ArrowRight,
+  UserPlus,
+  Calendar,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  XCircle,
+  AlertCircle
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
-import { mockAuthService } from '../services/mockAuthService';
 import { POPULAR_COUNTRIES } from '../data/mockLocations';
-import authBackground from '../assets/images/auth_background_1792768204016.jpg';
+import { calculateAge, validatePasswordStrength } from '../services/backendApi';
+import { registerWithBackend } from '../services/authApi';
 
 export const RegisterPage: React.FC = () => {
   const { setCurrentPage, setCurrentUser, showNotification, t } = useApp();
@@ -13,45 +28,126 @@ export const RegisterPage: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [dob, setDob] = useState('');
   const [country, setCountry] = useState('Uganda');
   const [companyName, setCompanyName] = useState('');
   const [agencyLicense, setAgencyLicense] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Maximum allowed birth date for 18 years old
+  const maxDobDate = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 18);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  // Real-time calculated age
+  const calculatedAge = useMemo(() => {
+    if (!dob) return null;
+    return calculateAge(dob);
+  }, [dob]);
+
+  const isUnderage = calculatedAge !== null && calculatedAge < 18;
+
+  // Real-time password requirement checklist
+  const pwStrength = useMemo(() => {
+    return validatePasswordStrength(password);
+  }, [password]);
+
+  const passwordsMatch = password.length > 0 && confirmPassword.length > 0 && password === confirmPassword;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    // 1. Agree terms
     if (!agreeTerms) {
       setError('You must agree to the Terms of Service & Privacy Policy.');
       return;
     }
-    if (!name.trim() || !email.trim()) {
-      setError('Please provide your full legal name and email address.');
+
+    // 2. Name validation
+    if (!name.trim()) {
+      setError('Please provide your full legal name.');
+      return;
+    }
+
+    // 3. Email validation & trimming & lowercasing
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    // 4. Age Restriction Check: Must be >= 18
+    if (!dob) {
+      setError('Date of birth is required.');
+      return;
+    }
+    const age = calculateAge(dob);
+    if (age < 18) {
+      setError('You must be at least 18 years old to create an account.');
+      return;
+    }
+
+    // 5. Password matching & complexity
+    if (!pwStrength.isValid) {
+      setError(pwStrength.errorMessage || 'Please ensure your password meets all requirements.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please verify your confirmation password.');
       return;
     }
 
     setIsLoading(true);
-    const result = await mockAuthService.register({
-      name,
-      email,
-      phone,
-      role,
-      country,
-      companyName: role === 'agent' || role === 'broker' ? companyName : undefined,
-      agencyLicense: role === 'agent' || role === 'broker' ? agencyLicense : undefined,
-    });
-    setIsLoading(false);
 
-    if (result.success && result.user) {
-      setCurrentUser(result.user);
-      showNotification('Account successfully created! Please verify your email.', 'success');
-      setCurrentPage('email-verification');
-    } else {
-      setError(result.error || 'Registration failed. Please try again.');
+    try {
+      const result = await registerWithBackend({
+        name: name.trim(),
+        email: cleanEmail,
+        phone: phone.trim(),
+        dob,
+        password,
+        confirmPassword,
+        role,
+        country,
+        companyName: role === 'agent' || role === 'broker' ? companyName.trim() : undefined,
+        agencyLicense: role === 'agent' || role === 'broker' ? agencyLicense.trim() : undefined
+      });
+
+      showNotification(result.message || 'Registration successful! Please verify your email.', 'success');
+      setCurrentUser({
+          id: result.userId,
+          name: name.trim(),
+          email: cleanEmail,
+          phone: phone.trim(),
+          dob,
+          age,
+          role,
+          country,
+          companyName: role === 'agent' || role === 'broker' ? companyName : undefined,
+          agencyLicense: role === 'agent' || role === 'broker' ? agencyLicense : undefined,
+          emailVerified: false,
+          phoneVerified: false,
+          preferredLanguage: 'en',
+          preferredCurrency: 'USD',
+          termsAccepted: true,
+          privacyAcknowledged: true
+      });
+
+      setCurrentPage('email-verification', result.token);
+    } catch (registrationError) {
+      setError(registrationError instanceof Error ? registrationError.message : 'Registration failed.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -60,7 +156,7 @@ export const RegisterPage: React.FC = () => {
       {/* Background Photography with Ambient Gradient */}
       <div className="absolute inset-0 z-0">
         <img
-          src={authBackground}
+          src="/src/assets/images/auth_background_1792768204016.jpg"
           alt="Luxury Architectural Estate"
           className="w-full h-full object-cover object-center scale-102 transition duration-700"
         />
@@ -84,8 +180,9 @@ export const RegisterPage: React.FC = () => {
         {/* Glassmorphic Form Card */}
         <div className="bg-slate-900/45 backdrop-blur-2xl border border-white/25 shadow-2xl rounded-2xl p-6 sm:p-8 text-white">
           {error && (
-            <div className="mb-6 p-3 rounded-xl bg-rose-500/20 border border-rose-400/40 text-xs text-rose-200 backdrop-blur-md">
-              {error}
+            <div className="mb-6 p-3.5 rounded-xl bg-rose-500/25 border border-rose-400/50 text-xs text-rose-200 backdrop-blur-md flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-300 shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
@@ -100,7 +197,7 @@ export const RegisterPage: React.FC = () => {
                   { id: 'owner', label: t('role_seller'), desc: 'Private Seller' },
                   { id: 'landlord', label: 'Landlord', desc: 'Portfolios' },
                   { id: 'agent', label: t('role_agent'), desc: 'Licensed Advisor' },
-                  { id: 'buyer', label: t('role_buyer'), desc: 'Investor' },
+                  { id: 'buyer', label: t('role_buyer'), desc: 'Investor' }
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -125,7 +222,7 @@ export const RegisterPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                  {t('full_name_label')}
+                  {t('full_name_label')} <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
@@ -144,7 +241,7 @@ export const RegisterPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                  {t('email_label')}
+                  {t('email_label')} <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
@@ -162,11 +259,50 @@ export const RegisterPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Phone & Country */}
+            {/* Date of Birth (Age Restriction: >= 18) & Phone Number */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-200">
+                    Date of Birth <span className="text-rose-400">*</span>
+                  </label>
+                  <span className="text-[10px] text-emerald-300 font-medium">Must be 18+</span>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="date"
+                    required
+                    value={dob}
+                    max={maxDobDate}
+                    onChange={(e) => setDob(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 backdrop-blur-md transition scheme-dark"
+                  />
+                </div>
+
+                {/* Age immediate feedback */}
+                {dob && (
+                  <div className="mt-1.5">
+                    {isUnderage ? (
+                      <div className="flex items-center gap-1.5 text-[11px] text-rose-300 font-semibold bg-rose-500/20 p-2 rounded-lg border border-rose-400/30">
+                        <XCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>You must be at least 18 years old to create an account.</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Age verified: {calculatedAge} years old (Eligible for registration)</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                  {t('phone_label')}
+                  {t('phone_label')} <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
@@ -182,25 +318,26 @@ export const RegisterPage: React.FC = () => {
                   />
                 </div>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                  {t('country_label')}
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
-                    <Globe className="w-4 h-4" />
-                  </div>
-                  <select
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 backdrop-blur-md cursor-pointer transition [&>option]:bg-slate-900 [&>option]:text-white"
-                  >
-                    {POPULAR_COUNTRIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+            {/* Country */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                {t('country_label')}
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
+                  <Globe className="w-4 h-4" />
                 </div>
+                <select
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 backdrop-blur-md cursor-pointer transition [&>option]:bg-slate-900 [&>option]:text-white"
+                >
+                  {POPULAR_COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -240,25 +377,95 @@ export const RegisterPage: React.FC = () => {
               </div>
             )}
 
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-200 mb-1.5">
-                {t('password_label')}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
-                  <Lock className="w-4 h-4" />
+            {/* Password & Confirm Password */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                  {t('password_label')} <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Create password"
+                    className="w-full pl-9 pr-10 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 backdrop-blur-md transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-white cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 8 characters..."
-                  className="w-full pl-9 pr-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 backdrop-blur-md transition"
-                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                  Confirm Password <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-300">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat password"
+                    className="w-full pl-9 pr-10 py-2.5 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 backdrop-blur-md transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-300 hover:text-white cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </div>
+
+            {/* Real-time Password Requirements Card */}
+            {password.length > 0 && (
+              <div className="p-3.5 bg-slate-950/40 rounded-xl border border-white/15 space-y-2 text-xs">
+                <span className="font-semibold text-slate-300 block text-[11px] uppercase tracking-wider">
+                  Password Requirements:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                  <div className={`flex items-center gap-1.5 ${pwStrength.hasMinLength ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {pwStrength.hasMinLength ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    <span>At least 8 characters</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${pwStrength.hasUppercase ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {pwStrength.hasUppercase ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    <span>At least 1 uppercase letter (A-Z)</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${pwStrength.hasLowercase ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {pwStrength.hasLowercase ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    <span>At least 1 lowercase letter (a-z)</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${pwStrength.hasNumber ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {pwStrength.hasNumber ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    <span>At least 1 numeric digit (0-9)</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${pwStrength.hasSpecialChar ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {pwStrength.hasSpecialChar ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    <span>At least 1 special character (!@#$%)</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${passwordsMatch ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {passwordsMatch ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    <span>Passwords match</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Terms & Privacy */}
             <div className="text-xs text-slate-300 space-y-2">
@@ -293,11 +500,11 @@ export const RegisterPage: React.FC = () => {
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-950/40 transition disabled:opacity-50 cursor-pointer"
+              disabled={isLoading || isUnderage}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-950/40 transition disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               {isLoading ? (
-                <span>Creating Account...</span>
+                <span>Registering Account...</span>
               ) : (
                 <>
                   <span>{t('create_account_submit')}</span>
