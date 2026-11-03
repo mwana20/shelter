@@ -68,7 +68,6 @@ export class UserService {
         neighborhood: true,
         bio: true,
         role: true,
-        accountStatus: true,
         companyName: true,
         agencyLicense: true,
         avatarUrl: true,
