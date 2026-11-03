@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { stringIdSchema } from './common.schema.js';
 
 export const updateLockSettingsSchema = z.object({
   enabledGlobally: z.boolean().optional(),
@@ -17,7 +18,7 @@ export const updateLockSettingsSchema = z.object({
 });
 
 export const updatePropertyLockOverrideSchema = z.object({
-  propertyId: z.string().uuid(),
+  propertyId: stringIdSchema,
   isLocked: z.boolean(),
   customFee: z.number().positive().optional(),
   reason: z.string().trim().optional()
@@ -34,7 +35,7 @@ export const reviewPaymentSchema = z.object({
 });
 
 export const manualUnlockSchema = z.object({
-  propertyId: z.string().uuid({ message: 'Valid property UUID is required' }),
+  propertyId: stringIdSchema,
   userEmail: z.string().trim().toLowerCase().email({ message: 'Valid recipient email is required' }),
   reason: z.string().trim().min(8, {
     message: 'An audit reason of at least 8 characters is mandatory for administrative manual unlock'

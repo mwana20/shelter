@@ -1,11 +1,12 @@
 import { z } from 'zod';
+import { stringIdSchema } from './common.schema.js';
 
 export const createGatewaySessionSchema = z.object({
-  propertyId: z.string().uuid({ message: 'Valid property UUID is required' })
+  propertyId: stringIdSchema
 });
 
 export const submitMerchantTransactionSchema = z.object({
-  propertyId: z.string().uuid({ message: 'Valid property UUID is required' }),
+  propertyId: stringIdSchema,
   transactionId: z
     .string()
     .trim()
@@ -17,5 +18,5 @@ export const submitMerchantTransactionSchema = z.object({
 });
 
 export const checkPaymentStatusSchema = z.object({
-  id: z.string().uuid({ message: 'Valid payment UUID is required' })
+  id: stringIdSchema
 });

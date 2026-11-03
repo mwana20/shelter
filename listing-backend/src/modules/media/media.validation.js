@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { stringIdSchema } from '../../validators/common.schema.js';
 
 export const presignedUrlSchema = z.object({
-  propertyId: z.string().uuid(),
+  propertyId: stringIdSchema,
   fileName: z.string().min(1),
   fileType: z.string().regex(/^image\/(jpeg|png|webp|avif)$/, {
     message: 'Only JPEG, PNG, WebP, and AVIF images are supported'

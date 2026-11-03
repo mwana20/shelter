@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sanitizePropertyLocation } from '../src/modules/properties/property.utils.js';
+import { uuidParamSchema } from '../src/validators/common.schema.js';
+import { submitMerchantTransactionSchema } from '../src/validators/payment.schema.js';
 
 test('Property Location Withholding Tests', async (t) => {
   const mockProperty = {
@@ -36,5 +38,17 @@ test('Property Location Withholding Tests', async (t) => {
     assert.equal(revealed.latitude, 1.07842);
     assert.equal(revealed.longitude, 34.17581);
     assert.equal(revealed.directionsGuide, 'Take Republic St up Gangama hill');
+  });
+
+  await t.test('Accepts real application IDs instead of requiring UUIDs', () => {
+    const parsedParam = uuidParamSchema.parse({ id: 'prop-mbale-1' });
+    const parsedPayment = submitMerchantTransactionSchema.parse({
+      propertyId: 'prop-mbale-1',
+      transactionId: 'TX-123_ABC'
+    });
+
+    assert.equal(parsedParam.id, 'prop-mbale-1');
+    assert.equal(parsedPayment.propertyId, 'prop-mbale-1');
+    assert.equal(parsedPayment.transactionId, 'TX-123_ABC');
   });
 });

@@ -1,5 +1,6 @@
 import { z } from 'zod';
+import { stringIdSchema } from '../../validators/common.schema.js';
 
 export const unlockPropertyParamSchema = z.object({
-  propertyId: z.string().uuid({ message: 'Valid property UUID is required' })
+  propertyId: stringIdSchema
 });
