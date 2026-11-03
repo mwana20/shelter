@@ -147,6 +147,12 @@ export class PropertyService {
   }
 
   static async createProperty(data, ownerId) {
+     const owner = await prisma.user.findUnique({ where: { id: ownerId } });
+     if (!owner) throw ApiError.unauthorized('User not found');
+     if ((owner.role === 'SELLER' || owner.role === 'AGENT') && owner.accountStatus !== 'APPROVED') {
+       throw ApiError.forbidden('Your account is pending admin approval. You cannot list properties until approved.');
+     }
+
     const slug = generateSlug(data.title);
 
     const property = await PropertyRepository.create({

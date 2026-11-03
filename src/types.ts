@@ -171,6 +171,7 @@ export interface UserProfile {
   neighborhood?: string;
   bio?: string;
   role: UserRole;
+  accountStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   avatar?: string;
   emailVerified: boolean;
   phoneVerified: boolean;

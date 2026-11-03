@@ -16,6 +16,12 @@ model User {
   dateOfBirth         DateTime
   country             String?
   role                Role                 @default(BUYER)
+   accountStatus       AccountStatus        @default(APPROVED)
+   approvedAt          DateTime?
+   approvedById        String?
+   approvedBy          User?                @relation("ApprovedOwners", fields: [approvedById], references: [id])
+   approvedUsers       User[]               @relation("ApprovedOwners")
+   notifications       Notification[]
   emailVerified       Boolean              @default(false)
   phoneVerified       Boolean              @default(false)
   companyName         String?
@@ -206,6 +212,22 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String   @db.Text
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+
 enum Role {
   BUYER
   SELLER
@@ -242,4 +264,10 @@ enum PaymentStatus {
 enum VerificationMode {
   AUTOMATIC
   MANUAL_ADMIN_REVIEW
+}
+
+enum AccountStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

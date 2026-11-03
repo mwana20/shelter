@@ -46,6 +46,7 @@ export class AuthService {
         neighborhood: data.neighborhood?.trim() || null,
         bio: data.bio?.trim() || null,
         role: data.role || 'BUYER',
+         accountStatus: (data.role === 'SELLER' || data.role === 'AGENT') ? 'PENDING' : 'APPROVED',
         companyName: data.companyName?.trim() || null,
         agencyLicense: data.agencyLicense?.trim() || null,
         emailVerified: false
@@ -119,6 +120,7 @@ export class AuthService {
         email: user.email,
         fullName: user.fullName,
         role: user.role,
+         accountStatus: user.accountStatus,
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified
       },

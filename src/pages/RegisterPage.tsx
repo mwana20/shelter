@@ -137,7 +137,12 @@ export const RegisterPage: React.FC = () => {
         agencyLicense: role === 'agent' || role === 'broker' ? agencyLicense.trim() : undefined
       });
 
-      showNotification(result.message || 'Registration successful! Please verify your email.', 'success');
+      showNotification(
+        role === 'owner' || role === 'agent' || role === 'landlord' || role === 'broker'
+          ? 'Registration successful! Your account is pending admin approval. Please verify your email.'
+          : (result.message || 'Registration successful! Please verify your email.'),
+        'success'
+      );
       setCurrentUser({
           id: result.userId,
           name: name.trim(),

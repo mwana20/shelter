@@ -25,6 +25,7 @@ import { ListingType, PropertyType, Property } from '../types';
 import { CurrencyCode, RentalPeriod, formatPrice } from '../utils/currency';
 import { GLOBAL_LOCATIONS, COUNTRY_ADMIN_CONFIGS, POPULAR_COUNTRIES } from '../data/mockLocations';
 import { propertyImages } from '../assets/propertyImages';
+import { createPropertyWithBackend } from '../services/propertyApi';
 
 export const ListPropertyPage: React.FC = () => {
   const { addProperty, currentUser, setCurrentPage, openPropertyDetail, showNotification } = useApp();
@@ -114,7 +115,7 @@ export const ListPropertyPage: React.FC = () => {
     setPhotoSlots(photoSlots.filter((_, i) => i !== index));
   };
 
-  const handlePublish = (status: 'Published' | 'Draft' = 'Published') => {
+  const handlePublish = async (status: 'Published' | 'Draft' = 'Published') => {
     if (!title.trim()) {
       showNotification('Please enter a listing title.', 'error');
       setCurrentStep(1);
@@ -123,6 +124,31 @@ export const ListPropertyPage: React.FC = () => {
 
     const numericPrice = parseFloat(price.replace(/,/g, '')) || 0;
     const finalLocation = `${neighborhood || district || region}, ${country}`;
+
+    const backendResult = await createPropertyWithBackend({
+      title: title.trim(),
+      description,
+      propertyType,
+      listingType: (listingType === 'Rent' ? 'RENT' : listingType === 'Lease' ? 'LEASE' : 'SALE') as 'SALE' | 'RENT' | 'LEASE',
+      price: numericPrice,
+      currency,
+      bedrooms: parseInt(bedrooms) || 0,
+      bathrooms: parseFloat(bathrooms) || 0,
+      landSizeSqFt: parseInt(sqft) || undefined,
+      country,
+      region: region || 'Metropolitan Area',
+      district: district || region || 'Central District',
+      neighborhood: neighborhood || undefined,
+      exactAddress: streetAddress || undefined,
+      latitude: 1.0784,
+      longitude: 34.1756
+    });
+
+    if (!backendResult.success) {
+      showNotification(backendResult.error || 'Property saved locally; backend sync failed.', 'error');
+    } else {
+      showNotification('Property submitted to backend for admin review.', 'success');
+    }
 
     addProperty({
       title: title.trim(),

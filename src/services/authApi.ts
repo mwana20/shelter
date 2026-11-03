@@ -21,6 +21,7 @@ interface BackendUser {
   neighborhood?: string | null;
   bio?: string | null;
   role: BackendRole;
+  accountStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   emailVerified: boolean;
   phoneVerified: boolean;
   companyName?: string | null;
@@ -96,6 +97,7 @@ function mapBackendUser(backendUser: BackendUser): UserProfile {
     neighborhood: backendUser.neighborhood || undefined,
     bio: backendUser.bio || undefined,
     role: roleMap[backendUser.role],
+    accountStatus: backendUser.accountStatus,
     emailVerified: backendUser.emailVerified,
     phoneVerified: backendUser.phoneVerified,
     preferredLanguage: 'en',

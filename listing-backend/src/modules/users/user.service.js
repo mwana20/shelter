@@ -102,6 +102,8 @@ export class UserService {
           fullName: true,
           phone: true,
           role: true,
+         accountStatus: true,
+         approvedAt: true,
           emailVerified: true,
           createdAt: true
         }

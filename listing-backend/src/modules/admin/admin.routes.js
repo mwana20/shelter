@@ -25,7 +25,16 @@ router.post('/property-lock-override', validate({ body: updatePropertyLockOverri
 router.get('/payments', validate({ query: paginationQuerySchema }), AdminController.listAllPayments);
 router.put('/payments/:id', validate({ params: uuidParamSchema, body: reviewPaymentSchema }), AdminController.reviewPayment);
 
+// Owner approval
+router.get('/owners', validate({ query: paginationQuerySchema }), AdminController.listPendingOwners);
+router.put('/owners/:id/approve', validate({ params: uuidParamSchema }), AdminController.approveOwner);
+router.put('/owners/:id/reject', validate({ params: uuidParamSchema }), AdminController.rejectOwner);
+
 // Manual support unlock with audit logging
 router.post('/payments/manual-unlock', validate({ body: manualUnlockSchema }), AdminController.manualUnlock);
+// Property approval
+router.get('/properties', validate({ query: paginationQuerySchema }), AdminController.listPendingProperties);
+router.put('/properties/:id/approve', validate({ params: uuidParamSchema }), AdminController.approveProperty);
+router.put('/properties/:id/reject', validate({ params: uuidParamSchema }), AdminController.rejectProperty);
 
 export default router;

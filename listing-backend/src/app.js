@@ -15,6 +15,7 @@ import mediaRoutes from './modules/media/media.routes.js';
 import paymentRoutes from './modules/payments/payment.routes.js';
 import unlockRoutes from './modules/unlocks/unlock.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
+import notificationRoutes from './modules/notifications/inapp.routes.js';
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use(`${prefix}/media`, mediaRoutes);
 app.use(`${prefix}/payments`, paymentRoutes);
 app.use(`${prefix}/unlocks`, unlockRoutes);
 app.use(`${prefix}/admin`, adminRoutes);
+app.use(`${prefix}/notifications`, notificationRoutes);
 
 // Catch 404 routes
 app.use(notFound);

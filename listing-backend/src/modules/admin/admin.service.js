@@ -2,6 +2,15 @@ import { prisma } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { getPagination, formatPaginationResponse } from '../../utils/pagination.js';
 import { logAudit } from '../../middlewares/auditLog.js';
+import { sendEmail } from '../notifications/email.service.js';
+
+async function sendEmailSafe(to, subject, html) {
+  try {
+    await sendEmail({ to, subject, html });
+  } catch (err) {
+    console.error('Email send failed:', err?.message || err);
+  }
+}
 
 export class AdminService {
   static async getPaymentSettings() {
@@ -281,5 +290,191 @@ export class AdminService {
       message: `Property location successfully unlocked for ${user.email}. Audit log recorded.`,
       unlock
     };
+  }
+
+  static async listPendingOwners(query = {}) {
+    const { page, limit, skip } = getPagination(query, 20);
+    const where = { role: { in: ['SELLER', 'AGENT'] } };
+    if (query.status && query.status !== 'ALL') {
+      where.accountStatus = query.status.toUpperCase();
+    }
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          role: true,
+          accountStatus: true,
+          approvedAt: true,
+          companyName: true,
+          agencyLicense: true,
+          country: true,
+          createdAt: true
+        }
+      }),
+      prisma.user.count({ where })
+    ]);
+    return formatPaginationResponse(users, total, page, limit);
+  }
+
+  static async approveOwner(ownerId, adminUser, req) {
+    const user = await prisma.user.findUnique({ where: { id: ownerId } });
+    if (!user) throw ApiError.notFound('User not found');
+    if (user.role !== 'SELLER' && user.role !== 'AGENT') {
+      throw ApiError.badRequest('Only seller/agent accounts require approval');
+    }
+    const updated = await prisma.user.update({
+      where: { id: ownerId },
+      data: { accountStatus: 'APPROVED', approvedAt: new Date(), approvedById: adminUser.id }
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: user.id,
+        type: 'ACCOUNT_APPROVED',
+        title: 'Account Approved',
+        message: 'Your seller account has been approved. You can now list properties.',
+        link: '/#/seller-dashboard'
+      }
+    });
+
+    await sendEmailSafe(user.email, 'Your Sheltered account has been approved', `<h2>Account Approved</h2><p>Dear ${user.fullName},</p><p>Your seller account has been approved. You can now list properties.</p>`);
+
+    await logAudit({
+      actorId: adminUser.id,
+      action: 'APPROVE_OWNER',
+      details: { ownerId, email: user.email },
+      targetType: 'USER',
+      targetId: ownerId,
+      req
+    });
+
+    return { success: true, message: 'Owner account approved', user: updated };
+  }
+
+  static async rejectOwner(ownerId, reason, adminUser, req) {
+    const user = await prisma.user.findUnique({ where: { id: ownerId } });
+    if (!user) throw ApiError.notFound('User not found');
+    const updated = await prisma.user.update({
+      where: { id: ownerId },
+      data: { accountStatus: 'REJECTED', approvedById: adminUser.id }
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: user.id,
+        type: 'ACCOUNT_REJECTED',
+        title: 'Account Rejected',
+        message: reason ? `Your account application was rejected: ${reason}` : 'Your account application was rejected.',
+        link: '/#/sign-in'
+      }
+    });
+
+    await sendEmailSafe(user.email, 'Your Sheltered account application update', `<h2>Account Application Update</h2><p>Dear ${user.fullName},</p><p>Your account application was not approved.</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}`);
+
+    await logAudit({
+      actorId: adminUser.id,
+      action: 'REJECT_OWNER',
+      details: { ownerId, email: user.email, reason },
+      targetType: 'USER',
+      targetId: ownerId,
+      req
+    });
+
+    return { success: true, message: 'Owner account rejected', user: updated };
+  }
+  static async listPendingProperties(query = {}) {
+    const { page, limit, skip } = getPagination(query, 20);
+    const where = {};
+    if (query.status && query.status !== 'ALL') {
+      where.status = query.status.toUpperCase();
+    } else {
+      where.status = 'PENDING_REVIEW';
+    }
+    const [properties, total] = await Promise.all([
+      prisma.property.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { owner: { select: { id: true, email: true, fullName: true } }, media: true }
+      }),
+      prisma.property.count({ where })
+    ]);
+    return formatPaginationResponse(properties, total, page, limit);
+  }
+
+  static async approveProperty(propertyId, adminUser, req) {
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw ApiError.notFound('Property not found');
+    const updated = await prisma.property.update({
+      where: { id: propertyId },
+      data: { status: 'ACTIVE' }
+    });
+
+    const owner = await prisma.user.findUnique({ where: { id: property.ownerId } });
+    if (owner) {
+      await prisma.notification.create({
+        data: {
+          userId: owner.id,
+          type: 'PROPERTY_APPROVED',
+          title: 'Property Approved',
+          message: `Your property "${property.title}" has been approved and is now live.`,
+          link: `/#/property-detail?id=${property.id}`
+        }
+      });
+      await sendEmailSafe(owner.email, `Your property has been approved: ${property.title}`, `<h2>Property Approved</h2><p>Dear ${owner.fullName},</p><p>Your property <strong>${property.title}</strong> has been approved and is now live.</p>`);
+    }
+
+    await logAudit({
+      actorId: adminUser.id,
+      action: 'APPROVE_PROPERTY',
+      details: { propertyId, title: property.title },
+      targetType: 'PROPERTY',
+      targetId: propertyId,
+      req
+    });
+
+    return { success: true, message: 'Property approved', property: updated };
+  }
+
+  static async rejectProperty(propertyId, reason, adminUser, req) {
+    const property = await prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) throw ApiError.notFound('Property not found');
+    const updated = await prisma.property.update({
+      where: { id: propertyId },
+      data: { status: 'REJECTED' }
+    });
+
+    const owner = await prisma.user.findUnique({ where: { id: property.ownerId } });
+    if (owner) {
+      await prisma.notification.create({
+        data: {
+          userId: owner.id,
+          type: 'PROPERTY_REJECTED',
+          title: 'Property Rejected',
+          message: reason ? `Your property "${property.title}" was rejected: ${reason}` : `Your property "${property.title}" was rejected.`,
+          link: '/#/seller-dashboard'
+        }
+      });
+      await sendEmailSafe(owner.email, `Property review update: ${property.title}`, `<h2>Property Review Update</h2><p>Dear ${owner.fullName},</p><p>Your property <strong>${property.title}</strong> was not approved.</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}`);
+    }
+
+    await logAudit({
+      actorId: adminUser.id,
+      action: 'REJECT_PROPERTY',
+      details: { propertyId, title: property.title, reason },
+      targetType: 'PROPERTY',
+      targetId: propertyId,
+      req
+    });
+
+    return { success: true, message: 'Property rejected', property: updated };
   }
 }
