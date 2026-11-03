@@ -5,6 +5,7 @@ import { verifyAgeRequirement } from '../../utils/age.js';
 import {
   generateAccessToken,
   generateRefreshToken,
+  verifyRefreshToken,
   generateRandomToken,
   generateNumericCode
 } from '../../utils/token.js';
@@ -126,6 +127,29 @@ export class AuthService {
       },
       accessToken,
       refreshToken
+    };
+  }
+
+  static async refreshSession(refreshToken) {
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch {
+      throw ApiError.unauthorized('Your session has expired. Please sign in again.');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, email: true, role: true }
+    });
+    if (!user) {
+      throw ApiError.unauthorized('User associated with this session no longer exists.');
+    }
+
+    const payload = { id: user.id, email: user.email, role: user.role };
+    return {
+      accessToken: generateAccessToken(payload),
+      refreshToken: generateRefreshToken(payload)
     };
   }
 

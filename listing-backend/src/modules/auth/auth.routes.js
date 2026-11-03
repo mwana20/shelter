@@ -4,6 +4,7 @@ import { validate } from '../../middlewares/validate.js';
 import {
   registerSchema,
   loginSchema,
+  refreshSessionSchema,
   verifyEmailSchema,
   resendVerificationSchema,
   forgotPasswordSchema,
@@ -16,6 +17,13 @@ import {
 } from '../../middlewares/rateLimiter.js';
 
 const router = Router();
+
+router.post(
+  '/refresh',
+  authRateLimiter,
+  validate({ body: refreshSessionSchema }),
+  AuthController.refresh
+);
 
 router.post(
   '/register',

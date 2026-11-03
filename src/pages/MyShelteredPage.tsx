@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatUGX } from '../utils/format';
+import { ProfileSettings } from '../components/ProfileSettings';
 
 export const MyShelteredPage: React.FC = () => {
   const {
@@ -31,22 +32,7 @@ export const MyShelteredPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'viewings' | 'enquiries' | 'saved' | 'profile'>('viewings');
 
   // Profile edit state
-  const [name, setName] = useState(currentUser.name);
-  const [phone, setPhone] = useState(currentUser.phone);
-  const [email, setEmail] = useState(currentUser.email);
-
   const savedProperties = properties.filter((p) => savedPropertyIds.includes(p.id));
-
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentUser({
-      ...currentUser,
-      name,
-      phone,
-      email
-    });
-    showNotification('Profile updated successfully', 'success');
-  };
 
   return (
     <div className="bg-neutral-50/50 py-12 px-4 sm:px-6 lg:px-8 min-h-screen">
@@ -54,9 +40,13 @@ export const MyShelteredPage: React.FC = () => {
         {/* User Greeting Header */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold text-xl shadow-md">
-              {currentUser.name.charAt(0)}
-            </div>
+            {currentUser.avatar ? (
+              <img src={currentUser.avatar} alt={currentUser.name} className="h-16 w-16 rounded-2xl object-cover shadow-md" />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold text-xl shadow-md">
+                {currentUser.name.charAt(0)}
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-neutral-900 font-serif-display">
@@ -267,42 +257,13 @@ export const MyShelteredPage: React.FC = () => {
 
         {/* TAB 4: PROFILE MANAGEMENT */}
         {activeTab === 'profile' && (
-          <form onSubmit={handleSaveProfile} className="bg-white rounded-3xl p-8 border border-neutral-200/90 max-w-lg space-y-4 shadow-xs">
-            <h3 className="text-lg font-bold text-neutral-900">Personal Information</h3>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-700 mb-1">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-700 mb-1">Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-700 mb-1">Phone Number</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full text-xs font-medium border border-neutral-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900"
-              />
-            </div>
-            <button
-              type="submit"
-              className="bg-slate-950 text-white text-xs font-bold py-2.5 px-5 rounded-xl hover:bg-slate-800 transition shadow-xs"
-            >
-              Update Profile
-            </button>
-          </form>
+          <div className="bg-white rounded-3xl p-8 border border-neutral-200/90 max-w-2xl shadow-xs">
+            <ProfileSettings
+              currentUser={currentUser}
+              onSaved={setCurrentUser}
+              showNotification={showNotification}
+            />
+          </div>
         )}
       </div>
     </div>

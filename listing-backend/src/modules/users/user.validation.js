@@ -10,5 +10,16 @@ export const updateProfileSchema = z.object({
   bio: z.string().trim().max(2000).optional(),
   companyName: z.string().trim().optional(),
   agencyLicense: z.string().trim().optional(),
-  avatarUrl: z.string().url().optional()
+  avatarUrl: z.string().refine((value) => {
+    if (/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(value)) {
+      return value.length <= 2_000_000;
+    }
+
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' || url.protocol === 'http:';
+    } catch {
+      return false;
+    }
+  }, { message: 'Profile image must be an HTTP(S) URL or a compressed JPEG image' }).optional()
 });

@@ -6,6 +6,7 @@ export const API_BASE_URL =
     ? 'http://localhost:5000/api/v1'
     : configuredApiBaseUrl.replace(/\/$/, '');
 const ACCESS_TOKEN_KEY = 'sheltered_access_token';
+const REFRESH_TOKEN_KEY = 'sheltered_refresh_token';
 
 type BackendRole = 'BUYER' | 'SELLER' | 'AGENT' | 'ADMIN';
 
@@ -35,6 +36,7 @@ interface LoginResponse {
   data?: {
     user?: BackendUser;
     accessToken?: string;
+    refreshToken?: string;
   };
 }
 
@@ -80,9 +82,23 @@ const roleMap: Record<BackendRole, UserRole> = {
   ADMIN: 'admin'
 };
 
-export const getAccessToken = (): string | null => sessionStorage.getItem(ACCESS_TOKEN_KEY);
+export const getAccessToken = (): string | null => {
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (token) return token;
 
-export const clearAuthSession = (): void => sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  const legacyToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  if (legacyToken) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, legacyToken);
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  }
+  return legacyToken;
+};
+
+export const clearAuthSession = (): void => {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+};
 
 function mapBackendUser(backendUser: BackendUser): UserProfile {
   return {
@@ -111,12 +127,23 @@ function mapBackendUser(backendUser: BackendUser): UserProfile {
 }
 
 export async function getAuthenticatedUser(): Promise<UserProfile> {
-  const token = getAccessToken();
+  let token = getAccessToken();
   if (!token) throw new Error('No active session.');
 
-  const response = await fetch(`${API_BASE_URL}/users/profile`, {
+  let response = await fetch(`${API_BASE_URL}/users/profile`, {
     headers: { Authorization: `Bearer ${token}` }
   });
+  if (response.status === 401 && localStorage.getItem(REFRESH_TOKEN_KEY)) {
+    const refreshed = await postAuth<{ accessToken: string; refreshToken: string }>('refresh', {
+      refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY)
+    });
+    token = refreshed.data!.accessToken;
+    localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.data!.refreshToken);
+    response = await fetch(`${API_BASE_URL}/users/profile`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+  }
   const result = (await response.json().catch(() => null)) as ApiResponse<BackendUser> | null;
   if (!response.ok || !result?.success || !result.data) {
     throw new Error(result?.message || 'Your session has expired. Please sign in again.');
@@ -128,12 +155,12 @@ export async function getAuthenticatedUser(): Promise<UserProfile> {
 export async function signInWithBackend(email: string, password: string): Promise<UserProfile> {
   const result = await postAuth<LoginResponse['data']>('login', { email, password });
 
-  if (!result.data?.user || !result.data.accessToken) {
+  if (!result.data?.user || !result.data.accessToken || !result.data.refreshToken) {
     throw new Error(result?.message || 'Sign-in failed. Check your email and password.');
   }
 
-  const backendUser = result.data.user;
-  sessionStorage.setItem(ACCESS_TOKEN_KEY, result.data.accessToken);
+  localStorage.setItem(ACCESS_TOKEN_KEY, result.data.accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, result.data.refreshToken);
   try {
     return await getAuthenticatedUser();
   } catch (error) {

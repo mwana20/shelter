@@ -60,6 +60,10 @@ export const loginSchema = z.object({
   password: z.string().min(1, { message: 'Password is required' })
 });
 
+export const refreshSessionSchema = z.object({
+  refreshToken: z.string().min(1, { message: 'Refresh token is required' })
+});
+
 export const verifyEmailSchema = z.object({
   token: z.string().trim().optional(),
   code: z.string().trim().length(6, { message: 'Security code must be exactly 6 digits' }).optional(),

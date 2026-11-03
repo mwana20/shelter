@@ -27,6 +27,7 @@ import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 import { SUPPORTED_CURRENCY_CODES } from '../utils/currency';
 import { POPULAR_COUNTRIES } from '../data/mockLocations';
 import { updateProfileWithBackend } from '../services/authApi';
+import { ProfileSettings } from '../components/ProfileSettings';
 
 type DashboardTab =
   | 'overview'
@@ -747,6 +748,12 @@ export const SellerDashboardPage: React.FC = () => {
         {/* TAB 6: SETTINGS */}
         {activeTab === 'settings' && (
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-6 max-w-2xl">
+            <ProfileSettings
+              currentUser={currentUser}
+              onSaved={setCurrentUser}
+              showNotification={showNotification}
+            />
+            <hr className="border-slate-200" />
             <div>
               <h3 className="text-base font-bold text-slate-900">Account & Notification Preferences</h3>
               <p className="text-xs text-slate-500">Manage language, currency, and security notifications</p>

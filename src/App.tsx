@@ -12,6 +12,7 @@ import { AgentsPage } from './pages/AgentsPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { SellerDashboardPage } from './pages/SellerDashboardPage';
+import { MyShelteredPage } from './pages/MyShelteredPage';
 import { SignInPage } from './pages/SignInPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
@@ -32,7 +33,7 @@ import { AuthModal } from './components/AuthModal';
 import { FloatingActions } from './components/FloatingActions';
 
 const AppContent: React.FC = () => {
-  const { currentPage, isAuthenticated, isAdmin } = useApp();
+  const { currentPage, isAuthenticated, isAuthReady, currentUser, isAdmin } = useApp();
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -76,7 +77,11 @@ const AppContent: React.FC = () => {
         return <ListPropertyPage />;
       case 'seller-dashboard':
       case 'my-sheltered':
-        return isAuthenticated ? <SellerDashboardPage /> : <SignInPage />;
+        if (!isAuthReady) return <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-600">Restoring your session...</div>;
+        if (!isAuthenticated) return <SignInPage />;
+        return currentUser.role === 'buyer' || currentUser.role === 'tenant'
+          ? <MyShelteredPage />
+          : <SellerDashboardPage />;
       case 'sign-in':
         return <SignInPage />;
       case 'create-account':
@@ -89,10 +94,13 @@ const AppContent: React.FC = () => {
         return <EmailVerificationPage />;
       case 'admin':
       case 'admin-dashboard':
+        if (!isAuthReady) return <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-600">Restoring your session...</div>;
         return isAdmin ? <AdminDashboardPage /> : <SignInPage />;
       case 'my-payments':
+        if (!isAuthReady) return <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-600">Restoring your session...</div>;
         return isAuthenticated ? <MyPaymentsPage /> : <SignInPage />;
       case 'saved':
+        if (!isAuthReady) return <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-600">Restoring your session...</div>;
         return isAuthenticated ? <SavedHomesPage /> : <SignInPage />;
       case 'areas':
       case 'explore':

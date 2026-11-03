@@ -61,15 +61,19 @@ export class UserService {
         email: true,
         fullName: true,
         phone: true,
+        dateOfBirth: true,
         country: true,
         region: true,
         district: true,
         neighborhood: true,
         bio: true,
         role: true,
+        accountStatus: true,
         companyName: true,
         agencyLicense: true,
-        avatarUrl: true
+        avatarUrl: true,
+        emailVerified: true,
+        phoneVerified: true
       }
     });
 

@@ -14,6 +14,11 @@ export class AuthController {
     res.status(200).json(ApiResponse.success(result, 'Signed in successfully.'));
   });
 
+  static refresh = asyncHandler(async (req, res) => {
+    const result = await AuthService.refreshSession(req.body.refreshToken);
+    res.status(200).json(ApiResponse.success(result, 'Session refreshed successfully.'));
+  });
+
   static verifyEmail = asyncHandler(async (req, res) => {
     const result = await AuthService.verifyEmail(req.body);
     res.status(200).json(ApiResponse.success(result, 'Email verified successfully. You may now access your account.'));

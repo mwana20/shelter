@@ -83,6 +83,7 @@ export interface AppContextType {
   // User & Auth
   currentUser: UserProfile;
   setCurrentUser: (user: UserProfile) => void;
+  isAuthReady: boolean;
   isAuthenticated: boolean;
   logout: () => void;
   isAdmin: boolean;
@@ -528,7 +529,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    localStorage.removeItem('sheltered_current_user_v3');
     if (!getAccessToken()) {
       setAuthReady(true);
       return;
@@ -1066,6 +1066,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         incrementViews,
         currentUser,
         setCurrentUser,
+        isAuthReady: authReady,
         isAuthenticated,
         logout,
         isAdmin,
