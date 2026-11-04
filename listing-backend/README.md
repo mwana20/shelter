@@ -128,7 +128,7 @@ npm run prisma:seed
 ```
 
 The seed command does not create a default admin password. The administrator signs in through the normal sign-in page and receives admin access only because the database role is `ADMIN`.
-For an existing deployment, apply checked-in schema changes before starting the updated backend with `npx prisma migrate deploy` from `listing-backend`. Do not use `prisma migrate dev` against production.
+`npm install` runs `prisma generate` automatically through the `postinstall` script. The production `npm start` command runs `prisma migrate deploy` before starting the API, so the generated client and additive schema migrations are both applied when the service deploys. The Prisma CLI is a production dependency for these deployment steps. Do not use `prisma migrate dev` against production.
 
 ### Start Server
 ```bash
