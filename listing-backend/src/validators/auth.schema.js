@@ -61,7 +61,7 @@ export const loginSchema = z.object({
 });
 
 export const refreshSessionSchema = z.object({
-  refreshToken: z.string().min(1, { message: 'Refresh token is required' })
+  refreshToken: z.string().min(1).optional()
 });
 
 export const verifyEmailSchema = z.object({

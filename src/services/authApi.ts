@@ -36,7 +36,6 @@ interface LoginResponse {
   data?: {
     user?: BackendUser;
     accessToken?: string;
-    refreshToken?: string;
   };
 }
 
@@ -61,6 +60,7 @@ async function postAuth<T>(path: string, payload: unknown): Promise<ApiResponse<
     response = await fetch(`${API_BASE_URL}/auth/${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     });
   } catch {
@@ -75,6 +75,27 @@ async function postAuth<T>(path: string, payload: unknown): Promise<ApiResponse<
   return result;
 }
 
+let refreshInFlight: Promise<string> | null = null;
+
+function refreshAccessToken(): Promise<string> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      const legacyRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      const refreshed = await postAuth<{ accessToken: string }>(
+        'refresh',
+        legacyRefreshToken ? { refreshToken: legacyRefreshToken } : {}
+      );
+      const accessToken = refreshed.data!.accessToken;
+      sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      return accessToken;
+    })().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
 const roleMap: Record<BackendRole, UserRole> = {
   BUYER: 'buyer',
   SELLER: 'owner',
@@ -83,21 +104,21 @@ const roleMap: Record<BackendRole, UserRole> = {
 };
 
 export const getAccessToken = (): string | null => {
-  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const token = sessionStorage.getItem(ACCESS_TOKEN_KEY);
   if (token) return token;
 
-  const legacyToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  const legacyToken = localStorage.getItem(ACCESS_TOKEN_KEY);
   if (legacyToken) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, legacyToken);
-    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, legacyToken);
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
   }
   return legacyToken;
 };
 
 export const clearAuthSession = (): void => {
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
 };
 
 function mapBackendUser(backendUser: BackendUser): UserProfile {
@@ -131,16 +152,13 @@ export async function getAuthenticatedUser(): Promise<UserProfile> {
   if (!token) throw new Error('No active session.');
 
   let response = await fetch(`${API_BASE_URL}/users/profile`, {
+    credentials: 'include',
     headers: { Authorization: `Bearer ${token}` }
   });
-  if (response.status === 401 && localStorage.getItem(REFRESH_TOKEN_KEY)) {
-    const refreshed = await postAuth<{ accessToken: string; refreshToken: string }>('refresh', {
-      refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY)
-    });
-    token = refreshed.data!.accessToken;
-    localStorage.setItem(ACCESS_TOKEN_KEY, token);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshed.data!.refreshToken);
+  if (response.status === 401) {
+    token = await refreshAccessToken();
     response = await fetch(`${API_BASE_URL}/users/profile`, {
+      credentials: 'include',
       headers: { Authorization: 'Bearer ' + token }
     });
   }
@@ -152,20 +170,42 @@ export async function getAuthenticatedUser(): Promise<UserProfile> {
   return mapBackendUser(result.data);
 }
 
+export async function refreshAuthenticatedSession(): Promise<void> {
+  if (!getAccessToken()) throw new Error('No active session.');
+  await refreshAccessToken();
+}
+
 export async function signInWithBackend(email: string, password: string): Promise<UserProfile> {
   const result = await postAuth<LoginResponse['data']>('login', { email, password });
 
-  if (!result.data?.user || !result.data.accessToken || !result.data.refreshToken) {
+  if (!result.data?.user || !result.data.accessToken) {
     throw new Error(result?.message || 'Sign-in failed. Check your email and password.');
   }
 
-  localStorage.setItem(ACCESS_TOKEN_KEY, result.data.accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, result.data.refreshToken);
+  sessionStorage.setItem(ACCESS_TOKEN_KEY, result.data.accessToken);
   try {
     return await getAuthenticatedUser();
   } catch (error) {
     clearAuthSession();
     throw error;
+  }
+}
+
+export async function signOutWithBackend(keepalive = false): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      keepalive
+    });
+  } catch {
+    throw new Error('Unable to reach the backend to invalidate your session.');
+  }
+
+  const result = (await response.json().catch(() => null)) as ApiResponse<null> | null;
+  if (!response.ok || !result?.success) {
+    throw new Error(result?.message || 'The server could not invalidate your session.');
   }
 }
 
@@ -228,6 +268,7 @@ export async function updateProfileWithBackend(payload: {
 
   const response = await fetch(`${API_BASE_URL}/users/profile`, {
     method: 'PATCH',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`

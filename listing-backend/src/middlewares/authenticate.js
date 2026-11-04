@@ -35,6 +35,20 @@ export const authenticate = async (req, res, next) => {
       throw ApiError.unauthorized('User associated with this token no longer exists');
     }
 
+    if (decoded.sid) {
+      const session = await prisma.authSession.findFirst({
+        where: {
+          id: decoded.sid,
+          userId: user.id,
+          expiresAt: { gt: new Date() }
+        },
+        select: { id: true }
+      });
+      if (!session) {
+        throw ApiError.unauthorized('Your session has expired. Please sign in again.');
+      }
+    }
+
     req.user = user;
     next();
   } catch (error) {
@@ -62,7 +76,15 @@ export const optionalAuthenticate = async (req, res, next) => {
           emailVerified: true
         }
       });
-      if (user) {
+      const sessionIsActive = !decoded.sid || await prisma.authSession.findFirst({
+        where: {
+          id: decoded.sid,
+          userId: decoded.id,
+          expiresAt: { gt: new Date() }
+        },
+        select: { id: true }
+      });
+      if (user && sessionIsActive) {
         req.user = user;
       }
     }

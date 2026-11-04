@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -22,6 +22,7 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { MyPaymentsPage } from './pages/MyPaymentsPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { refreshAuthenticatedSession } from './services/authApi';
 
 // Modals
 import { ImageGalleryModal } from './components/ImageGalleryModal';
@@ -33,7 +34,73 @@ import { AuthModal } from './components/AuthModal';
 import { FloatingActions } from './components/FloatingActions';
 
 const AppContent: React.FC = () => {
-  const { currentPage, isAuthenticated, isAuthReady, currentUser, isAdmin } = useApp();
+  const { currentPage, isAuthenticated, isAuthReady, currentUser, isAdmin, logout, setCurrentPage } = useApp();
+  const logoutRef = useRef(logout);
+  logoutRef.current = logout;
+
+  useEffect(() => {
+    const handleExternalNavigation = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest('a[href]');
+      if (!(link instanceof HTMLAnchorElement)) return;
+
+      const destination = new URL(link.href, window.location.href);
+      if (
+        (destination.protocol === 'http:' || destination.protocol === 'https:') &&
+        destination.origin !== window.location.origin
+      ) {
+        void logout(true);
+      }
+    };
+
+    document.addEventListener('click', handleExternalNavigation, true);
+    return () => document.removeEventListener('click', handleExternalNavigation, true);
+  }, [logout]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const refreshTimer = window.setInterval(() => {
+      void refreshAuthenticatedSession().catch(() => {
+        void logoutRef.current();
+      });
+    }, 10 * 60 * 1000);
+
+    return () => window.clearInterval(refreshTimer);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthReady || !isAuthenticated || currentPage !== 'sign-in') return;
+    setCurrentPage(isAdmin
+      ? 'admin'
+      : currentUser.role === 'buyer' || currentUser.role === 'tenant'
+        ? 'my-sheltered'
+        : 'seller-dashboard');
+  }, [currentPage, currentUser.role, isAdmin, isAuthReady, isAuthenticated, setCurrentPage]);
+
+  const renderRestoringSession = () => (
+    <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-live="polite">
+      <div className="flex items-center gap-3 rounded-xl bg-white px-5 py-4 text-sm text-slate-600 shadow-sm">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-600" />
+        <span>Restoring your Sheltered session...</span>
+      </div>
+    </div>
+  );
+
+  const accessDenied = (
+    <section className="mx-auto flex min-h-[50vh] max-w-xl flex-col items-center justify-center px-4 text-center">
+      <h1 className="text-xl font-bold text-slate-900">Access denied</h1>
+      <p className="mt-2 text-sm text-slate-600">Your account does not have permission to view this portal.</p>
+      <button
+        type="button"
+        onClick={() => setCurrentPage('seller-dashboard')}
+        className="mt-5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+      >
+        Return to your portal
+      </button>
+    </section>
+  );
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -77,8 +144,9 @@ const AppContent: React.FC = () => {
         return <ListPropertyPage />;
       case 'seller-dashboard':
       case 'my-sheltered':
-        if (!isAuthReady) return <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-600">Restoring your session...</div>;
+        if (!isAuthReady) return renderRestoringSession();
         if (!isAuthenticated) return <SignInPage />;
+        if (isAdmin) return <AdminDashboardPage />;
         return currentUser.role === 'buyer' || currentUser.role === 'tenant'
           ? <MyShelteredPage />
           : <SellerDashboardPage />;
@@ -94,13 +162,14 @@ const AppContent: React.FC = () => {
         return <EmailVerificationPage />;
       case 'admin':
       case 'admin-dashboard':
-        if (!isAuthReady) return <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-600">Restoring your session...</div>;
-        return isAdmin ? <AdminDashboardPage /> : <SignInPage />;
+        if (!isAuthReady) return renderRestoringSession();
+        if (!isAuthenticated) return <SignInPage />;
+        return isAdmin ? <AdminDashboardPage /> : accessDenied;
       case 'my-payments':
-        if (!isAuthReady) return <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-600">Restoring your session...</div>;
+        if (!isAuthReady) return renderRestoringSession();
         return isAuthenticated ? <MyPaymentsPage /> : <SignInPage />;
       case 'saved':
-        if (!isAuthReady) return <div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-600">Restoring your session...</div>;
+        if (!isAuthReady) return renderRestoringSession();
         return isAuthenticated ? <SavedHomesPage /> : <SignInPage />;
       case 'areas':
       case 'explore':
@@ -120,11 +189,34 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const isAuthenticationPage = [
+    'sign-in',
+    'create-account',
+    'forgot-password',
+    'reset-password',
+    'email-verification'
+  ].includes(currentPage);
+  const isPortalPage = [
+    'seller-dashboard',
+    'my-sheltered',
+    'my-payments',
+    'saved',
+    'admin',
+    'admin-dashboard'
+  ].includes(currentPage);
+  const showAuthCopyright = isAuthenticationPage || (isPortalPage && isAuthReady && !isAuthenticated);
+
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 text-neutral-900">
       <Navbar />
       <main className="flex-1">{renderCurrentPage()}</main>
-      <Footer />
+      {showAuthCopyright ? (
+        <footer className="shrink-0 px-4 py-3 text-center text-[11px] text-slate-500">
+          © 2026 Sheltered Global Real Estate Marketplace. All rights reserved.
+        </footer>
+      ) : !isAuthenticationPage && !isPortalPage ? (
+        <Footer />
+      ) : null}
 
       {/* Floating Quick WhatsApp Chat & Back to Top Arrow */}
       <FloatingActions />

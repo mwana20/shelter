@@ -85,7 +85,7 @@ export interface AppContextType {
   setCurrentUser: (user: UserProfile) => void;
   isAuthReady: boolean;
   isAuthenticated: boolean;
-  logout: () => void;
+  logout: (keepalive?: boolean) => Promise<void>;
   isAdmin: boolean;
 
   // Security, OTP & Email Logs
@@ -164,7 +164,12 @@ export interface AppContextType {
 }
 
 import { SHELTERED_COMPANY_CONFIG } from '../config/company';
-import { clearAuthSession, getAccessToken, getAuthenticatedUser } from '../services/authApi';
+import {
+  clearAuthSession,
+  getAccessToken,
+  getAuthenticatedUser,
+  signOutWithBackend
+} from '../services/authApi';
 
 const defaultCompanySettings: CompanySettings = SHELTERED_COMPANY_CONFIG;
 
@@ -555,10 +560,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isAuthenticated = authReady && Boolean(currentUser.id) && Boolean(getAccessToken());
   const isAdmin = isAuthenticated && (currentUser.role === 'admin' || currentUser.role === 'superadmin');
 
-  const logout = () => {
-    clearAuthSession();
-    setCurrentUser(guestUser);
-    setCurrentPage('home');
+  const logout = async (keepalive = false) => {
+    try {
+      await signOutWithBackend(keepalive);
+    } catch (error) {
+      showNotification(
+        error instanceof Error ? error.message : 'The server could not invalidate your session.',
+        'error'
+      );
+    } finally {
+      clearAuthSession();
+      setCurrentUser(guestUser);
+      setCurrentPage('home');
+    }
   };
 
   // Location Locking Settings: DISABLED BY DEFAULT

@@ -7,14 +7,11 @@ import {
   X,
   PlusCircle,
   Heart,
-  Scale,
-  MapPin,
   Check,
   Receipt,
   ShieldCheck,
-  Shield,
-  House
-  ,LogOut
+  House,
+  LogOut
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { SUPPORTED_CURRENCY_CODES, CurrencyCode, CURRENCIES } from '../utils/currency';
@@ -25,7 +22,6 @@ export const Navbar: React.FC = () => {
     currentPage,
     setCurrentPage,
     savedPropertyIds,
-    comparedPropertyIds,
     applyQuickSearch,
     setFilters,
     userLanguage,
@@ -33,6 +29,7 @@ export const Navbar: React.FC = () => {
     userCurrency,
     setUserCurrency,
     isAdmin,
+    isAuthReady,
     isAuthenticated,
     currentUser,
     logout,
@@ -127,83 +124,6 @@ export const Navbar: React.FC = () => {
           : 'bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shadow-md'
       }`}
     >
-      {/* Top Headquarters & Global Banner */}
-      <div
-        className={`transition-all duration-300 text-slate-300 text-[11px] py-1 px-4 sm:px-8 flex justify-between items-center tracking-wide border-b ${
-          isTransparent
-            ? 'bg-slate-950/25 backdrop-blur-xs border-white/10'
-            : 'bg-slate-950 border-slate-800'
-        }`}
-      >
-        <div className="flex items-center gap-2 truncate">
-          <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span className="font-semibold text-white">{t('hq_banner_title')}</span>
-          <span className="hidden md:inline text-slate-300">· {t('hq_banner_sub')}</span>
-        </div>
-
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          {isAuthenticated && <button
-            type="button"
-            onClick={() => navigateTo('saved')}
-            className="flex items-center gap-1 text-slate-300 hover:text-white transition cursor-pointer"
-            title={t('saved_badge')}
-          >
-            <Heart className="w-3 h-3 text-rose-400" />
-            <span className="hidden sm:inline">{t('saved_badge')}</span>
-            <span className="text-[10px] bg-slate-800 text-slate-200 px-1 rounded tabular-nums">
-              {savedPropertyIds.length}
-            </span>
-          </button>}
-
-          {/* Quick Compare Badge */}
-          {comparedPropertyIds.length > 0 && (
-            <button
-              type="button"
-              onClick={() => navigateTo('search')}
-              className="flex items-center gap-1 text-slate-300 hover:text-white transition cursor-pointer"
-              title={t('compare_badge')}
-            >
-              <Scale className="w-3 h-3 text-blue-400" />
-              <span className="text-[10px] bg-slate-800 text-slate-200 px-1 rounded tabular-nums">
-                {comparedPropertyIds.length}
-              </span>
-            </button>
-          )}
-
-          {/* User Unlock Payments History */}
-          {isAuthenticated && <button
-            type="button"
-            onClick={() => navigateTo('my-payments')}
-            className={`flex items-center gap-1 transition cursor-pointer ${
-              currentPage === 'my-payments'
-                ? 'text-emerald-300 font-bold'
-                : 'text-slate-300 hover:text-white'
-            }`}
-            title="My Unlock Payments & Transaction History"
-          >
-            <Receipt className="w-3 h-3 text-emerald-400" />
-            <span>My Payments</span>
-          </button>}
-
-          {/* Admin Console Link (Visible if Admin) */}
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => navigateTo('admin')}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition cursor-pointer font-medium"
-              title="Open Location & Payment Admin Console"
-            >
-              <ShieldCheck className="w-3 h-3 text-amber-400" />
-              <span>Admin Console</span>
-            </button>
-          )}
-
-          {isAuthenticated && <span className="text-[10px] px-2 py-0.5 rounded border border-slate-700 bg-slate-900 text-slate-300">
-            Role: <strong className="uppercase">{currentUser.role}</strong>
-          </span>}
-        </div>
-      </div>
-
       {/* Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-6 h-16">
@@ -375,7 +295,39 @@ export const Navbar: React.FC = () => {
 
             {/* Clean Persistent Authentication Buttons (Sign In & Create Account) */}
             <div className="flex items-center gap-2">
-              {!isAuthenticated && <>
+              {isAuthenticated && <button
+                type="button"
+                onClick={() => navigateTo('saved')}
+                className="relative rounded-lg p-2 text-white hover:bg-white/15 transition"
+                title="Saved properties"
+                aria-label={`Saved properties (${savedPropertyIds.length})`}
+              >
+                <Heart className="h-4 w-4" />
+                {savedPropertyIds.length > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-rose-500 px-1 text-[9px] leading-4 text-white">
+                    {savedPropertyIds.length}
+                  </span>
+                )}
+              </button>}
+              {isAuthenticated && <button
+                type="button"
+                onClick={() => navigateTo('my-payments')}
+                className="rounded-lg p-2 text-white hover:bg-white/15 transition"
+                title="My Unlock Payments & Transaction History"
+                aria-label="My Unlock Payments and Transaction History"
+              >
+                <Receipt className="h-4 w-4" />
+              </button>}
+              {isAdmin && <button
+                type="button"
+                onClick={() => navigateTo('admin')}
+                className="rounded-lg p-2 text-white hover:bg-white/15 transition"
+                title="Admin Console"
+                aria-label="Admin Console"
+              >
+                <ShieldCheck className="h-4 w-4" />
+              </button>}
+              {isAuthReady && !isAuthenticated && <>
               <button
                 type="button"
                 onClick={() => navigateTo('sign-in')}
@@ -393,7 +345,7 @@ export const Navbar: React.FC = () => {
               </>}
               {isAuthenticated && <button
                 type="button"
-                onClick={logout}
+                onClick={() => void logout()}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/15 transition rounded-lg cursor-pointer"
                 title="Sign out"
               >
@@ -516,7 +468,7 @@ export const Navbar: React.FC = () => {
 
               <div className="pt-3 border-t border-slate-200 space-y-3">
                 {/* Mobile Auth Buttons */}
-                {!isAuthenticated && <div className="flex flex-col gap-2">
+                {isAuthReady && !isAuthenticated && <div className="flex flex-col gap-2">
                   <button
                     type="button"
                     onClick={() => navigateTo('sign-in')}
@@ -536,7 +488,7 @@ export const Navbar: React.FC = () => {
                   <p className="px-3 py-2 text-xs text-slate-600">Signed in as <strong className="uppercase">{currentUser.role}</strong></p>
                   <button
                     type="button"
-                    onClick={logout}
+                    onClick={() => void logout()}
                     className="w-full py-2.5 text-center text-xs font-semibold bg-slate-950 text-white rounded-xl flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
@@ -580,6 +532,15 @@ export const Navbar: React.FC = () => {
 
                 {/* Action Buttons: Navigation to Payments, Admin, Dashboard */}
                 <div className="pt-2 space-y-2">
+                  {isAuthenticated && <button
+                    type="button"
+                    onClick={() => navigateTo('saved')}
+                    className="w-full py-2.5 text-center text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition hover:bg-rose-100"
+                  >
+                    <Heart className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Saved Properties ({savedPropertyIds.length})</span>
+                  </button>}
+
                   {isAuthenticated && <button
                     type="button"
                     onClick={() => navigateTo('my-payments')}

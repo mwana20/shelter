@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { prisma } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { hashPassword, comparePassword } from '../../utils/password.js';
@@ -7,12 +8,33 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
   generateRandomToken,
-  generateNumericCode
+  generateNumericCode,
+  hashToken
 } from '../../utils/token.js';
 import { sendEmail } from '../notifications/email.service.js';
 import { env } from '../../config/env.js';
 
 export class AuthService {
+  static async createSession(userId, payload) {
+    const id = crypto.randomUUID();
+    const refreshToken = generateRefreshToken({ ...payload, sid: id });
+    const decoded = verifyRefreshToken(refreshToken);
+
+    await prisma.authSession.create({
+      data: {
+        id,
+        userId,
+        refreshTokenHash: hashToken(refreshToken),
+        expiresAt: new Date(decoded.exp * 1000)
+      }
+    });
+
+    return {
+      accessToken: generateAccessToken({ ...payload, sid: id }),
+      refreshToken
+    };
+  }
+
   static async register(data) {
     const email = data.email.toLowerCase().trim();
 
@@ -112,8 +134,7 @@ export class AuthService {
       role: user.role
     };
 
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+    const session = await this.createSession(user.id, payload);
 
     return {
       user: {
@@ -125,8 +146,7 @@ export class AuthService {
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified
       },
-      accessToken,
-      refreshToken
+      ...session
     };
   }
 
@@ -147,10 +167,65 @@ export class AuthService {
     }
 
     const payload = { id: user.id, email: user.email, role: user.role };
+    if (!decoded.sid) {
+      return this.createSession(user.id, payload);
+    }
+
+    const oldTokenHash = hashToken(refreshToken);
+    const existingSession = await prisma.authSession.findFirst({
+      where: {
+        id: decoded.sid,
+        userId: user.id,
+        refreshTokenHash: oldTokenHash,
+        expiresAt: { gt: new Date() }
+      }
+    });
+    if (!existingSession) {
+      throw ApiError.unauthorized('Your session has expired. Please sign in again.');
+    }
+
+    const nextRefreshToken = generateRefreshToken({ ...payload, sid: existingSession.id });
+    const nextDecoded = verifyRefreshToken(nextRefreshToken);
+    const updated = await prisma.authSession.updateMany({
+      where: {
+        id: existingSession.id,
+        refreshTokenHash: oldTokenHash,
+        expiresAt: { gt: new Date() }
+      },
+      data: {
+        refreshTokenHash: hashToken(nextRefreshToken),
+        expiresAt: new Date(nextDecoded.exp * 1000)
+      }
+    });
+    if (updated.count !== 1) {
+      throw ApiError.unauthorized('Your session has expired. Please sign in again.');
+    }
+
     return {
-      accessToken: generateAccessToken(payload),
-      refreshToken: generateRefreshToken(payload)
+      accessToken: generateAccessToken({ ...payload, sid: existingSession.id }),
+      refreshToken: nextRefreshToken
     };
+  }
+
+  static async endSession(refreshToken) {
+    if (!refreshToken) return;
+
+    try {
+      const decoded = verifyRefreshToken(refreshToken);
+      if (decoded.sid) {
+        await prisma.authSession.deleteMany({
+          where: {
+            id: decoded.sid,
+            userId: decoded.id,
+            refreshTokenHash: hashToken(refreshToken)
+          }
+        });
+      }
+    } catch (error) {
+      if (error.name !== 'TokenExpiredError' && error.name !== 'JsonWebTokenError') {
+        throw error;
+      }
+    }
   }
 
   static async verifyEmail({ token, code, email }) {

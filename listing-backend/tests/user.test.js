@@ -22,7 +22,8 @@ test('User profile validation', async (t) => {
   });
 });
 
-test('Refresh session validation requires a token', () => {
+test('Refresh session validation accepts cookie-based requests and validates legacy body tokens', () => {
+  assert.equal(refreshSessionSchema.safeParse({}).success, true);
   assert.equal(refreshSessionSchema.safeParse({ refreshToken: 'refresh-token' }).success, true);
   assert.equal(refreshSessionSchema.safeParse({ refreshToken: '' }).success, false);
 });

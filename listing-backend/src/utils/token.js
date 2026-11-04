@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { env } from '../config/env.js';
 
+export const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
 export const generateAccessToken = (payload) => {
   return jwt.sign(payload, env.JWT.ACCESS_SECRET, {
     expiresIn: env.JWT.ACCESS_EXPIRATION

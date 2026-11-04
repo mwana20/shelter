@@ -122,17 +122,6 @@ export const SignInPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-300">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="rounded border-white/30 bg-white/10 text-emerald-500 focus:ring-emerald-400"
-                />
-                <span>{t('remember_me')}</span>
-              </label>
-            </div>
-
             <button
               type="submit"
               disabled={isLoading}

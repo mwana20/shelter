@@ -6,6 +6,7 @@ export const env = {
   PORT: parseInt(process.env.PORT || '5000', 10),
   API_PREFIX: process.env.API_PREFIX || '/api/v1',
   APP_URL: process.env.APP_URL || 'http://localhost:3000',
+  AUTH_COOKIE_SAME_SITE: process.env.AUTH_COOKIE_SAME_SITE || 'lax',
 
   DATABASE_URL: process.env.DATABASE_URL || '',
 

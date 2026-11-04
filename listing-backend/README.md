@@ -1,6 +1,6 @@
 # Sheltered Real Estate Listing Platform - Backend API (`listing-backend`)
 
-This is the standalone, production-ready Node.js & Express RESTful API backend for the **Sheltered Real Estate** web application, featuring Prisma ORM (PostgreSQL), JWT authentication, strict 18+ age verification, Stripe payments, Cloudflare R2 / S3 media storage, and admin-governed location locking with backend withholding.
+This is the standalone Node.js & Express RESTful API backend for the **Sheltered Real Estate** web application, featuring Prisma ORM (PostgreSQL), database-validated JWT sessions, strict 18+ age verification, Stripe payments, Cloudflare R2 / S3 media storage, and admin-governed location locking with backend withholding.
 
 ---
 
@@ -79,7 +79,13 @@ listing-backend/
   This prevents malicious actors from harvesting registered user emails.
 - Reset tokens are time-limited (15 minutes), single-use, and automatically invalidated once used.
 
-### 4. Dual Payment Options
+### 4. Authentication Sessions
+- Access tokens are short-lived and validated against an active `AuthSession` record on protected requests.
+- Refresh tokens are rotated and stored only as hashes in the database; the raw refresh token is sent in an HttpOnly cookie.
+- The refresh cookie is a browser-session cookie. It is `Secure` in production and uses `AUTH_COOKIE_SAME_SITE` (default `lax`; set to `none` when the frontend and API are cross-site, with HTTPS).
+- `POST /api/v1/auth/logout` invalidates the server-side session and clears the refresh cookie.
+
+### 5. Dual Payment Options
 - **Option A (Stripe Payment Gateway)**: Generates secure Checkout Sessions with metadata (`userId`, `propertyId`, `purpose: LOCATION_UNLOCK`, `amount`, `currency`). Verifies payments via webhook or session handshake before granting location access.
 - **Option B (Merchant Code & Transaction ID)**: Accepts transaction references (e.g., `TXN-884920`), enforces admin-defined length and regex character rules, prevents duplicate submissions, and supports both automated verification and manual admin moderation.
 
@@ -122,6 +128,7 @@ npm run prisma:seed
 ```
 
 The seed command does not create a default admin password. The administrator signs in through the normal sign-in page and receives admin access only because the database role is `ADMIN`.
+For an existing deployment, apply checked-in schema changes before starting the updated backend with `npx prisma migrate deploy` from `listing-backend`. Do not use `prisma migrate dev` against production.
 
 ### Start Server
 ```bash
@@ -147,7 +154,9 @@ All endpoints are prefixed with `/api/v1`:
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/auth/register` | Register user (requires DOB >= 18) | Public |
-| `POST` | `/auth/login` | Login and obtain JWT tokens | Public |
+| `POST` | `/auth/login` | Login, receive an access token, and set the HttpOnly refresh cookie | Public |
+| `POST` | `/auth/refresh` | Rotate the refresh cookie and issue a new access token | Refresh cookie |
+| `POST` | `/auth/logout` | Invalidate the current session and clear the refresh cookie | Refresh cookie |
 | `POST` | `/auth/verify-email` | Verify email with token or 6-digit code | Public |
 | `POST` | `/auth/resend-verification` | Resend verification email (60s cooldown) | Public |
 | `POST` | `/auth/forgot-password` | Request password reset link (neutral response) | Public |
