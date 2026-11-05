@@ -1,5 +1,6 @@
 -- AlterTable
-ALTER TABLE "users" ADD COLUMN     "bio" TEXT,
-ADD COLUMN     "district" TEXT,
-ADD COLUMN     "neighborhood" TEXT,
-ADD COLUMN     "region" TEXT;
+ALTER TABLE "users"
+ADD COLUMN IF NOT EXISTS "bio" TEXT,
+ADD COLUMN IF NOT EXISTS "district" TEXT,
+ADD COLUMN IF NOT EXISTS "neighborhood" TEXT,
+ADD COLUMN IF NOT EXISTS "region" TEXT;
