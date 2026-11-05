@@ -41,13 +41,11 @@ export const env = {
     PUBLIC_DOMAIN: process.env.R2_PUBLIC_DOMAIN || 'https://media.shelteredglobal.com'
   },
 
-  SMTP: {
-    HOST: process.env.SMTP_HOST || 'smtp.mailgun.org',
-    PORT: parseInt(process.env.SMTP_PORT || '587', 10),
-    SECURE: process.env.SMTP_SECURE === 'true',
-    USER: process.env.SMTP_USER || '',
-    PASS: process.env.SMTP_PASS || '',
-    FROM: process.env.EMAIL_FROM || 'Sheltered Real Estate <noreply@shelteredglobal.com>'
+  MAILJET: {
+    API_KEY_PUBLIC: process.env.MJ_APIKEY_PUBLIC || '',
+    API_KEY_PRIVATE: process.env.MJ_APIKEY_PRIVATE || '',
+    FROM_EMAIL: process.env.EMAIL_FROM || '',
+    FROM_NAME: process.env.EMAIL_FROM_NAME || 'Shelter'
   },
 
   RATE_LIMIT: {
