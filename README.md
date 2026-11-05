@@ -46,7 +46,7 @@ VITE_PAYMENT_GATEWAY_PUBLISHABLE_KEY="pk_test_sample_51O..."
 VITE_API_BASE_URL="/api"
 ```
 
-For local development, `/api` maps to the local backend at `http://localhost:5000/api/v1`. Production builds require an absolute deployed API URL; the Netlify configuration sets `https://shelter-fh7i.onrender.com/api/v1` for the live frontend.
+For local development, `/api` maps to the local backend at `http://localhost:5000/api/v1`. Production builds use the public Render API URL in `.env.production`; Vercel project environment variables can override it for preview or alternate environments.
 
 > **Security Rule**: API secret keys (such as `STRIPE_SECRET_KEY`, database credentials, or merchant private settlement keys) reside exclusively in secure backend server environments and are never bundled into client-side code.
 

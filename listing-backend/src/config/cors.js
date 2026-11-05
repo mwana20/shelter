@@ -3,7 +3,7 @@ import { env } from './env.js';
 
 const allowedOrigins = [
   ...env.CORS_ORIGIN,
-  'https://sheltermkn.netlify.app'
+  'https://shelter-coral.vercel.app'
 ];
 
 export const corsOptions = {
