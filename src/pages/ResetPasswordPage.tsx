@@ -11,7 +11,8 @@ import {
   KeyRound
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { backendApi, validatePasswordStrength } from '../services/backendApi';
+import { validatePasswordStrength } from '../services/backendApi';
+import { resetPasswordWithBackend } from '../services/authApi';
 import { propertyImages } from '../assets/propertyImages';
 
 export const ResetPasswordPage: React.FC = () => {
@@ -57,7 +58,7 @@ export const ResetPasswordPage: React.FC = () => {
 
     try {
       // POST /auth/reset-password
-      const res = await backendApi.resetPassword({
+      const res = await resetPasswordWithBackend({
         token: activeRouteToken,
         newPassword,
         confirmPassword

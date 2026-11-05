@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, ArrowLeft, CheckCircle2, ShieldAlert, KeyRound, ExternalLink } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { backendApi } from '../services/backendApi';
+import { requestPasswordResetWithBackend } from '../services/authApi';
 import { propertyImages } from '../assets/propertyImages';
 
 export const ForgotPasswordPage: React.FC = () => {
@@ -9,6 +9,7 @@ export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState('');
+  const [requestError, setRequestError] = useState('');
   const [previewToken, setPreviewToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,15 +19,22 @@ export const ForgotPasswordPage: React.FC = () => {
     if (!cleanEmail) return;
 
     setIsLoading(true);
-    // POST /auth/forgot-password: Always returns neutral response to prevent user enumeration
-    const result = await backendApi.forgotPassword(cleanEmail);
-    setIsLoading(false);
+    setRequestError('');
+    try {
+      const result = await requestPasswordResetWithBackend(cleanEmail);
+      if (!result.success) {
+        setRequestError(result.error || 'We could not send the password reset email. Please try again later.');
+        return;
+      }
 
-    setMessage(result.message);
-    if (result.previewToken) {
-      setPreviewToken(result.previewToken);
+      setMessage(result.message || 'If this email is registered, a password reset link has been sent.');
+      if (result.previewToken) {
+        setPreviewToken(result.previewToken);
+      }
+      setSubmitted(true);
+    } finally {
+      setIsLoading(false);
     }
-    setSubmitted(true);
   };
 
   return (
@@ -98,6 +106,11 @@ export const ForgotPasswordPage: React.FC = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
+              {requestError && (
+                <p role="alert" className="rounded-lg border border-red-300/40 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+                  {requestError}
+                </p>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-200 mb-1.5">
                   Account Email Address

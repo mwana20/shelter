@@ -320,3 +320,46 @@ export async function resendVerificationWithBackend(email: string): Promise<{
     };
   }
 }
+
+export async function requestPasswordResetWithBackend(email: string): Promise<{
+  success: boolean;
+  message?: string;
+  previewToken?: string;
+  error?: string;
+}> {
+  try {
+    const result = await postAuth<{ message?: string; previewToken?: string }>(
+      'forgot-password',
+      { email }
+    );
+    return {
+      success: true,
+      message: result.data?.message || result.message,
+      previewToken: result.data?.previewToken
+    };
+  } catch {
+    return {
+      success: false,
+      error: 'We could not send the password reset email. Please try again later.'
+    };
+  }
+}
+
+export async function resetPasswordWithBackend(payload: {
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+}): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const result = await postAuth<{ message?: string }>('reset-password', payload);
+    return {
+      success: true,
+      message: result.data?.message || result.message
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Password reset failed.'
+    };
+  }
+}

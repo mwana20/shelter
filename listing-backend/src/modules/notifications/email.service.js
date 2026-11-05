@@ -39,7 +39,12 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       throw error;
     }
   } else {
-    // Development fallback logger (no SMTP configured yet)
+    if (env.NODE_ENV === 'production') {
+      const error = new Error('Email delivery is not configured.');
+      logger.error(error.message);
+      throw error;
+    }
+
     logger.info(`[DEV EMAIL SIMULATION] To: ${to} | Subject: ${subject}`);
     return { simulated: true, to, subject };
   }
