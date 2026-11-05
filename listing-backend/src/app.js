@@ -1,4 +1,6 @@
 import express from 'express';
+import net from 'node:net';
+import tls from 'node:tls';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { corsMiddleware } from './config/cors.js';
@@ -16,6 +18,27 @@ import paymentRoutes from './modules/payments/payment.routes.js';
 import unlockRoutes from './modules/unlocks/unlock.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
 import notificationRoutes from './modules/notifications/inapp.routes.js';
+
+const checkSmtpConnection = (port, secure) =>
+  new Promise((resolve) => {
+    let socket;
+    let settled = false;
+    const timer = setTimeout(() => finish('timeout'), 10_000);
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket?.destroy();
+      resolve(result);
+    };
+
+    socket = secure
+      ? tls.connect({ host: 'smtp-relay.brevo.com', port }, () => finish('connected'))
+      : net.connect({ host: 'smtp-relay.brevo.com', port }, () => finish('connected'));
+    socket.once('error', (error) => finish(error.message));
+    socket.once('timeout', () => finish('timeout'));
+    socket.setTimeout(10_000);
+  });
 
 const app = express();
 
@@ -45,8 +68,26 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Mount API Modules
 const prefix = env.API_PREFIX;
+
+// Temporary SMTP connectivity diagnostic; remove after provider setup is verified.
+app.get(`${prefix}/debug-smtp`, async (req, res) => {
+  const [port587, port465] = await Promise.all([
+    checkSmtpConnection(587, false),
+    checkSmtpConnection(465, true)
+  ]);
+
+  res.json({
+    smtpHost: process.env.SMTP_HOST,
+    smtpPort: process.env.SMTP_PORT,
+    smtpSecure: process.env.SMTP_SECURE,
+    smtpUserSet: Boolean(process.env.SMTP_USER),
+    smtpPassSet: Boolean(process.env.SMTP_PASS),
+    results: { port587, port465 }
+  });
+});
+
+// Mount API Modules
 app.use(`${prefix}/auth`, authRoutes);
 app.use(`${prefix}/users`, userRoutes);
 app.use(`${prefix}/properties`, propertyRoutes);
