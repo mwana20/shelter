@@ -82,7 +82,8 @@ listing-backend/
 ### 4. Authentication Sessions
 - Access tokens are short-lived and validated against an active `AuthSession` record on protected requests.
 - Refresh tokens are rotated and stored only as hashes in the database; the raw refresh token is sent in an HttpOnly cookie.
-- The refresh cookie is a browser-session cookie. It is `Secure` in production and uses `AUTH_COOKIE_SAME_SITE` (default `lax`; set to `none` when the frontend and API are cross-site, with HTTPS).
+- The refresh cookie is a browser-session cookie. It is `Secure` in production and uses `AUTH_COOKIE_SAME_SITE` (defaults to `none` in production for cross-site frontend/API hosting and `lax` in development).
+- CORS allows the deployed Netlify frontend (`https://sheltermkn.netlify.app`) in addition to origins configured by `CORS_ORIGIN`.
 - `POST /api/v1/auth/logout` invalidates the server-side session and clears the refresh cookie.
 
 ### 5. Dual Payment Options

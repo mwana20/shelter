@@ -1,10 +1,16 @@
 import { UserProfile, UserRole } from '../types';
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+const normalizedApiBaseUrl = configuredApiBaseUrl?.trim().replace(/\/+$/, '');
+
+if (import.meta.env.PROD && (!normalizedApiBaseUrl || normalizedApiBaseUrl === '/api')) {
+  throw new Error('VITE_API_BASE_URL must be set to the deployed API URL for production builds.');
+}
+
 export const API_BASE_URL =
-  !configuredApiBaseUrl || configuredApiBaseUrl === '/api'
-    ? 'http://localhost:5000/api/v1'
-    : configuredApiBaseUrl.replace(/\/$/, '');
+  normalizedApiBaseUrl && normalizedApiBaseUrl !== '/api'
+    ? normalizedApiBaseUrl
+    : 'http://localhost:5000/api/v1';
 const ACCESS_TOKEN_KEY = 'sheltered_access_token';
 const REFRESH_TOKEN_KEY = 'sheltered_refresh_token';
 

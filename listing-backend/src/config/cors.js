@@ -1,12 +1,17 @@
 import cors from 'cors';
 import { env } from './env.js';
 
+const allowedOrigins = [
+  ...env.CORS_ORIGIN,
+  'https://sheltermkn.netlify.app'
+];
+
 export const corsOptions = {
   origin: (origin, callback) => {
     // Allow server-to-server or curl requests with no origin
     if (!origin) return callback(null, true);
 
-    if (env.CORS_ORIGIN.indexOf(origin) !== -1 || env.CORS_ORIGIN.includes('*')) {
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
       callback(null, true);
     } else {
       callback(new Error('Blocked by CORS policy'));
