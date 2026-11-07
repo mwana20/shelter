@@ -131,6 +131,9 @@ npm run prisma:seed
 The seed command does not create a default admin password. The administrator signs in through the normal sign-in page and receives admin access only because the database role is `ADMIN`.
 `npm install` runs `prisma generate` automatically through the `postinstall` script. The production `npm start` command runs `prisma migrate deploy` before starting the API, so the generated client and additive schema migrations are both applied when the service deploys. The Prisma CLI is a production dependency for these deployment steps. Do not use `prisma migrate dev` against production.
 
+### Proxy Trust
+The Express app trusts one proxy hop for client IP resolution. This matches the Render deployment topology and allows `express-rate-limit` to key limits by the originating client IP. Do not change this to `true` or trust forwarded headers from arbitrary sources; if the hosting proxy topology changes, adjust the hop count to match it.
+
 ### Start Server
 ```bash
 # Development mode with auto-reload:
