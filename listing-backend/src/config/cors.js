@@ -1,10 +1,16 @@
 import cors from 'cors';
 import { env } from './env.js';
 
-// Normalize and remove duplicate origins
+// Keep the app's known origins available even when CORS_ORIGIN is set in production.
 const allowedOrigins = [
   ...new Set(
-    env.CORS_ORIGIN
+    [
+      'https://shelter-coral.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173',
+      ...env.CORS_ORIGIN
+    ]
       .map(origin => origin.trim().replace(/\/+$/, ''))
       .filter(Boolean)
   )
@@ -44,7 +50,10 @@ export const corsOptions = {
     'Authorization',
     'X-Requested-With',
     'stripe-signature'
-  ]
+  ],
+
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 export const corsMiddleware = cors(corsOptions);
