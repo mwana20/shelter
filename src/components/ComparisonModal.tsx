@@ -88,7 +88,7 @@ export const ComparisonModal: React.FC = () => {
                             <X className="w-3.5 h-3.5" />
                           </button>
                           <img
-                            src={p.images[0]}
+                            src={p.imageThumbnails?.[0] || p.images[0]}
                             alt={p.title}
                             className="w-full h-28 object-cover rounded-xl mb-2"
                           />

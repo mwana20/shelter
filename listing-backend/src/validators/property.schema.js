@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { mediaRefsSchema } from '../modules/media/media.validation.js';
 
 export const createPropertySchema = z.object({
   title: z.string().trim().min(5).max(200),
@@ -23,7 +24,21 @@ export const createPropertySchema = z.object({
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
   directionsGuide: z.string().trim().optional(),
-  cadastralPlotNumber: z.string().trim().optional()
+  cadastralPlotNumber: z.string().trim().optional(),
+  propertyId: z.string().uuid(),
+  mediaBatchId: z.string().uuid(),
+  mediaRefs: mediaRefsSchema
 });
 
-export const updatePropertySchema = createPropertySchema.partial();
+export const updatePropertySchema = createPropertySchema
+  .omit({ propertyId: true, mediaBatchId: true, mediaRefs: true })
+  .partial()
+  .extend({
+    mediaBatchId: z.string().uuid().optional(),
+    mediaRefs: mediaRefsSchema.optional()
+  })
+  .superRefine((data, context) => {
+    if (Boolean(data.mediaBatchId) !== Boolean(data.mediaRefs)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: 'A complete media upload batch is required to replace listing media.' });
+    }
+  });

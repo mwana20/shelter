@@ -4,6 +4,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { generateSlug } from '../../utils/slug.js';
 import { getPagination, formatPaginationResponse } from '../../utils/pagination.js';
 import { sanitizePropertyLocation } from './property.utils.js';
+import { MediaService } from '../media/media.service.js';
 
 export class PropertyService {
   /**
@@ -149,20 +150,34 @@ export class PropertyService {
   static async createProperty(data, ownerId) {
      const owner = await prisma.user.findUnique({ where: { id: ownerId } });
      if (!owner) throw ApiError.unauthorized('User not found');
+     if (!['SELLER', 'AGENT'].includes(owner.role)) {
+       throw ApiError.forbidden('Only property owners and brokers can create listings.');
+     }
      if ((owner.role === 'SELLER' || owner.role === 'AGENT') && owner.accountStatus !== 'APPROVED') {
        throw ApiError.forbidden('Your account is pending admin approval. You cannot list properties until approved.');
      }
 
-    const slug = generateSlug(data.title);
-
-    const property = await PropertyRepository.create({
-      ...data,
-      slug,
-      ownerId,
-      status: 'PENDING_REVIEW'
-    });
-
-    return property;
+    const { propertyId, mediaBatchId, mediaRefs, ...propertyData } = data;
+    const mediaBatch = await MediaService.prepareUploadBatch(mediaBatchId, propertyId, mediaRefs, owner);
+    if (mediaBatch.alreadyConsumed) return mediaBatch.property;
+    try {
+      const property = await prisma.$transaction((transaction) => transaction.property.create({
+        data: {
+          ...propertyData,
+          id: propertyId,
+          slug: generateSlug(data.title),
+          ownerId,
+          status: 'PENDING_REVIEW',
+          media: { create: mediaBatch.mediaRecords }
+        },
+        include: { media: { orderBy: { sortOrder: 'asc' } } }
+      }));
+      await MediaService.completeUploadBatch(mediaBatchId, mediaBatch.stagingKeys);
+      return property;
+    } catch (error) {
+      await MediaService.rollbackUploadBatch(mediaBatchId, mediaBatch.promotedKeys);
+      throw error;
+    }
   }
 
   static async updateProperty(id, data, user) {
@@ -175,8 +190,34 @@ export class PropertyService {
       throw ApiError.forbidden('You are not authorized to update this property');
     }
 
-    const updated = await PropertyRepository.update(id, data);
-    return updated;
+    const { mediaBatchId, mediaRefs, ...propertyData } = data;
+    if (Boolean(mediaBatchId) !== Boolean(mediaRefs)) {
+      throw ApiError.badRequest('A complete media upload batch is required to replace listing media.');
+    }
+
+    if (!mediaBatchId) return PropertyRepository.update(id, propertyData);
+
+    const mediaBatch = await MediaService.prepareUploadBatch(mediaBatchId, id, mediaRefs, user);
+    if (mediaBatch.alreadyConsumed) return mediaBatch.property;
+    try {
+      const updated = await prisma.$transaction(async (transaction) => {
+        await transaction.media.updateMany({
+          where: { propertyId: id, isActive: true },
+          data: { isActive: false }
+        });
+        return transaction.property.update({
+          where: { id },
+          data: { ...propertyData, media: { create: mediaBatch.mediaRecords } },
+          include: { media: { orderBy: { sortOrder: 'asc' } } }
+        });
+      });
+      await MediaService.completeUploadBatch(mediaBatchId, mediaBatch.stagingKeys);
+      await MediaService.cleanupInactiveMedia();
+      return updated;
+    } catch (error) {
+      await MediaService.rollbackUploadBatch(mediaBatchId, mediaBatch.promotedKeys);
+      throw error;
+    }
   }
 
   static async deleteProperty(id, user) {
@@ -189,6 +230,8 @@ export class PropertyService {
       throw ApiError.forbidden('You are not authorized to delete this property');
     }
 
+    const allMedia = await prisma.media.findMany({ where: { propertyId: id } });
+    await MediaService.deleteStoredMedia(allMedia);
     await PropertyRepository.delete(id);
     return { success: true, message: 'Property deleted successfully' };
   }

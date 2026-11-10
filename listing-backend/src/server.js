@@ -2,8 +2,22 @@ import { app } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { prisma } from './config/database.js';
+import { MediaService } from './modules/media/media.service.js';
 
 const PORT = env.PORT;
+
+const mediaCleanupTimer = setInterval(() => {
+  Promise.all([
+    MediaService.cleanupExpiredBatches(),
+    MediaService.cleanupInactiveMedia()
+  ]).catch((error) => logger.error('Scheduled property media cleanup failed:', error));
+}, 15 * 60 * 1000);
+mediaCleanupTimer.unref();
+
+void Promise.all([
+  MediaService.cleanupExpiredBatches(),
+  MediaService.cleanupInactiveMedia()
+]).catch((error) => logger.error('Initial property media cleanup failed:', error));
 
 const server = app.listen(PORT, () => {
   logger.info(`===================================================`);

@@ -638,7 +638,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <div key={prop.id} className="py-3 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3 truncate">
                         <img
-                          src={prop.images[0]}
+                          src={prop.imageThumbnails?.[0] || prop.images[0]}
                           alt=""
                           className="w-12 h-10 object-cover rounded-lg shrink-0"
                         />
@@ -855,7 +855,7 @@ export const AdminDashboardPage: React.FC = () => {
               {properties.map((p) => (
                 <div key={p.id} className="py-4 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <img src={p.images[0]} alt="" className="w-16 h-12 object-cover rounded-xl" />
+                    <img src={p.imageThumbnails?.[0] || p.images[0]} alt="" width={320} height={240} loading="lazy" decoding="async" className="w-16 h-12 object-cover rounded-xl" />
                     <div>
                       <p className="font-bold text-xs text-neutral-900">{p.title}</p>
                       <p className="text-[11px] text-neutral-500">

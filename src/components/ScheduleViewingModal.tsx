@@ -33,7 +33,7 @@ export const ScheduleViewingModal: React.FC = () => {
         propertyTitle: scheduleModalProperty.title,
         propertyPrice: scheduleModalProperty.price,
         propertyCurrency: scheduleModalProperty.currency || userCurrency || 'USD',
-        propertyImage: scheduleModalProperty.images[0],
+        propertyImage: scheduleModalProperty.imageThumbnails?.[0] || scheduleModalProperty.images[0],
         listingType: scheduleModalProperty.listingType,
         date,
         timeSlot,
@@ -82,7 +82,7 @@ export const ScheduleViewingModal: React.FC = () => {
         {/* Property preview card */}
         <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl mb-5 border border-neutral-100">
           <img
-            src={scheduleModalProperty.images[0]}
+            src={scheduleModalProperty.imageThumbnails?.[0] || scheduleModalProperty.images[0]}
             alt={scheduleModalProperty.title}
             className="w-16 h-14 object-cover rounded-lg shrink-0"
           />

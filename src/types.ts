@@ -81,7 +81,9 @@ export interface Property {
   description: string;
   features: string[]; // Amenities checklist
   images: string[]; // High-res photos
+  imageThumbnails?: string[];
   videoUrl?: string; // Video walkthrough link (YouTube, Vimeo, MP4)
+  videoPosterUrl?: string;
   videoType?: 'youtube' | 'mp4' | 'vimeo';
   titleDeedStatus?:
     | 'Ready Private Mailo'

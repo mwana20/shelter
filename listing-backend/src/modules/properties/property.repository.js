@@ -17,6 +17,7 @@ export class PropertyRepository {
           }
         },
         media: {
+          where: { isActive: true },
           orderBy: { sortOrder: 'asc' }
         },
         lockOverride: true
@@ -40,6 +41,7 @@ export class PropertyRepository {
           }
         },
         media: {
+          where: { isActive: true },
           orderBy: { sortOrder: 'asc' }
         },
         lockOverride: true
@@ -55,7 +57,7 @@ export class PropertyRepository {
       orderBy,
       include: {
         media: {
-          where: { isFeatured: true },
+          where: { isActive: true, isFeatured: true },
           take: 1
         },
         lockOverride: true

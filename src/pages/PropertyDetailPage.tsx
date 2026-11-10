@@ -29,6 +29,27 @@ import { InteractiveMap } from '../components/InteractiveMap';
 import { LocationUnlockModal } from '../components/LocationUnlockModal';
 import { getLocalizedPropertyDescription, getLocalizedAmenity } from '../i18n/propertyDescriptions';
 
+const getVideoEmbedUrl = (videoUrl: string, videoType?: string) => {
+  try {
+    const url = new URL(videoUrl);
+    if (videoType === 'vimeo' || url.hostname.endsWith('vimeo.com')) {
+      const videoId = url.pathname.split('/').filter(Boolean).pop();
+      return videoId ? `https://player.vimeo.com/video/${encodeURIComponent(videoId)}` : videoUrl;
+    }
+    if (url.hostname.endsWith('youtube.com')) {
+      const videoId = url.searchParams.get('v');
+      return videoId ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}` : videoUrl;
+    }
+    if (url.hostname === 'youtu.be') {
+      const videoId = url.pathname.slice(1);
+      return videoId ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}` : videoUrl;
+    }
+  } catch {
+    return videoUrl;
+  }
+  return videoUrl;
+};
+
 export const PropertyDetailPage: React.FC = () => {
   const {
     selectedPropertyId,
@@ -222,7 +243,15 @@ export const PropertyDetailPage: React.FC = () => {
             >
               <img
                 src={property.images[activePhotoIndex]}
+                srcSet={property.imageThumbnails?.[activePhotoIndex]
+                  ? `${property.imageThumbnails[activePhotoIndex]} 480w, ${property.images[activePhotoIndex]} 1920w`
+                  : undefined}
+                sizes="(min-width: 1024px) 75vw, 100vw"
                 alt={property.title}
+                width={1600}
+                height={1200}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-103"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
@@ -272,8 +301,12 @@ export const PropertyDetailPage: React.FC = () => {
                   }`}
                 >
                   <img
-                    src={img}
+                    src={property.imageThumbnails?.[idx] || img}
                     alt={`Photo thumbnail ${idx + 1}`}
+                    width={480}
+                    height={360}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
                   <span className="absolute bottom-1 right-2 text-[10px] font-bold text-white bg-black/60 px-1.5 rounded">
@@ -294,7 +327,7 @@ export const PropertyDetailPage: React.FC = () => {
                   idx === activePhotoIndex ? 'border-slate-950' : 'border-transparent opacity-70'
                 }`}
               >
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                <img src={property.imageThumbnails?.[idx] || img} alt="" width={160} height={120} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
@@ -455,13 +488,21 @@ export const PropertyDetailPage: React.FC = () => {
 
               {property.videoUrl ? (
                 <div className="relative aspect-16/9 rounded-2xl overflow-hidden bg-black shadow-lg border border-neutral-800">
-                  <iframe
-                    src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&rel=0"
-                    title={property.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full border-0"
-                  />
+                  {property.videoType === 'mp4' ? (
+                    <video controls playsInline preload="none" poster={property.videoPosterUrl} className="h-full w-full bg-black object-contain">
+                      <source src={property.videoUrl} type="video/mp4" />
+                      Your browser does not support MP4 video playback.
+                    </video>
+                  ) : (
+                    <iframe
+                      src={`${getVideoEmbedUrl(property.videoUrl, property.videoType)}${getVideoEmbedUrl(property.videoUrl, property.videoType).includes('?') ? '&' : '?'}controls=1&rel=0`}
+                      title={property.title}
+                      loading="lazy"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full border-0"
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="p-8 text-center bg-neutral-50 rounded-2xl border border-neutral-200 text-xs text-neutral-500">

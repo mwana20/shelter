@@ -86,7 +86,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       const popupHtml = `
         <div style="width: 240px; font-family: 'Plus Jakarta Sans', sans-serif;">
           <div style="position: relative; height: 130px; width: 100%; overflow: hidden; border-radius: 8px 8px 0 0;">
-            <img src="${prop.images[0]}" alt="${prop.title}" style="width: 100%; height: 100%; object-fit: cover;" />
+            <img src="${prop.imageThumbnails?.[0] || prop.images[0]}" alt="${prop.title}" width="320" height="240" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;" />
             <span style="position: absolute; top: 8px; left: 8px; background: rgba(15, 23, 42, 0.85); color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;">
               ${prop.listingType}
             </span>

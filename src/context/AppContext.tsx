@@ -72,7 +72,7 @@ export interface AppContextType {
   // Property Data & Mutations
   properties: Property[];
   availableProperties: Property[];
-  addProperty: (property: Omit<Property, 'id' | 'viewsCount' | 'savesCount' | 'dateAdded'>) => void;
+  addProperty: (property: Omit<Property, 'id' | 'viewsCount' | 'savesCount' | 'dateAdded'> & { id?: string }) => void;
   updatePropertyStatus: (id: string, status: PropertyStatus) => void;
   toggleVerifiedStatus: (id: string) => void;
   deleteProperty: (id: string) => void;
@@ -902,11 +902,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isCompared = (id: string) => comparedPropertyIds.includes(id);
 
   const addProperty = (
-    newProp: Omit<Property, 'id' | 'viewsCount' | 'savesCount' | 'dateAdded'>
+    newProp: Omit<Property, 'id' | 'viewsCount' | 'savesCount' | 'dateAdded'> & { id?: string }
   ) => {
     const created: Property = {
       ...newProp,
-      id: 'prop-' + Date.now(),
+      id: newProp.id || 'prop-' + Date.now(),
       viewsCount: 1,
       savesCount: 0,
       dateAdded: new Date().toISOString()

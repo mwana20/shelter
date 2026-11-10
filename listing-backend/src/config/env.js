@@ -1,6 +1,11 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const positiveInt = (value, fallback) => {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '5000', 10),
@@ -34,11 +39,16 @@ export const env = {
   },
 
   R2: {
-    ACCOUNT_ID: process.env.R2_ACCOUNT_ID || '',
-    ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || '',
-    SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || '',
+    ACCOUNT_ID: process.env.R2_ACCOUNT_ID || '33f7046fc19ea2b952c2c8079899eeee',
+    ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || '7d2908c666cdfbd35c04c610586eeec8',
+    SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || 'a4f3a3fc0e030df158be84ffb58f615bfc9f770774b0cfd1993bc82db07e29e3',
     BUCKET_NAME: process.env.R2_BUCKET_NAME || 'sheltered-property-media',
-    PUBLIC_DOMAIN: process.env.R2_PUBLIC_DOMAIN || 'https://media.shelteredglobal.com'
+    PUBLIC_URL: process.env.R2_PUBLIC_URL || process.env.R2_PUBLIC_DOMAIN || '',
+    MAX_IMAGE_SIZE_BYTES: positiveInt(process.env.R2_MAX_IMAGE_SIZE_BYTES, 12 * 1024 * 1024),
+    MAX_VIDEO_SIZE_BYTES: positiveInt(process.env.R2_MAX_VIDEO_SIZE_BYTES, 100 * 1024 * 1024),
+    MAX_THUMBNAIL_SIZE_BYTES: positiveInt(process.env.R2_MAX_THUMBNAIL_SIZE_BYTES, 1024 * 1024),
+    UPLOAD_URL_TTL_SECONDS: positiveInt(process.env.R2_UPLOAD_URL_TTL_SECONDS, 900),
+    UPLOAD_BATCH_TTL_MINUTES: positiveInt(process.env.R2_UPLOAD_BATCH_TTL_MINUTES, 1440)
   },
 
   MAILJET: {

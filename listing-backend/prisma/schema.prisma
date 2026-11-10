@@ -34,6 +34,7 @@ model User {
   neighborhood        String?
   region              String?
   auditLogs           AuditLog[]
+  mediaUploadBatches  MediaUploadBatch[]
   unlockedProperties  LocationUnlock[]
   passwordResetTokens PasswordResetToken[]
   payments            Payment[]
@@ -198,18 +199,38 @@ model LocationUnlock {
 }
 
 model Media {
-  id         String   @id @default(uuid())
-  propertyId String
-  storageKey String   @unique
-  publicUrl  String
-  mimeType   String
-  fileSize   Int
-  sortOrder  Int      @default(0)
-  isFeatured Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  id                  String    @id @default(uuid())
+  propertyId          String
+  storageKey          String    @unique
+  publicUrl           String
+  mimeType            String
+  fileSize            Int
+  kind                MediaKind @default(IMAGE)
+  thumbnailStorageKey String?
+  thumbnailUrl        String?
+  isActive            Boolean   @default(true)
+  sortOrder           Int       @default(0)
+  isFeatured          Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  property            Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
+  @@index([propertyId, isActive])
   @@map("property_media")
+}
+
+model MediaUploadBatch {
+  id         String   @id @default(uuid())
+  ownerId    String
+  propertyId String
+  manifest   Json
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+  owner      User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, expiresAt])
+  @@index([expiresAt, consumedAt])
+  @@map("media_upload_batches")
 }
 
 model AuditLog {
@@ -248,6 +269,11 @@ enum Role {
   SELLER
   AGENT
   ADMIN
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
 }
 
 enum PropertyStatus {

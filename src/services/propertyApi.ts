@@ -1,4 +1,5 @@
 import { API_BASE_URL, getAccessToken } from './authApi';
+import { PropertyMediaRef } from './mediaApi';
 
 export async function createPropertyWithBackend(payload: {
   title: string;
@@ -17,6 +18,9 @@ export async function createPropertyWithBackend(payload: {
   exactAddress?: string;
   latitude?: number;
   longitude?: number;
+  propertyId: string;
+  mediaBatchId: string;
+  mediaRefs: PropertyMediaRef[];
 }): Promise<{ success: boolean; property?: any; error?: string }> {
   const token = getAccessToken();
   if (!token) return { success: false, error: 'Sign in before listing a property.' };

@@ -252,7 +252,7 @@ export const MyShelteredPage: React.FC = () => {
                   onClick={() => openPropertyDetail(p.id)}
                   className="bg-white rounded-2xl overflow-hidden border border-neutral-200 shadow-xs cursor-pointer hover:shadow-md transition"
                 >
-                  <img src={p.images[0]} alt="" className="w-full h-36 object-cover" />
+                  <img src={p.imageThumbnails?.[0] || p.images[0]} alt="" width={640} height={360} loading="lazy" decoding="async" className="w-full h-36 object-cover" />
                   <div className="p-4 space-y-1 text-xs">
                     <p className="font-bold text-neutral-900 text-sm">{formatUGX(p.price, p.listingType)}</p>
                     <p className="font-semibold text-neutral-800 line-clamp-1">{p.title}</p>

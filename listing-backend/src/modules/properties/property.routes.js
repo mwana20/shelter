@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PropertyController } from './property.controller.js';
 import { optionalAuthenticate, authenticate } from '../../middlewares/authenticate.js';
+import { authorize } from '../../middlewares/authorize.js';
 import { validate } from '../../middlewares/validate.js';
 import {
   createPropertySchema,
@@ -16,7 +17,7 @@ router.get('/id/:id', optionalAuthenticate, validate({ params: uuidParamSchema }
 router.get('/:slug', optionalAuthenticate, PropertyController.getPropertyBySlug);
 
 // Authenticated write routes
-router.post('/', authenticate, validate({ body: createPropertySchema }), PropertyController.createProperty);
+router.post('/', authenticate, authorize('SELLER', 'AGENT'), validate({ body: createPropertySchema }), PropertyController.createProperty);
 router.put('/:id', authenticate, validate({ params: uuidParamSchema, body: updatePropertySchema }), PropertyController.updateProperty);
 router.delete('/:id', authenticate, validate({ params: uuidParamSchema }), PropertyController.deleteProperty);
 

@@ -113,6 +113,46 @@ cp .env.example .env
 ```
 Edit `.env` with your PostgreSQL database URL and JWT secrets. Set `ADMIN_EMAIL` and a unique `ADMIN_PASSWORD` (at least 12 characters) before seeding; never commit `.env`.
 
+### Cloudflare R2 Property Media
+
+Configure these values in the Render backend environment. Keep all access keys private; do not add them to the Vite frontend environment or commit them to Git:
+
+| Variable | Purpose | Default |
+| :--- | :--- | :--- |
+| `R2_ACCOUNT_ID` | Cloudflare account ID used by the S3-compatible endpoint | Required |
+| `R2_ACCESS_KEY_ID` | Private R2 API token access key | Required |
+| `R2_SECRET_ACCESS_KEY` | Private R2 API token secret | Required |
+| `R2_BUCKET_NAME` | Bucket for property media | `sheltered-property-media` |
+| `R2_PUBLIC_URL` | HTTPS custom domain serving public media, without a trailing slash | Required |
+| `R2_MAX_IMAGE_SIZE_BYTES` | Maximum source and optimized image size | `12582912` (12 MiB) |
+| `R2_MAX_VIDEO_SIZE_BYTES` | Maximum MP4 size | `104857600` (100 MiB) |
+| `R2_MAX_THUMBNAIL_SIZE_BYTES` | Maximum generated thumbnail size | `1048576` (1 MiB) |
+| `R2_UPLOAD_URL_TTL_SECONDS` | Presigned PUT lifetime (capped at 15 minutes) | `900` |
+| `R2_UPLOAD_BATCH_TTL_MINUTES` | Staging batch cleanup lifetime | `1440` |
+
+Create a Cloudflare R2 custom domain for public delivery and set it as `R2_PUBLIC_URL`. The API stores only generated object keys, URLs, MIME types, byte sizes, ordering, and optional thumbnail references. File bytes upload directly from the browser to R2.
+
+Configure the R2 bucket CORS policy for the real frontend origins (do not use `*`):
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://shelter-coral.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:5173"
+    ],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+R2 bucket CORS is separate from the Express API `CORS_ORIGIN` setting. Update both lists when the frontend domain changes. `POST /api/v1/media/presigned-url` is authenticated and restricted to approved owners/sellers and brokers/agents; it accepts exactly four images and one MP4 video. The returned short-lived PUT URLs are bound to server-generated keys, declared content types, and expected content lengths. After direct uploads, `POST /api/v1/properties` validates and associates the references. Image cards use generated thumbnails; detail views use the larger optimized WebP images.
+
 ### Database Migration & Seeding
 ```bash
 # Generate Prisma Client
@@ -176,6 +216,14 @@ All endpoints are prefixed with `/api/v1`:
 | `POST` | `/properties` | Submit new property listing | Authenticated |
 | `PUT` | `/properties/:id` | Update property listing | Owner / Admin |
 | `DELETE` | `/properties/:id` | Delete property listing | Owner / Admin |
+
+### Property Media (`/media`)
+| Method | Endpoint | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/media/limits` | Get upload types and size limits | Public |
+| `POST` | `/media/presigned-url` | Create a five-file upload batch and presigned URLs | Seller / Agent |
+| `POST` | `/media/presigned-url/:batchId/refresh` | Renew URLs for failed files in the caller's batch | Seller / Agent |
+| `DELETE` | `/media/:id` | Remove non-required media owned by the caller | Owner / Agent / Admin |
 
 ### Payments & Unlocks (`/payments` & `/unlocks`)
 | Method | Endpoint | Description | Access |

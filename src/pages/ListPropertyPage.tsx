@@ -1,31 +1,17 @@
 import React, { useState } from 'react';
 import {
-  Upload,
-  Plus,
-  Trash2,
   CheckCircle2,
-  ShieldCheck,
-  Building,
-  Camera,
-  Video,
-  FileCheck,
-  AlertCircle,
-  Eye,
   ArrowRight,
   ArrowLeft,
-  MapPin,
-  Bed,
-  Bath,
-  Car,
   Globe
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ALL_AMENITIES } from '../data/mockProperties';
-import { ListingType, PropertyType, Property } from '../types';
+import { ListingType, PropertyType } from '../types';
 import { CurrencyCode, RentalPeriod, formatPrice } from '../utils/currency';
 import { GLOBAL_LOCATIONS, COUNTRY_ADMIN_CONFIGS, POPULAR_COUNTRIES } from '../data/mockLocations';
-import { propertyImages } from '../assets/propertyImages';
 import { createPropertyWithBackend } from '../services/propertyApi';
+import { PropertyMediaUploader, UploadedMediaSelection } from '../components/PropertyMediaUploader';
 
 export const ListPropertyPage: React.FC = () => {
   const { addProperty, currentUser, setCurrentPage, openPropertyDetail, showNotification } = useApp();
@@ -65,16 +51,7 @@ export const ListPropertyPage: React.FC = () => {
     'Dedicated Parking'
   ]);
 
-  // Step 3: Media & Video
-  const [photoSlots, setPhotoSlots] = useState<string[]>([
-    propertyImages.hero,
-    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1600585152220-90363fe7e115?auto=format&fit=crop&w=1200&q=80'
-  ]);
-  const [newPhotoUrl, setNewPhotoUrl] = useState('');
-  const [videoUrl, setVideoUrl] = useState('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  const [uploadedMedia, setUploadedMedia] = useState<UploadedMediaSelection | null>(null);
 
   const adminConfig = COUNTRY_ADMIN_CONFIGS[country] || COUNTRY_ADMIN_CONFIGS.Uganda;
   const countryNode = GLOBAL_LOCATIONS.find((n) => n.name.toLowerCase() === country.toLowerCase());
@@ -104,21 +81,15 @@ export const ListPropertyPage: React.FC = () => {
     }
   };
 
-  const handleAddPhoto = () => {
-    if (newPhotoUrl.trim()) {
-      setPhotoSlots([...photoSlots, newPhotoUrl.trim()]);
-      setNewPhotoUrl('');
-    }
-  };
-
-  const handleRemovePhoto = (index: number) => {
-    setPhotoSlots(photoSlots.filter((_, i) => i !== index));
-  };
-
   const handlePublish = async (status: 'Published' | 'Draft' = 'Published') => {
     if (!title.trim()) {
       showNotification('Please enter a listing title.', 'error');
       setCurrentStep(1);
+      return;
+    }
+    if (!uploadedMedia) {
+      showNotification('Upload four property images and one MP4 video before submitting.', 'error');
+      setCurrentStep(3);
       return;
     }
 
@@ -141,16 +112,28 @@ export const ListPropertyPage: React.FC = () => {
       neighborhood: neighborhood || undefined,
       exactAddress: streetAddress || undefined,
       latitude: 1.0784,
-      longitude: 34.1756
+      longitude: 34.1756,
+      propertyId: uploadedMedia.propertyId,
+      mediaBatchId: uploadedMedia.batchId,
+      mediaRefs: uploadedMedia.mediaRefs
     });
 
     if (!backendResult.success) {
-      showNotification(backendResult.error || 'Property saved locally; backend sync failed.', 'error');
-    } else {
-      showNotification('Property submitted to backend for admin review.', 'success');
+      showNotification(backendResult.error || 'Property submission failed. Retry after checking your connection.', 'error');
+      return;
     }
 
+    const backendMedia = [...(backendResult.property?.media || [])].sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+    const imageMedia = backendMedia.filter((media: any) => media.kind === 'IMAGE');
+    const videoMedia = backendMedia.find((media: any) => media.kind === 'VIDEO');
+    if (imageMedia.length !== 4 || !videoMedia?.publicUrl) {
+      showNotification('The backend did not confirm the complete property media set.', 'error');
+      return;
+    }
+    showNotification('Property and media submitted to backend for admin review.', 'success');
+
     addProperty({
+      id: backendResult.property.id,
       title: title.trim(),
       slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
       listingType,
@@ -176,9 +159,11 @@ export const ListPropertyPage: React.FC = () => {
       plotSize: plotSize || undefined,
       description,
       features: selectedFeatures,
-      images: photoSlots.length > 0 ? photoSlots : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80'],
-      videoUrl: videoUrl.trim() || undefined,
-      videoType: 'youtube',
+      images: imageMedia.map((media: any) => media.publicUrl),
+      imageThumbnails: imageMedia.map((media: any) => media.thumbnailUrl || media.publicUrl),
+      videoUrl: videoMedia.publicUrl,
+      videoPosterUrl: videoMedia.thumbnailUrl || undefined,
+      videoType: 'mp4',
       titleDeedStatus,
       agent: {
         id: currentUser.id,
@@ -639,69 +624,8 @@ export const ListPropertyPage: React.FC = () => {
         {/* STEP 3: MEDIA & VIDEO */}
         {currentStep === 3 && (
           <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-            <h2 className="text-lg font-bold text-slate-900">Step 3: High-Resolution Photos & Video Walkthrough</h2>
-
-            <div className="space-y-4">
-              <div>
-                <span className="text-xs font-semibold text-slate-700 mb-1.5 block">
-                  Property Photographs ({photoSlots.length} photos added)
-                </span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                  {photoSlots.map((url, idx) => (
-                    <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-video">
-                      <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                      {idx === 0 && (
-                        <span className="absolute top-2 left-2 bg-slate-900/80 text-white text-[10px] px-2 py-0.5 rounded font-semibold">
-                          Cover Photo
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePhoto(idx)}
-                        className="absolute top-2 right-2 p-1 bg-white/90 text-rose-600 rounded opacity-0 group-hover:opacity-100 transition"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={newPhotoUrl}
-                    onChange={(e) => setNewPhotoUrl(e.target.value)}
-                    placeholder="Paste image URL (https://...)"
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddPhoto}
-                    className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold"
-                  >
-                    Add Photo
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Video Walkthrough Link (YouTube, Vimeo, or MP4)
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Video className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="url"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs"
-                  />
-                </div>
-              </div>
-            </div>
+            <h2 className="text-lg font-bold text-slate-900">Step 3: Property media</h2>
+            <PropertyMediaUploader onUploadChange={setUploadedMedia} />
 
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
               <button
@@ -716,7 +640,8 @@ export const ListPropertyPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCurrentStep(4)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800"
+                disabled={!uploadedMedia}
+                className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span>Preview Listing</span>
                 <ArrowRight className="w-4 h-4" />
@@ -733,11 +658,9 @@ export const ListPropertyPage: React.FC = () => {
             {/* Preview Card */}
             <div className="border border-slate-200 rounded-xl overflow-hidden bg-neutral-50 p-4">
               <div className="flex flex-col md:flex-row gap-4">
-                <img
-                  src={photoSlots[0]}
-                  alt="Preview"
-                  className="w-full md:w-56 h-40 object-cover rounded-lg"
-                />
+                <div className="flex h-40 w-full items-center justify-center rounded-lg bg-slate-100 text-center text-sm font-medium text-slate-600 md:w-56">
+                  4 optimized images and 1 MP4 video uploaded
+                </div>
                 <div className="space-y-1.5 flex-1">
                   <span className="text-[11px] font-semibold text-slate-500 uppercase">
                     {country} · {propertyType} for {listingType}
@@ -772,14 +695,16 @@ export const ListPropertyPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handlePublish('Draft')}
-                  className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50"
+                  disabled={!uploadedMedia}
+                  className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Save as Draft
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePublish('Published')}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 shadow-xs"
+                  disabled={!uploadedMedia}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 shadow-xs disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   <span>Publish to Marketplace</span>

@@ -296,7 +296,7 @@ export const SellerDashboardPage: React.FC = () => {
                   <div key={property.id} className="py-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <img
-                        src={property.images[0]}
+                        src={property.imageThumbnails?.[0] || property.images[0]}
                         alt={property.title}
                         className="w-14 h-12 rounded-lg object-cover shrink-0"
                       />
@@ -395,7 +395,7 @@ export const SellerDashboardPage: React.FC = () => {
                   <div key={prop.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-start gap-4">
                       <img
-                        src={prop.images[0]}
+                        src={prop.imageThumbnails?.[0] || prop.images[0]}
                         alt={prop.title}
                         className="w-24 h-20 rounded-lg object-cover shrink-0"
                       />

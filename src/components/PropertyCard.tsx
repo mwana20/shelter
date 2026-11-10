@@ -76,10 +76,13 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onHover })
       {/* Property Image Container */}
       <div className="relative aspect-4/3 w-full overflow-hidden bg-neutral-900">
         <img
-          src={property.images[activeImageIndex] || property.images[0]}
+          src={property.imageThumbnails?.[activeImageIndex] || property.imageThumbnails?.[0] || property.images[activeImageIndex] || property.images[0]}
           alt={property.title}
+          width={800}
+          height={600}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
+          decoding="async"
         />
 
         {/* Status & Badges Overlay */}
