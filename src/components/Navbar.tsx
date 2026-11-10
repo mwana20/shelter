@@ -167,8 +167,8 @@ export const Navbar: React.FC = () => {
       }`}
     >
       {/* Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-6 h-16">
+      <div className="mx-auto w-full max-w-none px-3 sm:px-4 xl:px-6">
+        <div className="flex items-center justify-between gap-3 h-16">
           {/* Zone 1: Single text element wordmark */}
           <button
             type="button"
@@ -189,7 +189,7 @@ export const Navbar: React.FC = () => {
           </button>
 
           {/* Zone 2: Clean single-line text navigation links */}
-          <nav className={`${isDashboardPage ? 'hidden' : 'hidden lg:flex'} items-center gap-6 xl:gap-7 text-sm font-semibold text-slate-200`}>
+          <nav className={`${isDashboardPage ? 'hidden' : 'hidden lg:flex'} items-center gap-4 xl:gap-5 text-sm font-semibold text-slate-200`}>
             <button
               type="button"
               onClick={() => navigateTo('home')}
@@ -412,7 +412,7 @@ export const Navbar: React.FC = () => {
               className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-sm transition whitespace-nowrap shrink-0 cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5 text-white" />
-              <span>{t('nav_list_property')}</span>
+              <span>Add Property</span>
             </button>
           </div>
 
@@ -643,7 +643,7 @@ export const Navbar: React.FC = () => {
                     className="w-full py-2.5 text-center text-xs font-semibold bg-slate-950 text-white hover:bg-slate-900 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition shadow-xs"
                   >
                     <PlusCircle className="w-4 h-4 text-emerald-400" />
-                    <span>{t('nav_list_property')}</span>
+                    <span>Add Property</span>
                   </button>
                 </div>
               </div>
