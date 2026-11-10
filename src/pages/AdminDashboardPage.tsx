@@ -32,6 +32,13 @@ import { useApp } from '../context/AppContext';
 import { formatUGX, formatCompactUGX } from '../utils/format';
 import { PropertyStatus, LocationUnlockPayment, LocationLockSettings } from '../types';
 import { backendApi } from '../services/backendApi';
+import {
+  AdminPropertyReview,
+  AdminSubscription,
+  AdminSubscriptionConfig,
+  AdminSubscriptionUser,
+  subscriptionAdminApi
+} from '../services/subscriptionAdminApi';
 
 export const AdminDashboardPage: React.FC = () => {
   const {
@@ -53,7 +60,7 @@ export const AdminDashboardPage: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'inventory' | 'moderation' | 'locking' | 'payments' | 'viewings' | 'analytics'
+    'inventory' | 'moderation' | 'locking' | 'payments' | 'viewings' | 'analytics' | 'subscriptions'
   >('locking');
 
   useEffect(() => {
@@ -85,6 +92,22 @@ export const AdminDashboardPage: React.FC = () => {
   // Local editable settings form
   const [localSettings, setLocalSettings] = useState<LocationLockSettings>(locationLockSettings);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [propertyReviewQueue, setPropertyReviewQueue] = useState<AdminPropertyReview[]>([]);
+  const [propertyReviewFilter, setPropertyReviewFilter] = useState('PENDING_REVIEW');
+  const [propertyReviewLoading, setPropertyReviewLoading] = useState(false);
+  const [propertyReviewNotes, setPropertyReviewNotes] = useState<Record<string, string>>({});
+  const [subscriptionConfig, setSubscriptionConfig] = useState<AdminSubscriptionConfig | null>(null);
+  const [subscriptionRows, setSubscriptionRows] = useState<AdminSubscription[]>([]);
+  const [subscriptionUsers, setSubscriptionUsers] = useState<AdminSubscriptionUser[]>([]);
+  const [subscriptionFilter, setSubscriptionFilter] = useState('ALL');
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionSaving, setSubscriptionSaving] = useState(false);
+  const [grantUserId, setGrantUserId] = useState('');
+  const [grantPlan, setGrantPlan] = useState<'FREE' | 'PAID'>('FREE');
+  const [grantDuration, setGrantDuration] = useState(1);
+  const [grantReason, setGrantReason] = useState('');
+  const [revocationTarget, setRevocationTarget] = useState<AdminSubscription | null>(null);
+  const [revocationReason, setRevocationReason] = useState('');
 
   useEffect(() => {
     setLocalSettings(locationLockSettings);
@@ -106,6 +129,124 @@ export const AdminDashboardPage: React.FC = () => {
       fetchAdminPayments();
     }
   }, [isAdmin, statusFilter]);
+
+  const fetchPropertyReviewQueue = async () => {
+    if (!isAdmin) return;
+    setPropertyReviewLoading(true);
+    try {
+      setPropertyReviewQueue(await subscriptionAdminApi.listProperties(propertyReviewFilter));
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Failed to load property review queue.', 'error');
+    } finally {
+      setPropertyReviewLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'moderation') void fetchPropertyReviewQueue();
+  }, [activeTab, isAdmin, propertyReviewFilter]);
+
+  const fetchSubscriptionManagement = async () => {
+    if (!isAdmin) return;
+    setSubscriptionLoading(true);
+    try {
+      const [config, rows, users] = await Promise.all([
+        subscriptionAdminApi.getConfig(),
+        subscriptionAdminApi.listSubscriptions(subscriptionFilter),
+        subscriptionAdminApi.listUsers()
+      ]);
+      setSubscriptionConfig(config);
+      setSubscriptionRows(rows);
+      setSubscriptionUsers(users);
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Failed to load subscription management.', 'error');
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'subscriptions') void fetchSubscriptionManagement();
+  }, [activeTab, isAdmin, subscriptionFilter]);
+
+  const handleSaveSubscriptionConfig = async () => {
+    if (!subscriptionConfig) return;
+    setSubscriptionSaving(true);
+    try {
+      const saved = await subscriptionAdminApi.updateConfig({
+        baseMonthlyPrice: Number(subscriptionConfig.baseMonthlyPrice),
+        currency: subscriptionConfig.currency.toUpperCase(),
+        freeValidityDays: Number(subscriptionConfig.freeValidityDays),
+        freeListingLimit: Number(subscriptionConfig.freeListingLimit),
+        freeMapUnlockLimit: Number(subscriptionConfig.freeMapUnlockLimit),
+        paidListingLimit: Number(subscriptionConfig.paidListingLimit),
+        paidMapUnlockLimit: Number(subscriptionConfig.paidMapUnlockLimit),
+        discounts: subscriptionConfig.discounts.map(({ minMonths, maxMonths, discountPercent }) => ({
+          minMonths: Number(minMonths),
+          maxMonths: Number(maxMonths),
+          discountPercent: Number(discountPercent)
+        }))
+      });
+      setSubscriptionConfig(saved);
+      showNotification('Subscription pricing and privileges saved.', 'success');
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Failed to save subscription settings.', 'error');
+    } finally {
+      setSubscriptionSaving(false);
+    }
+  };
+
+  const handleGrantSubscription = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      await subscriptionAdminApi.grant(grantUserId.trim(), {
+        plan: grantPlan,
+        ...(grantPlan === 'PAID' ? { durationMonths: grantDuration } : {}),
+        reason: grantReason.trim()
+      });
+      setGrantUserId('');
+      setGrantReason('');
+      showNotification('Subscription granted and recorded in the audit log.', 'success');
+      await fetchSubscriptionManagement();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Failed to grant subscription.', 'error');
+    }
+  };
+
+  const handleRevokeSubscription = async () => {
+    if (!revocationTarget) return;
+    try {
+      await subscriptionAdminApi.revoke(revocationTarget.id, revocationReason.trim());
+      setRevocationTarget(null);
+      setRevocationReason('');
+      showNotification('Subscription revoked and recorded in the audit log.', 'success');
+      await fetchSubscriptionManagement();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Failed to revoke subscription.', 'error');
+    }
+  };
+
+  const handlePropertyReview = async (
+    property: AdminPropertyReview,
+    action: 'approve' | 'reject' | 'corrections'
+  ) => {
+    const notes = propertyReviewNotes[property.id]?.trim();
+    if (action !== 'approve' && !notes) {
+      showNotification('Add review notes before rejecting or requesting corrections.', 'error');
+      return;
+    }
+    try {
+      await subscriptionAdminApi.reviewProperty(property.id, action, notes);
+      setPropertyReviewNotes((current) => ({ ...current, [property.id]: '' }));
+      showNotification(
+        action === 'approve' ? 'Property approved and published.' : action === 'reject' ? 'Property rejected.' : 'Corrections requested.',
+        'success'
+      );
+      await fetchPropertyReviewQueue();
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Property review failed.', 'error');
+    }
+  };
 
   // Stats calculation
   const totalProperties = properties.length;
@@ -378,6 +519,18 @@ export const AdminDashboardPage: React.FC = () => {
           >
             <Shield className="w-4 h-4" />
             <span>Listing Approvals ({pendingListings.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('subscriptions')}
+            className={`py-3 px-4 border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'subscriptions'
+                ? 'border-emerald-600 text-emerald-700'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>Subscriptions &amp; Pricing</span>
           </button>
         </div>
 
@@ -878,34 +1031,238 @@ export const AdminDashboardPage: React.FC = () => {
         {/* TAB 4: MODERATION */}
         {activeTab === 'moderation' && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-xs space-y-4">
-            <h3 className="text-lg font-bold text-neutral-900 font-serif-display">
-              Listing Moderation Queue ({pendingListings.length})
-            </h3>
-            {pendingListings.length === 0 ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-neutral-900 font-serif-display">
+                  Property review queue ({propertyReviewQueue.length})
+                </h3>
+                <p className="mt-1 text-xs text-neutral-500">Review ownership, location, media, and approval history before publishing.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={propertyReviewFilter}
+                  onChange={(event) => setPropertyReviewFilter(event.target.value)}
+                  className="rounded-lg border border-neutral-300 px-3 py-2 text-xs"
+                  aria-label="Filter property review status"
+                >
+                  {['PENDING_REVIEW', 'CORRECTION_REQUESTED', 'REJECTED', 'ACTIVE', 'ALL'].map((status) => (
+                    <option key={status} value={status}>{status === 'ALL' ? 'All statuses' : status.replaceAll('_', ' ')}</option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => void fetchPropertyReviewQueue()} className="rounded-lg border border-neutral-300 p-2 text-neutral-700" aria-label="Refresh property review queue">
+                  <RefreshCw className={`h-4 w-4 ${propertyReviewLoading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+            {propertyReviewLoading ? (
+              <p className="py-8 text-center text-sm text-neutral-500">Loading submitted properties...</p>
+            ) : propertyReviewQueue.length === 0 ? (
               <p className="text-xs text-neutral-500 py-6 text-center">No properties awaiting approval.</p>
             ) : (
-              <div className="divide-y divide-neutral-100">
-                {pendingListings.map((p) => (
-                  <div key={p.id} className="py-4 flex items-center justify-between gap-4">
-                    <p className="font-bold text-xs text-neutral-900">{p.title}</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => approveProperty(p.id)}
-                        className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => rejectProperty(p.id, 'Moderation review check.')}
-                        className="px-3 py-1 bg-rose-50 text-rose-700 rounded-lg text-xs"
-                      >
-                        Reject
-                      </button>
+              <div className="grid gap-5">
+                {propertyReviewQueue.map((property) => (
+                  <article key={property.id} className="overflow-hidden rounded-2xl border border-neutral-200">
+                    <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(260px,0.7fr)] lg:p-5">
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h4 className="text-base font-bold text-neutral-950">{property.title}</h4>
+                            <p className="mt-1 text-xs text-neutral-600">{property.propertyType} · {property.listingType} · {property.currency} {Number(property.price).toLocaleString()}</p>
+                          </div>
+                          <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-800">{property.status.replaceAll('_', ' ')}</span>
+                        </div>
+                        <p className="text-sm leading-6 text-neutral-700">{property.description}</p>
+                        <dl className="grid gap-2 rounded-xl bg-neutral-50 p-3 text-xs sm:grid-cols-2">
+                          <div><dt className="font-semibold text-neutral-500">Submitted by</dt><dd className="mt-0.5 font-medium text-neutral-900">{property.owner.fullName} · {property.owner.role || 'Owner'}</dd><dd className="text-neutral-600">{property.owner.email} {property.owner.phone ? `· ${property.owner.phone}` : ''}</dd></div>
+                          <div><dt className="font-semibold text-neutral-500">Location</dt><dd className="mt-0.5 text-neutral-900">{[property.exactAddress, property.district, property.region, property.country].filter(Boolean).join(', ')}</dd><dd className="text-neutral-600">{property.latitude ?? '—'}, {property.longitude ?? '—'}</dd></div>
+                        </dl>
+                        {property.media.length > 0 && (
+                          <div className="flex gap-2 overflow-x-auto">
+                            {property.media.filter((item) => item.isActive).map((media) => (
+                              <a key={media.id} href={media.publicUrl} target="_blank" rel="noreferrer" className="shrink-0">
+                                {media.kind === 'VIDEO' ? (
+                                  <video src={media.publicUrl} controls className="h-24 w-36 rounded-lg bg-neutral-100 object-cover" />
+                                ) : (
+                                  <img src={media.publicUrl} alt={`${property.title} media`} className="h-24 w-36 rounded-lg bg-neutral-100 object-cover" />
+                                )}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {property.reviewNote && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"><strong>Latest review note:</strong> {property.reviewNote}</p>}
+                        <details className="rounded-lg border border-neutral-200 p-3">
+                          <summary className="cursor-pointer text-xs font-semibold text-neutral-700">Approval history ({property.reviewHistory.length})</summary>
+                          <ol className="mt-2 space-y-2">
+                            {property.reviewHistory.map((review) => (
+                              <li key={review.id} className="border-l-2 border-emerald-300 pl-3 text-xs text-neutral-600">
+                                <span className="font-semibold text-neutral-900">{review.action.replaceAll('_', ' ')}</span> · {review.fromStatus} → {review.toStatus} · {new Date(review.createdAt).toLocaleString()}
+                                {review.notes && <p className="mt-0.5">{review.notes}</p>}
+                              </li>
+                            ))}
+                          </ol>
+                        </details>
+                      </div>
+                      <div className="space-y-3">
+                        <label className="block text-xs font-semibold text-neutral-800" htmlFor={`review-notes-${property.id}`}>Review notes</label>
+                        <textarea
+                          id={`review-notes-${property.id}`}
+                          rows={5}
+                          value={propertyReviewNotes[property.id] || ''}
+                          onChange={(event) => setPropertyReviewNotes((current) => ({ ...current, [property.id]: event.target.value }))}
+                          placeholder="Explain any required corrections or rejection reason."
+                          className="w-full rounded-xl border border-neutral-300 p-3 text-sm outline-none focus:border-emerald-600"
+                        />
+                        <div className="grid gap-2">
+                          <button type="button" onClick={() => void handlePropertyReview(property, 'approve')} className="rounded-lg bg-emerald-700 px-3 py-2.5 text-xs font-bold text-white hover:bg-emerald-800">Approve and publish</button>
+                          <button type="button" disabled={!propertyReviewNotes[property.id]?.trim()} onClick={() => void handlePropertyReview(property, 'corrections')} className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs font-bold text-amber-900 disabled:opacity-50">Request corrections</button>
+                          <button type="button" disabled={!propertyReviewNotes[property.id]?.trim()} onClick={() => void handlePropertyReview(property, 'reject')} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-bold text-rose-800 disabled:opacity-50">Reject property</button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'subscriptions' && (
+          <div className="space-y-6">
+            <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-xs sm:p-7">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-neutral-950">Subscription pricing and privileges</h3>
+                  <p className="mt-1 text-xs text-neutral-500">All prices and discount rules are stored in the database and applied by the backend.</p>
+                </div>
+                <button type="button" onClick={() => void fetchSubscriptionManagement()} className="inline-flex items-center gap-2 self-start rounded-lg border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-700">
+                  <RefreshCw className={`h-4 w-4 ${subscriptionLoading ? 'animate-spin' : ''}`} /> Refresh
+                </button>
+              </div>
+
+              {subscriptionLoading && !subscriptionConfig ? (
+                <p className="py-10 text-center text-sm text-neutral-500">Loading subscription settings...</p>
+              ) : subscriptionConfig ? (
+                <div className="mt-6 grid gap-6 xl:grid-cols-2">
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-bold text-neutral-900">Plan rules</h4>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="text-xs font-semibold text-neutral-700">
+                        Paid base monthly price
+                        <input type="number" min="0" step="0.01" value={subscriptionConfig.baseMonthlyPrice} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, baseMonthlyPrice: Number(event.target.value) })} className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm" />
+                      </label>
+                      <label className="text-xs font-semibold text-neutral-700">
+                        Currency (ISO code)
+                        <input maxLength={3} value={subscriptionConfig.currency} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, currency: event.target.value.toUpperCase() })} className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm uppercase" />
+                      </label>
+                      <label className="text-xs font-semibold text-neutral-700">
+                        Free plan validity (days)
+                        <input type="number" min="1" max="3650" value={subscriptionConfig.freeValidityDays} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, freeValidityDays: Number(event.target.value) })} className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm" />
+                      </label>
+                      <label className="text-xs font-semibold text-neutral-700">
+                        Free active listing limit (0 or 1)
+                        <input type="number" min="0" max="1" value={subscriptionConfig.freeListingLimit} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, freeListingLimit: Number(event.target.value) })} className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm" />
+                      </label>
+                      <label className="text-xs font-semibold text-neutral-700">
+                        Free map unlocks (0 or 1)
+                        <input type="number" min="0" max="1" value={subscriptionConfig.freeMapUnlockLimit} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, freeMapUnlockLimit: Number(event.target.value) })} className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm" />
+                      </label>
+                      <label className="text-xs font-semibold text-neutral-700">
+                        Paid active listing limit (0 = unlimited)
+                        <input type="number" min="0" value={subscriptionConfig.paidListingLimit} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, paidListingLimit: Number(event.target.value) })} className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm" />
+                      </label>
+                      <label className="text-xs font-semibold text-neutral-700 sm:col-span-2">
+                        Paid map unlock limit (0 = unlimited)
+                        <input type="number" min="0" value={subscriptionConfig.paidMapUnlockLimit} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, paidMapUnlockLimit: Number(event.target.value) })} className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm" />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-neutral-900">Progressive duration discounts</h4>
+                        <p className="mt-1 text-[11px] text-neutral-500">Ranges must not overlap; longer ranges cannot reduce the discount.</p>
+                      </div>
+                      <button type="button" onClick={() => setSubscriptionConfig({ ...subscriptionConfig, discounts: [...subscriptionConfig.discounts, { minMonths: 1, maxMonths: 1, discountPercent: 0 }] })} className="rounded-lg border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-700">Add range</button>
+                    </div>
+                    <div className="space-y-2">
+                      {subscriptionConfig.discounts.map((discount, index) => (
+                        <div key={discount.id || index} className="grid grid-cols-[1fr_1fr_1.2fr_auto] items-end gap-2 rounded-xl bg-neutral-50 p-3">
+                          <label className="text-[10px] font-semibold text-neutral-600">From months<input type="number" min="1" max="48" value={discount.minMonths} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, discounts: subscriptionConfig.discounts.map((item, row) => row === index ? { ...item, minMonths: Number(event.target.value) } : item) })} className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-2 text-xs" /></label>
+                          <label className="text-[10px] font-semibold text-neutral-600">To months<input type="number" min="1" max="48" value={discount.maxMonths} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, discounts: subscriptionConfig.discounts.map((item, row) => row === index ? { ...item, maxMonths: Number(event.target.value) } : item) })} className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-2 text-xs" /></label>
+                          <label className="text-[10px] font-semibold text-neutral-600">Discount %<input type="number" min="0" max="100" step="0.01" value={discount.discountPercent} onChange={(event) => setSubscriptionConfig({ ...subscriptionConfig, discounts: subscriptionConfig.discounts.map((item, row) => row === index ? { ...item, discountPercent: Number(event.target.value) } : item) })} className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-2 text-xs" /></label>
+                          <button type="button" onClick={() => setSubscriptionConfig({ ...subscriptionConfig, discounts: subscriptionConfig.discounts.filter((_, row) => row !== index) })} className="rounded-md p-2 text-rose-700 hover:bg-rose-50" aria-label="Remove discount range"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-rose-700">Subscription settings could not be loaded.</p>
+              )}
+              <div className="mt-6 border-t border-neutral-100 pt-4">
+                <button type="button" disabled={!subscriptionConfig || subscriptionSaving} onClick={() => void handleSaveSubscriptionConfig()} className="rounded-xl bg-slate-950 px-5 py-3 text-xs font-bold text-white disabled:opacity-50">
+                  {subscriptionSaving ? 'Saving settings...' : 'Save subscription settings'}
+                </button>
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-xs sm:p-7">
+              <h3 className="text-lg font-bold text-neutral-950">Manually grant a subscription</h3>
+              <p className="mt-1 text-xs text-neutral-500">Manual grants require a reason and create an audit record. Grants replace the user’s currently active plan.</p>
+              <form onSubmit={handleGrantSubscription} className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <label className="text-xs font-semibold text-neutral-700 xl:col-span-2">Owner or broker
+                  <select required value={grantUserId} onChange={(event) => setGrantUserId(event.target.value)} className="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm">
+                    <option value="">Select a user</option>
+                    {subscriptionUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} · {user.email} · {user.role}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs font-semibold text-neutral-700">Plan
+                  <select value={grantPlan} onChange={(event) => setGrantPlan(event.target.value as 'FREE' | 'PAID')} className="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm">
+                    <option value="FREE">Free</option><option value="PAID">Paid</option>
+                  </select>
+                </label>
+                {grantPlan === 'PAID' && <label className="text-xs font-semibold text-neutral-700">Duration (months)
+                  <select value={grantDuration} onChange={(event) => setGrantDuration(Number(event.target.value))} className="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm">
+                    {Array.from({ length: 48 }, (_, index) => index + 1).map((month) => <option key={month} value={month}>{month} month{month === 1 ? '' : 's'}</option>)}
+                  </select>
+                </label>}
+                <label className="text-xs font-semibold text-neutral-700 xl:col-span-3">Audit reason
+                  <input required minLength={8} value={grantReason} onChange={(event) => setGrantReason(event.target.value)} placeholder="Explain why this subscription is being granted" className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm" />
+                </label>
+                <button type="submit" disabled={!grantUserId || !grantReason.trim()} className="self-end rounded-xl bg-emerald-700 px-5 py-3 text-xs font-bold text-white disabled:opacity-50">Grant subscription</button>
+              </form>
+            </section>
+
+            <section className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-xs">
+              <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+                <div><h3 className="text-lg font-bold text-neutral-950">Subscriptions and payment transactions</h3><p className="mt-1 text-xs text-neutral-500">Review active, expired, pending, and manually granted subscription history.</p></div>
+                <select value={subscriptionFilter} onChange={(event) => setSubscriptionFilter(event.target.value)} className="rounded-lg border border-neutral-300 px-3 py-2 text-xs">
+                  {['ALL', 'ACTIVE', 'EXPIRED', 'PENDING_PAYMENT', 'REVOKED', 'FAILED'].map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}
+                </select>
+              </div>
+              {subscriptionLoading ? <p className="py-10 text-center text-sm text-neutral-500">Loading subscription ledger...</p> : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[820px] text-left text-xs">
+                    <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500"><tr><th className="px-4 py-3">User</th><th className="px-4 py-3">Plan</th><th className="px-4 py-3">Status / Validity</th><th className="px-4 py-3">Amount</th><th className="px-4 py-3">Payment reference</th><th className="px-4 py-3">Action</th></tr></thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {subscriptionRows.map((row) => {
+                        const payment = row.payments[0];
+                        return <tr key={row.id}>
+                          <td className="px-4 py-3"><strong>{row.user.fullName}</strong><p className="text-neutral-500">{row.user.email}</p><p className="font-mono text-[10px] text-neutral-400">{row.userId}</p></td>
+                          <td className="px-4 py-3">{row.plan}{row.durationMonths ? ` · ${row.durationMonths} mo` : ''}</td>
+                          <td className="px-4 py-3">{row.status}<p className="mt-1 text-neutral-500">{row.startsAt ? new Date(row.startsAt).toLocaleDateString() : 'Pending'} – {row.expiresAt ? new Date(row.expiresAt).toLocaleDateString() : '—'}</p></td>
+                          <td className="px-4 py-3 font-semibold">{row.currency} {Number(row.totalAmount).toLocaleString()}</td>
+                          <td className="px-4 py-3 font-mono text-[10px]">{payment?.gatewayReference || payment?.id || 'No payment record'}{payment && <p className="mt-1 font-sans text-neutral-500">{payment.status}</p>}</td>
+                          <td className="px-4 py-3">{row.status === 'ACTIVE' || row.status === 'PENDING_PAYMENT' ? <button type="button" onClick={() => { setRevocationTarget(row); setRevocationReason(''); }} className="rounded-lg bg-rose-50 px-3 py-2 font-semibold text-rose-700">Revoke</button> : '—'}</td>
+                        </tr>;
+                      })}
+                      {subscriptionRows.length === 0 && <tr><td colSpan={6} className="px-4 py-10 text-center text-neutral-500">No subscriptions in this status.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           </div>
         )}
 
@@ -951,6 +1308,22 @@ export const AdminDashboardPage: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {revocationTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+            <form onSubmit={(event) => { event.preventDefault(); void handleRevokeSubscription(); }} className="w-full max-w-md space-y-4 rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl">
+              <h3 className="text-base font-bold text-neutral-950">Revoke subscription</h3>
+              <p className="text-xs text-neutral-600">Revoke {revocationTarget.plan} access for {revocationTarget.user.fullName}. The reason is saved to the administrator audit log.</p>
+              <label className="block text-xs font-semibold text-neutral-800">Mandatory audit reason
+                <textarea required minLength={8} rows={4} value={revocationReason} onChange={(event) => setRevocationReason(event.target.value)} className="mt-1.5 w-full rounded-xl border border-neutral-300 p-3 text-sm" />
+              </label>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setRevocationTarget(null)} className="rounded-lg px-4 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-100">Cancel</button>
+                <button type="submit" disabled={revocationReason.trim().length < 8} className="rounded-lg bg-rose-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">Confirm revoke</button>
+              </div>
+            </form>
           </div>
         )}
 

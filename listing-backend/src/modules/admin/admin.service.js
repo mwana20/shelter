@@ -3,6 +3,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { getPagination, formatPaginationResponse } from '../../utils/pagination.js';
 import { logAudit } from '../../middlewares/auditLog.js';
 import { sendEmail } from '../notifications/email.service.js';
+import { addCalendarMonths, SubscriptionService } from '../subscriptions/subscription.service.js';
 
 async function sendEmailSafe(to, subject, html) {
   try {
@@ -391,19 +392,20 @@ export class AdminService {
   }
   static async listPendingProperties(query = {}) {
     const { page, limit, skip } = getPagination(query, 20);
-    const where = {};
-    if (query.status && query.status !== 'ALL') {
-      where.status = query.status.toUpperCase();
-    } else {
-      where.status = 'PENDING_REVIEW';
-    }
+    const where = query.status === 'ALL'
+      ? {}
+      : { status: query.status ? query.status.toUpperCase() : 'PENDING_REVIEW' };
     const [properties, total] = await Promise.all([
       prisma.property.findMany({
         where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { owner: { select: { id: true, email: true, fullName: true } }, media: true }
+        include: {
+          owner: { select: { id: true, email: true, fullName: true, phone: true, role: true } },
+          media: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } },
+          reviewHistory: { orderBy: { createdAt: 'desc' } }
+        }
       }),
       prisma.property.count({ where })
     ]);
@@ -411,70 +413,288 @@ export class AdminService {
   }
 
   static async approveProperty(propertyId, adminUser, req) {
-    const property = await prisma.property.findUnique({ where: { id: propertyId } });
-    if (!property) throw ApiError.notFound('Property not found');
-    const updated = await prisma.property.update({
-      where: { id: propertyId },
-      data: { status: 'ACTIVE' }
-    });
-
-    const owner = await prisma.user.findUnique({ where: { id: property.ownerId } });
-    if (owner) {
-      await prisma.notification.create({
-        data: {
-          userId: owner.id,
-          type: 'PROPERTY_APPROVED',
-          title: 'Property Approved',
-          message: `Your property "${property.title}" has been approved and is now live.`,
-          link: `/#/property-detail?id=${property.id}`
-        }
-      });
-      await sendEmailSafe(owner.email, `Your property has been approved: ${property.title}`, `<h2>Property Approved</h2><p>Dear ${owner.fullName},</p><p>Your property <strong>${property.title}</strong> has been approved and is now live.</p>`);
-    }
-
-    await logAudit({
-      actorId: adminUser.id,
-      action: 'APPROVE_PROPERTY',
-      details: { propertyId, title: property.title },
-      targetType: 'PROPERTY',
-      targetId: propertyId,
-      req
-    });
-
-    return { success: true, message: 'Property approved', property: updated };
+    return this.updatePropertyReview(propertyId, 'ACTIVE', 'APPROVED', req.body?.notes || null, adminUser, req);
   }
 
-  static async rejectProperty(propertyId, reason, adminUser, req) {
+  static async rejectProperty(propertyId, notes, adminUser, req) {
+    return this.updatePropertyReview(propertyId, 'REJECTED', 'REJECTED', notes, adminUser, req);
+  }
+
+  static async requestPropertyCorrections(propertyId, notes, adminUser, req) {
+    return this.updatePropertyReview(propertyId, 'CORRECTION_REQUESTED', 'CORRECTIONS_REQUESTED', notes, adminUser, req);
+  }
+
+  static async updatePropertyReview(propertyId, status, action, notes, adminUser, req) {
+    if (status !== 'ACTIVE' && (!notes || notes.trim().length < 5)) {
+      throw ApiError.badRequest('Review notes of at least five characters are required.');
+    }
     const property = await prisma.property.findUnique({ where: { id: propertyId } });
     if (!property) throw ApiError.notFound('Property not found');
-    const updated = await prisma.property.update({
-      where: { id: propertyId },
-      data: { status: 'REJECTED' }
+
+    const updated = await prisma.$transaction(async (transaction) => {
+      const result = await transaction.property.update({
+        where: { id: propertyId },
+        data: { status, reviewNote: notes }
+      });
+      await transaction.propertyReview.create({
+        data: {
+          propertyId,
+          actorId: adminUser.id,
+          fromStatus: property.status,
+          toStatus: status,
+          action,
+          notes
+        }
+      });
+      return result;
     });
 
     const owner = await prisma.user.findUnique({ where: { id: property.ownerId } });
+    const message = status === 'ACTIVE'
+      ? `Your property "${property.title}" has been approved and is now live.`
+      : status === 'CORRECTION_REQUESTED'
+        ? `Corrections are required for "${property.title}": ${notes}`
+        : `Your property "${property.title}" was rejected: ${notes}`;
     if (owner) {
       await prisma.notification.create({
         data: {
           userId: owner.id,
-          type: 'PROPERTY_REJECTED',
-          title: 'Property Rejected',
-          message: reason ? `Your property "${property.title}" was rejected: ${reason}` : `Your property "${property.title}" was rejected.`,
-          link: '/#/seller-dashboard'
+          type: `PROPERTY_${action}`,
+          title: status === 'ACTIVE' ? 'Property Approved' : status === 'CORRECTION_REQUESTED' ? 'Corrections Requested' : 'Property Rejected',
+          message,
+          link: status === 'ACTIVE' ? `/#/property-detail?id=${property.id}` : '/#/seller-dashboard'
         }
       });
-      await sendEmailSafe(owner.email, `Property review update: ${property.title}`, `<h2>Property Review Update</h2><p>Dear ${owner.fullName},</p><p>Your property <strong>${property.title}</strong> was not approved.</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}`);
+      await sendEmailSafe(owner.email, `Property review update: ${property.title}`, `<h2>Property Review Update</h2><p>Dear ${owner.fullName},</p><p>${message}</p>`);
     }
 
     await logAudit({
       actorId: adminUser.id,
-      action: 'REJECT_PROPERTY',
-      details: { propertyId, title: property.title, reason },
+      action: `PROPERTY_${action}`,
+      details: { propertyId, title: property.title, notes },
       targetType: 'PROPERTY',
       targetId: propertyId,
       req
     });
 
-    return { success: true, message: 'Property rejected', property: updated };
+    return { success: true, message: status === 'ACTIVE' ? 'Property approved' : status === 'CORRECTION_REQUESTED' ? 'Corrections requested' : 'Property rejected', property: updated };
+  }
+
+  static async getSubscriptionConfig() {
+    return SubscriptionService.getConfig();
+  }
+
+  static async updateSubscriptionConfig(data, adminUser, req) {
+    const updated = await prisma.$transaction(async (transaction) => {
+      const config = await transaction.subscriptionConfig.upsert({
+        where: { id: 'global_setting' },
+        update: {
+          baseMonthlyPrice: data.baseMonthlyPrice,
+          currency: data.currency,
+          freeValidityDays: data.freeValidityDays,
+          freeListingLimit: data.freeListingLimit,
+          freeMapUnlockLimit: data.freeMapUnlockLimit,
+          paidListingLimit: data.paidListingLimit,
+          paidMapUnlockLimit: data.paidMapUnlockLimit
+        },
+        create: {
+          id: 'global_setting',
+          baseMonthlyPrice: data.baseMonthlyPrice,
+          currency: data.currency,
+          freeValidityDays: data.freeValidityDays,
+          freeListingLimit: data.freeListingLimit,
+          freeMapUnlockLimit: data.freeMapUnlockLimit,
+          paidListingLimit: data.paidListingLimit,
+          paidMapUnlockLimit: data.paidMapUnlockLimit
+        }
+      });
+      await transaction.subscriptionDiscount.deleteMany({ where: { configId: config.id } });
+      await transaction.subscriptionDiscount.createMany({
+        data: data.discounts.map((discount) => ({ ...discount, configId: config.id }))
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId: adminUser.id,
+          action: 'UPDATE_SUBSCRIPTION_SETTINGS',
+          details: JSON.stringify(data),
+          targetType: 'SUBSCRIPTION_CONFIG',
+          targetId: config.id,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent')
+        }
+      });
+      return transaction.subscriptionConfig.findUnique({
+        where: { id: config.id },
+        include: { discounts: { orderBy: { minMonths: 'asc' } } }
+      });
+    });
+    return updated;
+  }
+
+  static async listSubscriptions(query = {}) {
+    const { page, limit, skip } = getPagination(query, 20);
+    const where = {};
+    if (query.status && query.status !== 'ALL') where.status = query.status.toUpperCase();
+    const [subscriptions, total] = await Promise.all([
+      prisma.subscription.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, email: true, fullName: true, role: true } },
+          payments: { orderBy: { createdAt: 'desc' } }
+        }
+      }),
+      prisma.subscription.count({ where })
+    ]);
+    return formatPaginationResponse(subscriptions, total, page, limit);
+  }
+
+  static async listSubscriptionUsers(query = {}) {
+    const { page, limit, skip } = getPagination(query, 100);
+    const where = {
+      role: { in: ['SELLER', 'AGENT'] },
+      ...(query.search
+        ? {
+            OR: [
+              { fullName: { contains: query.search, mode: 'insensitive' } },
+              { email: { contains: query.search, mode: 'insensitive' } }
+            ]
+          }
+        : {})
+    };
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          accountStatus: true,
+          subscriptions: {
+            where: { status: 'ACTIVE', expiresAt: { gt: new Date() } },
+            orderBy: { startsAt: 'desc' },
+            take: 1
+          }
+        }
+      }),
+      prisma.user.count({ where })
+    ]);
+    return formatPaginationResponse(users, total, page, limit);
+  }
+
+  static async grantSubscription(userId, data, adminUser, req) {
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) throw ApiError.notFound('User not found');
+    if (!['SELLER', 'AGENT'].includes(targetUser.role)) {
+      throw ApiError.badRequest('Subscriptions can only be granted to property owners and brokers.');
+    }
+
+    const config = await SubscriptionService.getConfig();
+    const now = new Date();
+    const quote = data.plan === 'PAID'
+      ? SubscriptionService.calculatePrice(config, data.durationMonths)
+      : {
+          durationMonths: 0,
+          baseMonthlyPrice: 0,
+          originalTotal: 0,
+          discountPercent: 0,
+          discountAmount: 0,
+          totalAmount: 0,
+          currency: config.currency
+        };
+    const expiresAt = data.plan === 'FREE'
+      ? new Date(now.getTime() + config.freeValidityDays * 24 * 60 * 60 * 1000)
+      : addCalendarMonths(now, quote.durationMonths);
+
+    const subscription = await prisma.$transaction(async (transaction) => {
+      const active = await SubscriptionService.getActiveSubscription(userId, transaction);
+      if (active) {
+        await transaction.subscription.update({
+          where: { id: active.id },
+          data: { status: 'REVOKED' }
+        });
+      }
+      const created = await transaction.subscription.create({
+        data: {
+          userId,
+          plan: data.plan,
+          status: 'ACTIVE',
+          durationMonths: quote.durationMonths,
+          baseMonthlyPrice: quote.baseMonthlyPrice,
+          originalTotal: quote.originalTotal,
+          discountPercent: quote.discountPercent,
+          discountAmount: quote.discountAmount,
+          totalAmount: quote.totalAmount,
+          currency: quote.currency,
+          startsAt: now,
+          expiresAt
+        }
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId: adminUser.id,
+          action: 'MANUAL_GRANT_SUBSCRIPTION',
+          details: JSON.stringify({ userId, plan: data.plan, durationMonths: quote.durationMonths, reason: data.reason }),
+          targetType: 'SUBSCRIPTION',
+          targetId: created.id,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent')
+        }
+      });
+      return created;
+    });
+    await prisma.notification.create({
+      data: {
+        userId,
+        type: 'SUBSCRIPTION_GRANTED',
+        title: 'Subscription granted',
+        message: `An administrator granted you a ${data.plan.toLowerCase()} subscription through ${expiresAt.toLocaleDateString()}.`,
+        link: '/#/seller-dashboard'
+      }
+    });
+    return subscription;
+  }
+
+  static async revokeSubscription(subscriptionId, reason, adminUser, req) {
+    const subscription = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+    if (!subscription) throw ApiError.notFound('Subscription not found');
+    if (subscription.status !== 'ACTIVE' && subscription.status !== 'PENDING_PAYMENT') {
+      throw ApiError.conflict('Only active or pending subscriptions can be revoked.');
+    }
+
+    const updated = await prisma.$transaction(async (transaction) => {
+      const result = await transaction.subscription.update({
+        where: { id: subscriptionId },
+        data: { status: 'REVOKED' }
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId: adminUser.id,
+          action: 'REVOKE_SUBSCRIPTION',
+          details: JSON.stringify({ userId: subscription.userId, reason }),
+          targetType: 'SUBSCRIPTION',
+          targetId: subscriptionId,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent')
+        }
+      });
+      return result;
+    });
+    await prisma.notification.create({
+      data: {
+        userId: subscription.userId,
+        type: 'SUBSCRIPTION_REVOKED',
+        title: 'Subscription update',
+        message: `An administrator revoked your subscription: ${reason}`,
+        link: '/#/seller-dashboard'
+      }
+    });
+    return updated;
   }
 }

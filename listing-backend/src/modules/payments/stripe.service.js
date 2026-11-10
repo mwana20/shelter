@@ -51,6 +51,54 @@ export class StripeService {
     };
   }
 
+  static async createSubscriptionCheckoutSession({ user, subscription, payment, quote }) {
+    if (!stripe) {
+      throw ApiError.badRequest('Paid subscriptions are unavailable until Stripe is configured.');
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: quote.currency.toLowerCase(),
+            product_data: {
+              name: `Shelter ${subscription.durationMonths}-month subscription`,
+              description: `Paid property listing plan for ${quote.durationDisplay}`
+            },
+            unit_amount: Math.round(quote.totalAmount * 100)
+          },
+          quantity: 1
+        }
+      ],
+      mode: 'payment',
+      success_url: `${env.APP_URL}/?page=subscription&payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${env.APP_URL}/?page=subscription&payment=cancelled`,
+      customer_email: user.email,
+      metadata: {
+        purpose: 'SUBSCRIPTION',
+        userId: user.id,
+        subscriptionId: subscription.id,
+        subscriptionPaymentId: payment.id
+      }
+    });
+
+    if (!session.url) {
+      throw ApiError.badRequest('Stripe did not return a checkout URL.');
+    }
+    return { sessionId: session.id, checkoutUrl: session.url };
+  }
+
+  static async getSubscriptionCheckoutSession(sessionId) {
+    if (!stripe) throw ApiError.badRequest('Paid subscriptions are unavailable until Stripe is configured.');
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    return {
+      status: session.status,
+      paymentStatus: session.payment_status,
+      checkoutUrl: session.status === 'open' ? session.url : null
+    };
+  }
+
   static async handleWebhookEvent(payload, signature) {
     if (!stripe) {
       throw ApiError.badRequest('Stripe is not configured on this server');
@@ -63,9 +111,14 @@ export class StripeService {
       throw ApiError.badRequest(`Webhook Signature Verification Error: ${err.message}`);
     }
 
-    if (event.type === 'checkout.session.completed') {
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
       const session = event.data.object;
       const { userId, propertyId, purpose } = session.metadata || {};
+
+      if (purpose === 'SUBSCRIPTION') {
+        const { SubscriptionService } = await import('../subscriptions/subscription.service.js');
+        await SubscriptionService.activatePaidSubscription(session);
+      }
 
       if (purpose === 'LOCATION_UNLOCK' && userId && propertyId) {
         // Record payment as verified
@@ -110,6 +163,17 @@ export class StripeService {
           }
         });
       }
+    }
+
+    if (
+      event.type === 'checkout.session.expired' ||
+      event.type === 'checkout.session.async_payment_failed'
+    ) {
+      const { SubscriptionService } = await import('../subscriptions/subscription.service.js');
+      await SubscriptionService.failCheckoutSession(
+        event.data.object.id,
+        event.type === 'checkout.session.expired' ? 'EXPIRED' : 'FAILED'
+      );
     }
 
     return { received: true };

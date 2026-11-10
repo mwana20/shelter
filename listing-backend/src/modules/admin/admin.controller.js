@@ -29,9 +29,50 @@ export class AdminController {
   });
 
   static rejectProperty = asyncHandler(async (req, res) => {
-    const result = await AdminService.rejectProperty(req.params.id, req.body.reason, req.user, req);
+    const result = await AdminService.rejectProperty(req.params.id, req.body?.notes, req.user, req);
     res.status(200).json(ApiResponse.success(result, result.message));
   });
+
+  static requestPropertyCorrections = asyncHandler(async (req, res) => {
+    const result = await AdminService.requestPropertyCorrections(req.params.id, req.body?.notes, req.user, req);
+    res.status(200).json(ApiResponse.success(result, result.message));
+  });
+
+  static getSubscriptionConfig = asyncHandler(async (_req, res) => {
+    const config = await AdminService.getSubscriptionConfig();
+    res.status(200).json(ApiResponse.success(config, 'Subscription settings retrieved'));
+  });
+
+  static updateSubscriptionConfig = asyncHandler(async (req, res) => {
+    const config = await AdminService.updateSubscriptionConfig(req.body, req.user, req);
+    res.status(200).json(ApiResponse.success(config, 'Subscription settings updated'));
+  });
+
+  static listSubscriptions = asyncHandler(async (req, res) => {
+    const result = await AdminService.listSubscriptions(req.query);
+    res.status(200).json(ApiResponse.success(result, 'Subscriptions retrieved'));
+  });
+
+  static listSubscriptionUsers = asyncHandler(async (req, res) => {
+    const result = await AdminService.listSubscriptionUsers(req.query);
+    res.status(200).json(ApiResponse.success(result, 'Property owners and brokers retrieved'));
+  });
+
+  static grantSubscription = asyncHandler(async (req, res) => {
+    const subscription = await AdminService.grantSubscription(req.params.id, req.body, req.user, req);
+    res.status(201).json(ApiResponse.created(subscription, 'Subscription granted'));
+  });
+
+  static revokeSubscription = asyncHandler(async (req, res) => {
+    const subscription = await AdminService.revokeSubscription(
+      req.params.id,
+      req.body.reason,
+      req.user,
+      req
+    );
+    res.status(200).json(ApiResponse.success(subscription, 'Subscription revoked'));
+  });
+
   static getPaymentSettings = asyncHandler(async (req, res) => {
     const settings = await AdminService.getPaymentSettings();
     res.status(200).json(ApiResponse.success(settings, 'Location locking & payment settings retrieved'));

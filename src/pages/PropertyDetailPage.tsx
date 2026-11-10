@@ -95,6 +95,22 @@ export const PropertyDetailPage: React.FC = () => {
     );
   }
 
+  const isPubliclyApproved = property.status === 'Available' || property.status === 'Published';
+  const canReviewUnpublished = currentUser.role === 'admin' || currentUser.id === property.agent.id;
+  if (!isPubliclyApproved && !canReviewUnpublished) {
+    return (
+      <div className="py-20 text-center">
+        <p className="text-sm font-semibold text-neutral-700">This property is not publicly available.</p>
+        <button
+          onClick={() => setCurrentPage('search')}
+          className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+        >
+          {t('back_to_listings')}
+        </button>
+      </div>
+    );
+  }
+
   const saved = isSaved(property.id);
   const compared = isCompared(property.id);
   const agent = property.agent;

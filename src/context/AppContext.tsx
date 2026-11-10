@@ -1034,10 +1034,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Only Available and Pending properties for public browsing
-  // Sold, Rented, Leased, Unavailable are filtered out of public search
+  // Only administrator-approved active listings are eligible for public browsing.
   const availableProperties = properties.filter(
-    (p) => p.status === 'Available' || p.status === 'Pending'
+    (p) => p.status === 'Available' || p.status === 'Published'
   );
 
   return (

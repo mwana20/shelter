@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitizePropertyLocation } from '../src/modules/properties/property.utils.js';
+import { canViewProperty, sanitizePropertyLocation } from '../src/modules/properties/property.utils.js';
 import { uuidParamSchema } from '../src/validators/common.schema.js';
 import { submitMerchantTransactionSchema } from '../src/validators/payment.schema.js';
 
@@ -28,6 +28,23 @@ test('Property Location Withholding Tests', async (t) => {
     assert.equal(sanitized.cadastralPlotNumber, null);
     assert.equal(sanitized.district, 'Mbale'); // public area remains visible
     assert.ok(sanitized.lockNotice.includes('Exact location is locked'));
+  });
+
+  test('Property review visibility', async (t) => {
+    const pending = { id: 'pending-1', ownerId: 'owner-1', status: 'PENDING_REVIEW' };
+    const rejected = { ...pending, status: 'REJECTED' };
+    const approved = { ...pending, status: 'ACTIVE' };
+
+    await t.test('hides pending and rejected properties from public users', () => {
+      assert.equal(canViewProperty(pending, null), false);
+      assert.equal(canViewProperty(rejected, null), false);
+    });
+
+    await t.test('allows approved listings and authorized owner/admin review', () => {
+      assert.equal(canViewProperty(approved, null), true);
+      assert.equal(canViewProperty(pending, { id: 'owner-1', role: 'SELLER' }), true);
+      assert.equal(canViewProperty(rejected, { id: 'admin-1', role: 'ADMIN' }), true);
+    });
   });
 
   await t.test('Reveals exact coordinates and address when user IS authorized (paid / admin)', () => {

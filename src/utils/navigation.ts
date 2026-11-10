@@ -17,6 +17,7 @@ export const VALID_PAGES = new Set([
   'seller-dashboard',
   'sign-in',
   'create-account',
+  'subscription',
   'forgot-password',
   'reset-password',
   'email-verification',
@@ -37,6 +38,7 @@ export function normalizePage(rawPage: string | null | undefined): string {
   if (clean === '' || clean === '/' || clean === 'home') return 'home';
   if (clean === 'explore') return 'areas';
   if (clean === 'my-sheltered') return 'seller-dashboard';
+  if (clean === 'plans') return 'subscription';
   if (clean === 'admin-dashboard' || clean === 'admin-settings' || clean === 'admin-console') return 'admin';
   if (clean === 'payments' || clean === 'payment-requests') return 'my-payments';
   if (VALID_PAGES.has(clean)) return clean;

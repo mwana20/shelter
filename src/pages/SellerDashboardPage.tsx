@@ -11,9 +11,6 @@ import {
   ShieldCheck,
   Settings,
   Bell,
-  Eye,
-  Trash2,
-  Edit3,
   ExternalLink,
   Upload,
   User,
@@ -21,13 +18,14 @@ import {
   Coins
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Property, PropertyStatus, UserRole } from '../types';
-import { formatPrice } from '../utils/currency';
+import { UserRole } from '../types';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 import { SUPPORTED_CURRENCY_CODES } from '../utils/currency';
 import { POPULAR_COUNTRIES } from '../data/mockLocations';
 import { updateProfileWithBackend } from '../services/authApi';
 import { ProfileSettings } from '../components/ProfileSettings';
+import { getMySubscription, UserSubscriptionSummary } from '../services/subscriptionApi';
+import { getMyBackendProperties, OwnerPropertyRecord, resubmitBackendProperty } from '../services/propertyApi';
 
 type DashboardTab =
   | 'overview'
@@ -41,17 +39,46 @@ export const SellerDashboardPage: React.FC = () => {
   const {
     currentUser,
     setCurrentUser,
-    properties,
     userCurrency,
-    updatePropertyStatus,
-    deleteProperty,
-    openPropertyDetail,
     setCurrentPage,
     enquiries,
     showNotification
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
+  const [subscriptionSummary, setSubscriptionSummary] = useState<UserSubscriptionSummary | null>(null);
+  const [subscriptionError, setSubscriptionError] = useState('');
+  const [backendProperties, setBackendProperties] = useState<OwnerPropertyRecord[]>([]);
+  const [backendPropertiesLoading, setBackendPropertiesLoading] = useState(true);
+  const [backendPropertiesError, setBackendPropertiesError] = useState('');
+  const [editingBackendProperty, setEditingBackendProperty] = useState<string | null>(null);
+  const [backendEditTitle, setBackendEditTitle] = useState('');
+  const [backendEditDescription, setBackendEditDescription] = useState('');
+  const [backendEditPrice, setBackendEditPrice] = useState('');
+  const [savingBackendProperty, setSavingBackendProperty] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getMySubscription().then((summary) => {
+      if (active) setSubscriptionSummary(summary);
+    }).catch((error: unknown) => {
+      if (active) setSubscriptionError(error instanceof Error ? error.message : 'Unable to load subscription details.');
+    });
+    return () => { active = false; };
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    let active = true;
+    setBackendPropertiesLoading(true);
+    getMyBackendProperties().then((records) => {
+      if (active) setBackendProperties(records);
+    }).catch((error: unknown) => {
+      if (active) setBackendPropertiesError(error instanceof Error ? error.message : 'Unable to load submitted properties.');
+    }).finally(() => {
+      if (active) setBackendPropertiesLoading(false);
+    });
+    return () => { active = false; };
+  }, [currentUser.id]);
 
   useEffect(() => {
     const handleDashboardSection = (event: Event) => {
@@ -83,29 +110,40 @@ export const SellerDashboardPage: React.FC = () => {
   const [deedDocUploaded, setDeedDocUploaded] = useState(false);
   const [verificationSubmitted, setVerificationSubmitted] = useState(false);
 
-  // Filter properties belonging to or associated with this mock seller/agent
-  // (In mock preview, show available properties + allow status updates)
-  const myProperties = properties;
+  const myProperties = backendProperties;
 
-  const filteredProperties = myProperties.filter((p) => {
+  const filteredBackendProperties = backendProperties.filter((property) => {
     if (propertyFilterStatus === 'all') return true;
-    if (propertyFilterStatus === 'published') return p.status === 'Available' || p.status === 'Published';
-    if (propertyFilterStatus === 'pending') return p.status === 'Pending' || p.status === 'Under Review';
-    if (propertyFilterStatus === 'draft') return p.status === 'Draft';
-    if (propertyFilterStatus === 'rejected') return p.status === 'Rejected';
-    if (propertyFilterStatus === 'sold-rented') return p.status === 'Sold' || p.status === 'Rented' || p.status === 'Leased';
+    if (propertyFilterStatus === 'published') return property.status === 'ACTIVE' || property.status === 'APPROVED';
+    if (propertyFilterStatus === 'pending') return property.status === 'PENDING_REVIEW' || property.status === 'CORRECTION_REQUESTED';
+    if (propertyFilterStatus === 'draft') return property.status === 'DRAFT';
+    if (propertyFilterStatus === 'rejected') return property.status === 'REJECTED';
+    if (propertyFilterStatus === 'sold-rented') return property.status === 'SOLD' || property.status === 'RENTED';
     return true;
   });
 
-  const handleStatusChange = (id: string, newStatus: PropertyStatus) => {
-    updatePropertyStatus(id, newStatus);
-    showNotification(`Property listing status updated to ${newStatus}`, 'success');
-  };
-
-  const handleDelete = (id: string, title: string) => {
-    if (window.confirm(`Are you sure you want to delete "${title}"?`)) {
-      deleteProperty(id);
-      showNotification('Property removed from marketplace.', 'info');
+  const handleResubmitProperty = async (event: React.FormEvent, propertyId: string) => {
+    event.preventDefault();
+    const price = Number(backendEditPrice);
+    if (!backendEditTitle.trim() || !backendEditDescription.trim() || !Number.isFinite(price) || price <= 0) {
+      setBackendPropertiesError('Enter a title, description, and positive price before resubmitting.');
+      return;
+    }
+    setSavingBackendProperty(true);
+    setBackendPropertiesError('');
+    try {
+      await resubmitBackendProperty(propertyId, {
+        title: backendEditTitle.trim(),
+        description: backendEditDescription.trim(),
+        price
+      });
+      setBackendProperties(await getMyBackendProperties());
+      setEditingBackendProperty(null);
+      showNotification('Property updated and resubmitted for administrator review.', 'success');
+    } catch (error) {
+      setBackendPropertiesError(error instanceof Error ? error.message : 'Unable to resubmit this property.');
+    } finally {
+      setSavingBackendProperty(false);
     }
   };
 
@@ -240,12 +278,61 @@ export const SellerDashboardPage: React.FC = () => {
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Subscription</p>
+                  {subscriptionSummary?.current ? (
+                    <>
+                      <h2 className="mt-1 text-lg font-bold text-slate-950">
+                        {subscriptionSummary.current.plan} Plan · {subscriptionSummary.current.status}
+                      </h2>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Started {subscriptionSummary.current.startsAt ? new Date(subscriptionSummary.current.startsAt).toLocaleDateString() : '—'}
+                        {' · '}expires {subscriptionSummary.current.expiresAt ? new Date(subscriptionSummary.current.expiresAt).toLocaleDateString() : '—'}
+                        {subscriptionSummary.current.expiresAt
+                          ? ` · ${Math.max(0, Math.ceil((new Date(subscriptionSummary.current.expiresAt).getTime() - Date.now()) / 86400000))} days remaining`
+                          : ''}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Listings {subscriptionSummary.privileges.listingsUsed} / {subscriptionSummary.privileges.listingLimit === 0
+                          ? (subscriptionSummary.current.plan === 'FREE' ? 'None' : 'Unlimited')
+                          : subscriptionSummary.privileges.listingLimit}
+                        {' · '}map unlocks {subscriptionSummary.privileges.mapUnlocksUsed} / {subscriptionSummary.privileges.mapUnlockLimit === 0
+                          ? (subscriptionSummary.current.plan === 'FREE' ? 'None' : 'Unlimited')
+                          : subscriptionSummary.privileges.mapUnlockLimit}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="mt-1 text-lg font-bold text-slate-950">
+                        {subscriptionSummary?.history[0]?.status === 'EXPIRED' ? 'Subscription expired' : 'No active subscription'}
+                      </h2>
+                      <p className="mt-1 text-xs text-slate-600">
+                        {subscriptionSummary?.history[0]?.expiresAt
+                          ? `Last plan expired ${new Date(subscriptionSummary.history[0].expiresAt).toLocaleDateString()}.`
+                          : 'Choose a plan to activate listing and map privileges.'}
+                      </p>
+                    </>
+                  )}
+                  {subscriptionError && <p className="mt-2 text-xs text-rose-700">{subscriptionError}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage('subscription')}
+                  className="inline-flex shrink-0 items-center justify-center rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800"
+                >
+                  {subscriptionSummary?.current?.plan === 'PAID' ? 'Renew / manage plan' : 'Choose or upgrade plan'}
+                </button>
+              </div>
+            </section>
+
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
                 <span className="text-xs text-slate-500 font-medium">Active Published Listings</span>
                 <div className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">
-                  {myProperties.filter((p) => p.status === 'Available' || p.status === 'Published').length}
+                  {myProperties.filter((p) => p.status === 'ACTIVE' || p.status === 'APPROVED').length}
                 </div>
                 <div className="text-[11px] text-emerald-600 mt-1">Live on Global Marketplace</div>
               </div>
@@ -259,11 +346,11 @@ export const SellerDashboardPage: React.FC = () => {
               </div>
 
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-                <span className="text-xs text-slate-500 font-medium">Saved to Favourites</span>
+                <span className="text-xs text-slate-500 font-medium">Awaiting Admin Review</span>
                 <div className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">
-                  {myProperties.reduce((sum, p) => sum + p.savesCount, 0)}
+                  {myProperties.filter((p) => ['PENDING_REVIEW', 'CORRECTION_REQUESTED'].includes(p.status)).length}
                 </div>
-                <div className="text-[11px] text-slate-400 mt-1">By prospective clients</div>
+                <div className="text-[11px] text-slate-400 mt-1">Submitted for verification</div>
               </div>
 
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
@@ -295,39 +382,34 @@ export const SellerDashboardPage: React.FC = () => {
                 {myProperties.slice(0, 4).map((property) => (
                   <div key={property.id} className="py-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={property.imageThumbnails?.[0] || property.images[0]}
-                        alt={property.title}
-                        className="w-14 h-12 rounded-lg object-cover shrink-0"
-                      />
+                      {property.media.find((media) => media.kind === 'IMAGE') && (
+                        <img
+                          src={property.media.find((media) => media.kind === 'IMAGE')?.thumbnailUrl
+                            || property.media.find((media) => media.kind === 'IMAGE')?.publicUrl}
+                          alt={property.title}
+                          className="w-14 h-12 rounded-lg object-cover shrink-0"
+                        />
+                      )}
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-slate-900 truncate">
                           {property.title}
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          {property.country} · {property.neighborhood || property.district} · {formatPrice(property.price, property.currency, property.listingType, property.rentalPeriod)}
+                          {property.country} · {property.district} · {property.currency} {Number(property.price).toLocaleString()}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${
-                        property.status === 'Available' || property.status === 'Published'
+                        property.status === 'ACTIVE' || property.status === 'APPROVED'
                           ? 'bg-emerald-50 text-emerald-700'
-                          : property.status === 'Pending'
+                          : property.status === 'PENDING_REVIEW' || property.status === 'CORRECTION_REQUESTED'
                           ? 'bg-amber-50 text-amber-700'
                           : 'bg-slate-100 text-slate-700'
                       }`}>
-                        {property.status}
+                        {property.status.replaceAll('_', ' ')}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => openPropertyDetail(property.id)}
-                        className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800"
-                        title="View Public Listing"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -375,93 +457,125 @@ export const SellerDashboardPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Properties Table / List */}
-            {filteredProperties.length === 0 ? (
+            {backendPropertiesError && (
+              <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+                {backendPropertiesError}
+              </p>
+            )}
+            {backendPropertiesLoading ? (
+              <p className="py-8 text-center text-sm text-slate-500">Loading your submitted properties...</p>
+            ) : filteredBackendProperties.length === 0 ? (
               <div className="text-center py-12">
                 <Building className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <h4 className="text-sm font-semibold text-slate-800">No properties in this category</h4>
-                <p className="text-xs text-slate-500 mt-1">Start listing houses, land, or commercial spaces worldwide.</p>
+                <h4 className="text-sm font-semibold text-slate-800">No submitted properties in this category</h4>
+                <p className="text-xs text-slate-500 mt-1">New listings are saved to your account as pending admin review.</p>
                 <button
                   type="button"
                   onClick={() => setCurrentPage('list-property')}
                   className="mt-4 px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-lg"
                 >
-                  List a Property Now
+                  List a Property
                 </button>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {filteredProperties.map((prop) => (
-                  <div key={prop.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <img
-                        src={prop.imageThumbnails?.[0] || prop.images[0]}
-                        alt={prop.title}
-                        className="w-24 h-20 rounded-lg object-cover shrink-0"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900">{prop.title}</span>
-                          {prop.verified && (
-                            <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium">
-                              Verified Title
+                {filteredBackendProperties.map((property) => {
+                  const image = property.media.find((media) => media.kind === 'IMAGE');
+                  const isEditing = editingBackendProperty === property.id;
+                  return (
+                    <article key={property.id} className="py-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                        {image && (
+                          <img
+                            src={image.thumbnailUrl || image.publicUrl}
+                            alt={property.title}
+                            className="h-20 w-28 shrink-0 rounded-lg object-cover"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-sm font-bold text-slate-900">{property.title}</h3>
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700">
+                              {property.status.replaceAll('_', ' ')}
                             </span>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-600">
+                            {property.propertyType} · {property.listingType} · {property.currency} {Number(property.price).toLocaleString()}
+                          </p>
+                          {property.reviewNote && (
+                            <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                              Administrator note: {property.reviewNote}
+                            </p>
+                          )}
+                          {property.reviewHistory.length > 0 && (
+                            <details className="mt-2 text-xs text-slate-600">
+                              <summary className="cursor-pointer font-semibold">Approval history ({property.reviewHistory.length})</summary>
+                              <ul className="mt-2 space-y-1">
+                                {property.reviewHistory.map((review) => (
+                                  <li key={review.id}>
+                                    {new Date(review.createdAt).toLocaleString()} · {review.action.replaceAll('_', ' ')}
+                                    {review.notes ? ` — ${review.notes}` : ''}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          )}
+                          {isEditing && (
+                            <form onSubmit={(event) => void handleResubmitProperty(event, property.id)} className="mt-3 space-y-2">
+                              <input
+                                aria-label="Property title"
+                                value={backendEditTitle}
+                                onChange={(event) => setBackendEditTitle(event.target.value)}
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                                required
+                              />
+                              <textarea
+                                aria-label="Property description"
+                                value={backendEditDescription}
+                                onChange={(event) => setBackendEditDescription(event.target.value)}
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                                rows={3}
+                                required
+                              />
+                              <input
+                                aria-label="Property price"
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                value={backendEditPrice}
+                                onChange={(event) => setBackendEditPrice(event.target.value)}
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                                required
+                              />
+                              <div className="flex gap-2">
+                                <button disabled={savingBackendProperty} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
+                                  {savingBackendProperty ? 'Resubmitting...' : 'Save and resubmit for review'}
+                                </button>
+                                <button type="button" onClick={() => setEditingBackendProperty(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs">
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
                           )}
                         </div>
-                        <div className="text-xs text-slate-600 mt-1">
-                          {prop.country} · {prop.region} · {prop.neighborhood || prop.district}
-                        </div>
-                        <div className="text-xs font-bold text-slate-900 mt-1">
-                          {formatPrice(prop.price, prop.currency, prop.listingType, prop.rentalPeriod)}
-                          <span className="text-slate-400 font-normal ml-2">
-                            ({prop.propertyType} for {prop.listingType})
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-3">
-                          <span>Views: {prop.viewsCount}</span>
-                          <span>·</span>
-                          <span>Saves: {prop.savesCount}</span>
-                          <span>·</span>
-                          <span>Listed: {new Date(prop.dateAdded).toLocaleDateString()}</span>
-                        </div>
+                        {!isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingBackendProperty(property.id);
+                              setBackendEditTitle(property.title);
+                              setBackendEditDescription(property.description);
+                              setBackendEditPrice(String(property.price));
+                            }}
+                            className="shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Edit and resubmit
+                          </button>
+                        )}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      {/* Status Selector Dropdown */}
-                      <select
-                        value={prop.status}
-                        onChange={(e) => handleStatusChange(prop.id, e.target.value as PropertyStatus)}
-                        className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white font-medium text-slate-700"
-                      >
-                        <option value="Available">Available (Live)</option>
-                        <option value="Pending">Pending Review</option>
-                        <option value="Draft">Draft</option>
-                        <option value="Sold">Sold</option>
-                        <option value="Rented">Rented</option>
-                        <option value="Unavailable">Unavailable</option>
-                      </select>
-
-                      <button
-                        type="button"
-                        onClick={() => openPropertyDetail(prop.id)}
-                        className="p-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-600"
-                        title="Preview Public Listing"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(prop.id, prop.title)}
-                        className="p-2 border border-slate-200 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg"
-                        title="Delete Property"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -41,7 +41,7 @@ export const EmailVerificationPage: React.FC = () => {
           setStatusMessage({ type: 'success', text: res.message || 'Email verified successfully.' });
           showNotification(res.message || 'Email verified successfully.', 'success');
           setTimeout(() => {
-            setCurrentPage('seller-dashboard');
+            setCurrentPage('subscription');
           }, 1800);
         } else {
           setStatusMessage({ type: 'error', text: res.error || 'Verification failed.' });
@@ -77,7 +77,7 @@ export const EmailVerificationPage: React.FC = () => {
       setStatusMessage({ type: 'success', text: res.message || 'Email verified successfully.' });
       showNotification('Email verified successfully! Welcome to Sheltered Global.', 'success');
       setTimeout(() => {
-        setCurrentPage('seller-dashboard');
+        setCurrentPage('subscription');
       }, 1500);
     } else {
       setStatusMessage({ type: 'error', text: res.error || 'Verification failed.' });

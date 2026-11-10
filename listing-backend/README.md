@@ -188,6 +188,23 @@ npm start
 npm test
 ```
 
+### Subscription onboarding and schema
+
+The subscription and property-review migrations are additive. Apply them to a development database with `npx prisma migrate deploy`; production startup applies pending migrations through the existing `npm start` deployment command. Do not use `prisma migrate dev` against production.
+
+The subscription migration creates a Free plan configuration (30-day default validity, one active listing, one map unlock) and progressive discount tiers. Paid pricing is intentionally initialized to zero. An administrator must set a positive monthly price and review the discount ranges in **Admin → Subscriptions** before paid checkout can be offered.
+
+Paid subscriptions use one-time Stripe Checkout sessions and activate only from a verified Stripe webhook. Configure `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `APP_URL` on the backend; `APP_URL` must be the public frontend origin. Register `/api/v1/payments/webhook/stripe` with Stripe for checkout completion, expiration, and asynchronous payment failure events. Subscription checkout does not create recurring charges.
+
+### Subscriptions (`/subscriptions`)
+| Method | Endpoint | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/subscriptions/plans` | View Free and Paid plan configuration | Public |
+| `GET` | `/subscriptions/quote?months=1` | Calculate backend-validated pricing (1–48 months) | Public |
+| `GET` | `/subscriptions/me` | View current plan, expiry, usage, payment history | Authenticated |
+| `POST` | `/subscriptions/select` | Activate Free or create/reuse one pending Paid checkout | Verified owner / broker |
+| `POST` | `/subscriptions/map-unlocks` | Use an available subscription map unlock | Authenticated |
+
 ---
 
 ## 4. API Endpoints Reference
@@ -214,6 +231,7 @@ All endpoints are prefixed with `/api/v1`:
 | `GET` | `/properties/id/:id` | Get property by ID (with location withholding) | Public |
 | `GET` | `/properties/:slug` | Get property by slug (with location withholding) | Public |
 | `POST` | `/properties` | Submit new property listing | Authenticated |
+| `GET` | `/properties/mine` | View own submissions, media, status, and review history | Authenticated |
 | `PUT` | `/properties/:id` | Update property listing | Owner / Admin |
 | `DELETE` | `/properties/:id` | Delete property listing | Owner / Admin |
 
@@ -246,3 +264,13 @@ All endpoints are prefixed with `/api/v1`:
 | `GET` | `/admin/payments` | Ledger of all transactions & submissions | Admin |
 | `PUT` | `/admin/payments/:id` | Approve or Reject payment (with reason) | Admin |
 | `POST` | `/admin/payments/manual-unlock` | Support unlock with audit log | Admin |
+| `GET` | `/admin/properties` | Property approval queue and review history | Admin |
+| `PUT` | `/admin/properties/:id/approve` | Approve a submitted property | Admin |
+| `PUT` | `/admin/properties/:id/reject` | Reject a property with a review note | Admin |
+| `PUT` | `/admin/properties/:id/request-corrections` | Request owner corrections | Admin |
+| `GET` | `/admin/subscriptions/config` | Read pricing, discount, expiry, and limit configuration | Admin |
+| `PUT` | `/admin/subscriptions/config` | Update subscription settings | Admin |
+| `GET` | `/admin/subscriptions` | View subscription payment ledger | Admin |
+| `GET` | `/admin/subscriptions/users` | List users and subscription status | Admin |
+| `POST` | `/admin/subscriptions/users/:id/grant` | Manually grant a subscription with an audit record | Admin |
+| `PUT` | `/admin/subscriptions/:id/revoke` | Revoke a subscription with an audit record | Admin |

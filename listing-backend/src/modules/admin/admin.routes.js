@@ -7,7 +7,12 @@ import {
   updateLockSettingsSchema,
   updatePropertyLockOverrideSchema,
   reviewPaymentSchema,
-  manualUnlockSchema
+  manualUnlockSchema,
+  propertyReviewSchema,
+  propertyCorrectionSchema,
+  subscriptionConfigSchema,
+  manualSubscriptionGrantSchema,
+  revokeSubscriptionSchema
 } from './admin.validation.js';
 import { uuidParamSchema, paginationQuerySchema } from '../../validators/common.schema.js';
 
@@ -34,7 +39,16 @@ router.put('/owners/:id/reject', validate({ params: uuidParamSchema }), AdminCon
 router.post('/payments/manual-unlock', validate({ body: manualUnlockSchema }), AdminController.manualUnlock);
 // Property approval
 router.get('/properties', validate({ query: paginationQuerySchema }), AdminController.listPendingProperties);
-router.put('/properties/:id/approve', validate({ params: uuidParamSchema }), AdminController.approveProperty);
-router.put('/properties/:id/reject', validate({ params: uuidParamSchema }), AdminController.rejectProperty);
+router.put('/properties/:id/approve', validate({ params: uuidParamSchema, body: propertyReviewSchema }), AdminController.approveProperty);
+router.put('/properties/:id/reject', validate({ params: uuidParamSchema, body: propertyCorrectionSchema }), AdminController.rejectProperty);
+router.put('/properties/:id/request-corrections', validate({ params: uuidParamSchema, body: propertyCorrectionSchema }), AdminController.requestPropertyCorrections);
+
+// Subscription pricing, membership management and payment history
+router.get('/subscriptions/config', AdminController.getSubscriptionConfig);
+router.put('/subscriptions/config', validate({ body: subscriptionConfigSchema }), AdminController.updateSubscriptionConfig);
+router.get('/subscriptions', validate({ query: paginationQuerySchema }), AdminController.listSubscriptions);
+router.get('/subscriptions/users', validate({ query: paginationQuerySchema }), AdminController.listSubscriptionUsers);
+router.post('/subscriptions/users/:id/grant', validate({ params: uuidParamSchema, body: manualSubscriptionGrantSchema }), AdminController.grantSubscription);
+router.put('/subscriptions/:id/revoke', validate({ params: uuidParamSchema, body: revokeSubscriptionSchema }), AdminController.revokeSubscription);
 
 export default router;

@@ -8,6 +8,11 @@ export class PropertyController {
     res.status(200).json(ApiResponse.success(result, 'Properties retrieved successfully'));
   });
 
+  static getMyProperties = asyncHandler(async (req, res) => {
+    const properties = await PropertyService.getMyProperties(req.user.id);
+    res.status(200).json(ApiResponse.success(properties, 'Your properties retrieved successfully'));
+  });
+
   static getPropertyById = asyncHandler(async (req, res) => {
     const property = await PropertyService.getPropertyById(req.params.id, req.user);
     res.status(200).json(ApiResponse.success(property, 'Property retrieved successfully'));

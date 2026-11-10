@@ -41,3 +41,67 @@ export const manualUnlockSchema = z.object({
     message: 'An audit reason of at least 8 characters is mandatory for administrative manual unlock'
   })
 });
+
+export const propertyReviewSchema = z.object({
+  notes: z.string().trim().min(5).max(2000).optional()
+});
+
+export const propertyCorrectionSchema = z.object({
+  notes: z.string().trim().min(5).max(2000)
+});
+
+const subscriptionDiscountSchema = z.object({
+  minMonths: z.number().int().min(1).max(48),
+  maxMonths: z.number().int().min(1).max(48),
+  discountPercent: z.number().min(0).max(100)
+}).refine((discount) => discount.minMonths <= discount.maxMonths, {
+  message: 'Discount duration range is invalid.',
+  path: ['maxMonths']
+});
+
+export const subscriptionConfigSchema = z.object({
+  baseMonthlyPrice: z.number().min(0),
+  currency: z.string().trim().length(3).transform((value) => value.toUpperCase()),
+  freeValidityDays: z.number().int().min(1).max(3650),
+  freeListingLimit: z.number().int().min(0).max(1),
+  freeMapUnlockLimit: z.number().int().min(0).max(1),
+  paidListingLimit: z.number().int().min(0).max(100000),
+  paidMapUnlockLimit: z.number().int().min(0).max(100000),
+  discounts: z.array(subscriptionDiscountSchema).min(1)
+}).superRefine((config, context) => {
+  const sorted = [...config.discounts].sort((a, b) => a.minMonths - b.minMonths);
+  for (let index = 1; index < sorted.length; index += 1) {
+    if (sorted[index].minMonths <= sorted[index - 1].maxMonths) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['discounts', index],
+        message: 'Discount duration ranges cannot overlap.'
+      });
+    }
+    if (sorted[index].discountPercent < sorted[index - 1].discountPercent) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['discounts', index, 'discountPercent'],
+        message: 'Longer subscription tiers cannot have a lower discount.'
+      });
+    }
+  }
+});
+
+export const manualSubscriptionGrantSchema = z.object({
+  plan: z.enum(['FREE', 'PAID']),
+  durationMonths: z.number().int().min(1).max(48).optional(),
+  reason: z.string().trim().min(8).max(2000)
+}).superRefine((data, context) => {
+  if (data.plan === 'PAID' && data.durationMonths === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['durationMonths'],
+      message: 'Paid manual grants require a duration from 1 to 48 months.'
+    });
+  }
+});
+
+export const revokeSubscriptionSchema = z.object({
+  reason: z.string().trim().min(8).max(2000)
+});

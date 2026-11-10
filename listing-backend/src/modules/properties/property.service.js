@@ -3,8 +3,9 @@ import { prisma } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { generateSlug } from '../../utils/slug.js';
 import { getPagination, formatPaginationResponse } from '../../utils/pagination.js';
-import { sanitizePropertyLocation } from './property.utils.js';
+import { canViewProperty, sanitizePropertyLocation } from './property.utils.js';
 import { MediaService } from '../media/media.service.js';
+import { SubscriptionService } from '../subscriptions/subscription.service.js';
 
 export class PropertyService {
   /**
@@ -53,7 +54,38 @@ export class PropertyService {
       }
     });
 
-    return !!unlockRecord;
+    if (unlockRecord) return true;
+
+    const now = new Date();
+    const subscriptionUnlock = await prisma.subscriptionMapUnlock.findFirst({
+      where: {
+        userId: user.id,
+        propertyId: property.id,
+        subscription: {
+          status: 'ACTIVE',
+          startsAt: { lte: now },
+          expiresAt: { gt: now }
+        }
+      }
+    });
+    return !!subscriptionUnlock;
+  }
+
+  static assertPublicOrOwner(property, user) {
+    if (!canViewProperty(property, user)) {
+      throw ApiError.notFound('Property not found');
+    }
+  }
+
+  static async getMyProperties(ownerId) {
+    return prisma.property.findMany({
+      where: { ownerId },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        media: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } },
+        reviewHistory: { orderBy: { createdAt: 'desc' } }
+      }
+    });
   }
 
   static async getPropertyById(id, requestingUser = null) {
@@ -61,6 +93,7 @@ export class PropertyService {
     if (!property) {
       throw ApiError.notFound('Property not found');
     }
+    this.assertPublicOrOwner(property, requestingUser);
 
     // Increment views asynchronously
     prisma.property.update({
@@ -77,6 +110,7 @@ export class PropertyService {
     if (!property) {
       throw ApiError.notFound('Property not found');
     }
+    this.assertPublicOrOwner(property, requestingUser);
 
     const canViewExact = await this.isLocationAccessible(property, requestingUser);
     return sanitizePropertyLocation(property, canViewExact);
@@ -86,11 +120,7 @@ export class PropertyService {
     const { page, limit, skip } = getPagination(query);
     const where = {};
 
-    if (query.status) {
-      where.status = query.status;
-    } else {
-      where.status = 'ACTIVE';
-    }
+    where.status = 'ACTIVE';
 
     if (query.listingType && query.listingType !== 'All') {
       where.listingType = query.listingType.toUpperCase();
@@ -156,22 +186,56 @@ export class PropertyService {
      if ((owner.role === 'SELLER' || owner.role === 'AGENT') && owner.accountStatus !== 'APPROVED') {
        throw ApiError.forbidden('Your account is pending admin approval. You cannot list properties until approved.');
      }
+    const subscription = await SubscriptionService.getActiveSubscription(ownerId);
+    if (!subscription) {
+      throw ApiError.forbidden('Select or renew a subscription before submitting property listings.');
+    }
+    const subscriptionConfig = await SubscriptionService.getConfig();
+    const listingLimit = subscription.plan === 'FREE'
+      ? subscriptionConfig.freeListingLimit
+      : subscriptionConfig.paidListingLimit;
 
     const { propertyId, mediaBatchId, mediaRefs, ...propertyData } = data;
     const mediaBatch = await MediaService.prepareUploadBatch(mediaBatchId, propertyId, mediaRefs, owner);
     if (mediaBatch.alreadyConsumed) return mediaBatch.property;
     try {
-      const property = await prisma.$transaction((transaction) => transaction.property.create({
-        data: {
+      const property = await prisma.$transaction(async (transaction) => {
+        if (listingLimit > 0) {
+          const currentListings = await transaction.property.count({
+            where: {
+              ownerId,
+              status: { in: ['ACTIVE', 'APPROVED', 'PENDING_REVIEW', 'CORRECTION_REQUESTED'] }
+            }
+          });
+          if (currentListings >= listingLimit) {
+            throw ApiError.forbidden(
+              `Your ${subscription.plan === 'FREE' ? 'Free' : 'Paid'} Plan allows up to ${listingLimit} active listing${listingLimit === 1 ? '' : 's'}. Upgrade to add more.`
+            );
+          }
+        }
+        const createdProperty = await transaction.property.create({
+          data: {
           ...propertyData,
           id: propertyId,
           slug: generateSlug(data.title),
           ownerId,
           status: 'PENDING_REVIEW',
           media: { create: mediaBatch.mediaRecords }
-        },
-        include: { media: { orderBy: { sortOrder: 'asc' } } }
-      }));
+          },
+          include: { media: { orderBy: { sortOrder: 'asc' } } }
+        }, { isolationLevel: 'Serializable' });
+        await transaction.propertyReview.create({
+          data: {
+            propertyId,
+            actorId: ownerId,
+            fromStatus: 'DRAFT',
+            toStatus: 'PENDING_REVIEW',
+            action: 'SUBMITTED',
+            notes: 'Property submitted for administrator review.'
+          }
+        });
+        return createdProperty;
+      });
       await MediaService.completeUploadBatch(mediaBatchId, mediaBatch.stagingKeys);
       return property;
     } catch (error) {
@@ -195,7 +259,25 @@ export class PropertyService {
       throw ApiError.badRequest('A complete media upload batch is required to replace listing media.');
     }
 
-    if (!mediaBatchId) return PropertyRepository.update(id, propertyData);
+    if (!mediaBatchId) {
+      return prisma.$transaction(async (transaction) => {
+        const updated = await transaction.property.update({
+          where: { id },
+          data: { ...propertyData, status: 'PENDING_REVIEW', reviewNote: null }
+        });
+        await transaction.propertyReview.create({
+          data: {
+            propertyId: id,
+            actorId: user.id,
+            fromStatus: existing.status,
+            toStatus: 'PENDING_REVIEW',
+            action: 'RESUBMITTED',
+            notes: 'Property details updated and submitted for review.'
+          }
+        });
+        return updated;
+      });
+    }
 
     const mediaBatch = await MediaService.prepareUploadBatch(mediaBatchId, id, mediaRefs, user);
     if (mediaBatch.alreadyConsumed) return mediaBatch.property;
@@ -205,11 +287,27 @@ export class PropertyService {
           where: { propertyId: id, isActive: true },
           data: { isActive: false }
         });
-        return transaction.property.update({
+        const updatedProperty = await transaction.property.update({
           where: { id },
-          data: { ...propertyData, media: { create: mediaBatch.mediaRecords } },
+          data: {
+            ...propertyData,
+            status: 'PENDING_REVIEW',
+            reviewNote: null,
+            media: { create: mediaBatch.mediaRecords }
+          },
           include: { media: { orderBy: { sortOrder: 'asc' } } }
         });
+        await transaction.propertyReview.create({
+          data: {
+            propertyId: id,
+            actorId: user.id,
+            fromStatus: existing.status,
+            toStatus: 'PENDING_REVIEW',
+            action: 'RESUBMITTED',
+            notes: 'Property details and media updated and submitted for review.'
+          }
+        });
+        return updatedProperty;
       });
       await MediaService.completeUploadBatch(mediaBatchId, mediaBatch.stagingKeys);
       await MediaService.cleanupInactiveMedia();

@@ -22,6 +22,7 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { MyPaymentsPage } from './pages/MyPaymentsPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { SubscriptionPage } from './pages/SubscriptionPage';
 import { refreshAuthenticatedSession } from './services/authApi';
 
 // Modals
@@ -72,6 +73,11 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (!isAuthReady || !isAuthenticated || currentPage !== 'sign-in') return;
+    if (sessionStorage.getItem('shelter_return_after_subscription_signin') === '1') {
+      sessionStorage.removeItem('shelter_return_after_subscription_signin');
+      setCurrentPage('subscription');
+      return;
+    }
     setCurrentPage(isAdmin
       ? 'admin'
       : currentUser.role === 'buyer' || currentUser.role === 'tenant'
@@ -154,6 +160,8 @@ const AppContent: React.FC = () => {
         return <SignInPage />;
       case 'create-account':
         return <RegisterPage />;
+      case 'subscription':
+        return <SubscriptionPage />;
       case 'forgot-password':
         return <ForgotPasswordPage />;
       case 'reset-password':

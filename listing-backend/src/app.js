@@ -16,6 +16,7 @@ import paymentRoutes from './modules/payments/payment.routes.js';
 import unlockRoutes from './modules/unlocks/unlock.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
 import notificationRoutes from './modules/notifications/inapp.routes.js';
+import subscriptionRoutes from './modules/subscriptions/subscription.routes.js';
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.get('/health', (req, res) => {
 // Mount API Modules
 const prefix = env.API_PREFIX;
 app.use(`${prefix}/auth`, authRoutes);
+app.use(`${prefix}/subscriptions`, subscriptionRoutes);
 app.use(`${prefix}/users`, userRoutes);
 app.use(`${prefix}/properties`, propertyRoutes);
 app.use(`${prefix}/media`, mediaRoutes);

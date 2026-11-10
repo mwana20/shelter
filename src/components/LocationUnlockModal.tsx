@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Lock,
@@ -18,6 +18,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { Property } from '../types';
 import { backendApi, API_RUNTIME_CONFIG } from '../services/backendApi';
+import { getMySubscription, unlockSubscriptionMap, UserSubscriptionSummary } from '../services/subscriptionApi';
 import visaLogo from '../assets/images/visa.png';
 import mastercardLogo from '../assets/images/mastercard.png';
 const mobileMoneyLogo = new URL('../assets/images/airmtn.PNG', import.meta.url).href;
@@ -39,7 +40,8 @@ export const LocationUnlockModal: React.FC<LocationUnlockModalProps> = ({
     currentUser,
     locationLockSettings,
     refreshLocationData,
-    showNotification
+    showNotification,
+    setCurrentPage
   } = useApp();
 
   const [paymentOption, setPaymentOption] = useState<'gateway' | 'merchant'>('gateway');
@@ -64,11 +66,38 @@ export const LocationUnlockModal: React.FC<LocationUnlockModalProps> = ({
   const [merchantPendingReview, setMerchantPendingReview] = useState(false);
   const [pendingSubmissionId, setPendingSubmissionId] = useState<string | null>(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [subscriptionSummary, setSubscriptionSummary] = useState<UserSubscriptionSummary | null>(null);
+  const [subscriptionError, setSubscriptionError] = useState('');
+
+  useEffect(() => {
+    if (!isOpen || !currentUser.id) return;
+    let active = true;
+    getMySubscription().then((summary) => {
+      if (active) setSubscriptionSummary(summary);
+    }).catch((error: unknown) => {
+      if (active) setSubscriptionError(error instanceof Error ? error.message : 'Unable to load subscription access.');
+    });
+    return () => { active = false; };
+  }, [isOpen, currentUser.id]);
 
   if (!isOpen || !property) return null;
 
   const feeAmount = locationLockSettings.unlockFeeAmount;
   const feeCurrency = locationLockSettings.unlockFeeCurrency;
+  const subscription = subscriptionSummary?.current;
+
+  const handleSubscriptionUnlock = async () => {
+    setTxError(null);
+    try {
+      await unlockSubscriptionMap(property.id);
+      await refreshLocationData(property.id);
+      showNotification('Map access granted by your subscription.', 'success');
+      onUnlocked();
+      onClose();
+    } catch (error) {
+      setTxError(error instanceof Error ? error.message : 'Your plan could not unlock this map.');
+    }
+  };
 
   // Handle Copy Merchant Code
   const handleCopyMerchantCode = () => {
@@ -329,6 +358,28 @@ export const LocationUnlockModal: React.FC<LocationUnlockModalProps> = ({
                   <span>{txError}</span>
                 </div>
               )}
+              {txError?.toLowerCase().includes('upgrade') && (
+                <button type="button" onClick={() => setCurrentPage('subscription')} className="w-full rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800">
+                  View upgrade and renewal options
+                </button>
+              )}
+
+              {subscription?.status === 'ACTIVE' && subscriptionSummary && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-sm font-bold text-emerald-950">{subscription.plan} Plan map access</p>
+                  <p className="mt-1 text-xs text-emerald-900">
+                    {subscription.plan === 'FREE'
+                      ? `Your Free Plan includes ${subscriptionSummary.privileges.mapUnlockLimit} map unlock${subscriptionSummary.privileges.mapUnlockLimit === 1 ? '' : 's'}. Other premium maps remain locked.`
+                      : subscriptionSummary.privileges.mapUnlockLimit === 0
+                        ? 'Your Paid Plan includes unlimited map unlocks.'
+                        : `Your Paid Plan includes ${subscriptionSummary.privileges.mapUnlockLimit} map unlocks.`}
+                  </p>
+                  <button type="button" onClick={() => void handleSubscriptionUnlock()} className="mt-3 w-full rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800">
+                    Unlock with subscription
+                  </button>
+                </div>
+              )}
+              {subscriptionError && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">{subscriptionError}</p>}
 
               {/* Two Payment Options Tab Switcher */}
               <div className="grid grid-cols-2 gap-2 p-1 bg-neutral-100 rounded-2xl">

@@ -122,6 +122,7 @@ export const Navbar: React.FC = () => {
     ? [
         { label: 'Location Locking & Payment Configuration', tab: 'locking', icon: <ShieldCheck className="h-4 w-4" /> },
         { label: 'Unlock Payments & Verification Queue', tab: 'payments', icon: <CreditCard className="h-4 w-4" /> },
+        { label: 'Subscription Management', tab: 'subscriptions', icon: <Receipt className="h-4 w-4" /> },
         { label: `Property Inventory (${properties.length})`, tab: 'inventory', icon: <Home className="h-4 w-4" /> },
         { label: 'Listing Approvals', tab: 'moderation', icon: <Check className="h-4 w-4" /> }
       ]
@@ -238,6 +239,16 @@ export const Navbar: React.FC = () => {
               className="hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
             >
               {t('nav_explore')}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigateTo('subscription')}
+              aria-current={currentPage === 'subscription' ? 'page' : undefined}
+              className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
+                currentPage === 'subscription' ? 'text-white font-bold' : ''
+              }`}
+            >
+              Plans
             </button>
           </nav>
 
@@ -500,6 +511,9 @@ export const Navbar: React.FC = () => {
                   </button>
                   <button type="button" onClick={() => handleNavClick('explore')} className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer">
                     {t('nav_explore')}
+                  </button>
+                  <button type="button" onClick={() => navigateTo('subscription')} className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    Subscription plans
                   </button>
                 </nav>
               )}

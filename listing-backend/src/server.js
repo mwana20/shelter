@@ -3,6 +3,7 @@ import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { prisma } from './config/database.js';
 import { MediaService } from './modules/media/media.service.js';
+import { SubscriptionService } from './modules/subscriptions/subscription.service.js';
 
 const PORT = env.PORT;
 
@@ -14,10 +15,18 @@ const mediaCleanupTimer = setInterval(() => {
 }, 15 * 60 * 1000);
 mediaCleanupTimer.unref();
 
+const subscriptionExpiryTimer = setInterval(() => {
+  SubscriptionService.expireSubscriptions()
+    .catch((error) => logger.error('Scheduled subscription expiry failed:', error));
+}, 15 * 60 * 1000);
+subscriptionExpiryTimer.unref();
+
 void Promise.all([
   MediaService.cleanupExpiredBatches(),
   MediaService.cleanupInactiveMedia()
 ]).catch((error) => logger.error('Initial property media cleanup failed:', error));
+void SubscriptionService.expireSubscriptions()
+  .catch((error) => logger.error('Initial subscription expiry failed:', error));
 
 const server = app.listen(PORT, () => {
   logger.info(`===================================================`);

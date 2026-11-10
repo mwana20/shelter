@@ -35,3 +35,6 @@ export const sanitizePropertyLocation = (property, isAuthorizedToViewExact) => {
     lockNotice: 'Exact location is locked. Pay to unlock full address, GPS coordinates, and directions.'
   };
 };
+
+export const canViewProperty = (property, user) =>
+  property.status === 'ACTIVE' || user?.role === 'ADMIN' || user?.id === property.ownerId;

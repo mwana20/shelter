@@ -81,7 +81,7 @@ export const ListPropertyPage: React.FC = () => {
     }
   };
 
-  const handlePublish = async (status: 'Published' | 'Draft' = 'Published') => {
+  const handlePublish = async () => {
     if (!title.trim()) {
       showNotification('Please enter a listing title.', 'error');
       setCurrentStep(1);
@@ -138,7 +138,7 @@ export const ListPropertyPage: React.FC = () => {
       slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
       listingType,
       propertyType,
-      status: status === 'Draft' ? 'Draft' : 'Available',
+      status: 'Pending',
       verified: currentUser.verificationStatus === 'Verified',
       featured: false,
       isNew: true,
@@ -183,7 +183,7 @@ export const ListPropertyPage: React.FC = () => {
       }
     });
 
-    showNotification(status === 'Draft' ? 'Property saved as draft!' : 'Property successfully published!', 'success');
+    showNotification('Property submitted for administrator review and will remain unpublished until approved.', 'success');
     setCurrentPage('seller-dashboard');
   };
 
@@ -694,20 +694,12 @@ export const ListPropertyPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => handlePublish('Draft')}
-                  disabled={!uploadedMedia}
-                  className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Save as Draft
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePublish('Published')}
+                  onClick={() => void handlePublish()}
                   disabled={!uploadedMedia}
                   className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-slate-800 shadow-xs disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Publish to Marketplace</span>
+                  <span>Submit for Admin Review</span>
                 </button>
               </div>
             </div>

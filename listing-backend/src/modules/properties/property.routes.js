@@ -13,6 +13,7 @@ const router = Router();
 
 // Public / Authenticated read routes (uses optionalAuthenticate so logged-in users get their unlocked coordinates)
 router.get('/', optionalAuthenticate, PropertyController.listProperties);
+router.get('/mine', authenticate, PropertyController.getMyProperties);
 router.get('/id/:id', optionalAuthenticate, validate({ params: uuidParamSchema }), PropertyController.getPropertyById);
 router.get('/:slug', optionalAuthenticate, PropertyController.getPropertyBySlug);
 
