@@ -57,8 +57,19 @@ export class PropertyRepository {
       orderBy,
       include: {
         media: {
-          where: { isActive: true, isFeatured: true },
-          take: 1
+          where: { isActive: true },
+          orderBy: { sortOrder: 'asc' }
+        },
+        owner: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            role: true,
+            companyName: true,
+            avatarUrl: true
+          }
         },
         lockOverride: true
       }

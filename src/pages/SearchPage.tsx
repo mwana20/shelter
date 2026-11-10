@@ -46,7 +46,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   title,
   subtitle
 }) => {
-  const { availableProperties, filters, setFilters, resetFilters, userCurrency, t } = useApp();
+  const { availableProperties, propertyCatalogError, filters, setFilters, resetFilters, userCurrency, t } = useApp();
 
   const [viewMode, setViewMode] = useState<'split' | 'list' | 'map'>('split');
   const [highlightedPropertyId, setHighlightedPropertyId] = useState<string | null>(null);
@@ -173,6 +173,13 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
   return (
     <div className="min-h-screen bg-neutral-100 flex flex-col">
+      {propertyCatalogError && (
+        <div role="alert" className="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Some approved listings may be missing because the property service could not be reached: {propertyCatalogError}
+          </p>
+        </div>
+      )}
       {/* Top Filter Bar */}
       <div className="bg-white border-b border-neutral-200 sticky top-16 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">

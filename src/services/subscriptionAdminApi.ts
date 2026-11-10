@@ -102,9 +102,22 @@ export const subscriptionAdminApi = {
     adminRequest<SubscriptionRecord>(`/admin/subscriptions/${encodeURIComponent(subscriptionId)}/revoke`, 'PUT', { reason }),
 
   listProperties: async (status = 'PENDING_REVIEW'): Promise<{ items: AdminPropertyReview[]; totalItems: number }> => {
-    const query = new URLSearchParams({ page: '1', limit: '100', status });
-    const result = await adminRequest<{ items: AdminPropertyReview[]; pagination?: { totalItems?: number } }>(`/admin/properties?${query}`);
-    return { items: result.items || [], totalItems: result.pagination?.totalItems ?? result.items?.length ?? 0 };
+    const items: AdminPropertyReview[] = [];
+    let page = 1;
+    let hasNextPage = true;
+    let totalItems = 0;
+    while (hasNextPage) {
+      const query = new URLSearchParams({ page: String(page), limit: '100', status });
+      const result = await adminRequest<{
+        items: AdminPropertyReview[];
+        pagination?: { totalItems?: number; hasNextPage?: boolean };
+      }>(`/admin/properties?${query}`);
+      items.push(...(result.items || []));
+      totalItems = result.pagination?.totalItems ?? totalItems;
+      hasNextPage = result.pagination?.hasNextPage ?? false;
+      page += 1;
+    }
+    return { items, totalItems: totalItems || items.length };
   },
 
   reviewProperty: (propertyId: string, action: 'approve' | 'reject' | 'corrections', notes?: string) =>

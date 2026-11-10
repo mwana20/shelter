@@ -97,6 +97,10 @@ export const AdminDashboardPage: React.FC = () => {
   const [propertyReviewLoading, setPropertyReviewLoading] = useState(false);
   const [pendingReviewCount, setPendingReviewCount] = useState(0);
   const [propertyReviewError, setPropertyReviewError] = useState('');
+  const [inventoryProperties, setInventoryProperties] = useState<AdminPropertyReview[]>([]);
+  const [totalDatabaseProperties, setTotalDatabaseProperties] = useState(0);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryError, setInventoryError] = useState('');
   const [propertyReviewNotes, setPropertyReviewNotes] = useState<Record<string, string>>({});
   const [subscriptionConfig, setSubscriptionConfig] = useState<AdminSubscriptionConfig | null>(null);
   const [subscriptionRows, setSubscriptionRows] = useState<AdminSubscription[]>([]);
@@ -157,6 +161,31 @@ export const AdminDashboardPage: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'moderation') void fetchPropertyReviewQueue();
   }, [activeTab, isAdmin, propertyReviewFilter]);
+
+  const fetchPropertyInventory = async () => {
+    if (!isAdmin) return;
+    setInventoryLoading(true);
+    setInventoryError('');
+    try {
+      const result = await subscriptionAdminApi.listProperties('ALL');
+      setInventoryProperties(result.items);
+      setTotalDatabaseProperties(result.totalItems);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load property inventory.';
+      setInventoryError(message);
+      showNotification(message, 'error');
+    } finally {
+      setInventoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) void fetchPropertyInventory();
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (activeTab === 'inventory') void fetchPropertyInventory();
+  }, [activeTab, isAdmin]);
 
   const fetchSubscriptionManagement = async () => {
     if (!isAdmin) return;
@@ -250,21 +279,22 @@ export const AdminDashboardPage: React.FC = () => {
     try {
       await subscriptionAdminApi.reviewProperty(property.id, action, notes);
       setPropertyReviewNotes((current) => ({ ...current, [property.id]: '' }));
+      window.dispatchEvent(new Event('shelter-properties-updated'));
       showNotification(
         action === 'approve' ? 'Property approved and published.' : action === 'reject' ? 'Property rejected.' : 'Corrections requested.',
         'success'
       );
-      await fetchPropertyReviewQueue();
+      await Promise.all([fetchPropertyReviewQueue(), fetchPropertyInventory()]);
     } catch (error) {
       showNotification(error instanceof Error ? error.message : 'Property review failed.', 'error');
     }
   };
 
   // Stats calculation
-  const totalProperties = properties.length;
-  const propertiesForSale = properties.filter((p) => p.listingType === 'Sale').length;
-  const propertiesForRent = properties.filter((p) => p.listingType === 'Rent').length;
-  const availableCount = properties.filter((p) => p.status === 'Available').length;
+  const totalProperties = new Set([
+    ...properties.map((property) => property.id),
+    ...inventoryProperties.map((property) => property.id)
+  ]).size;
   // Security Check: Only Admins can access
   if (!isAdmin) {
     return (
@@ -418,7 +448,7 @@ export const AdminDashboardPage: React.FC = () => {
         {/* Top Stats Ribbon */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
           <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
-            <p className="text-xs text-neutral-500 font-medium">Total Listings</p>
+            <p className="text-xs text-neutral-500 font-medium">Marketplace Listings</p>
             <p className="text-2xl font-extrabold text-neutral-900 mt-1">{totalProperties}</p>
           </div>
           <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
@@ -1007,30 +1037,46 @@ export const AdminDashboardPage: React.FC = () => {
         {/* TAB 3: EXISTING INVENTORY */}
         {activeTab === 'inventory' && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-xs space-y-4">
-            <h3 className="text-lg font-bold text-neutral-900 font-serif-display">
-              Live Property Inventory ({properties.length})
-            </h3>
-            <div className="divide-y divide-neutral-100">
-              {properties.map((p) => (
-                <div key={p.id} className="py-4 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <img src={p.imageThumbnails?.[0] || p.images[0]} alt="" width={320} height={240} loading="lazy" decoding="async" className="w-16 h-12 object-cover rounded-xl" />
-                    <div>
-                      <p className="font-bold text-xs text-neutral-900">{p.title}</p>
-                      <p className="text-[11px] text-neutral-500">
-                        {p.district}, {p.country} · {p.currency} {p.price.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => openPropertyDetail(p.id)}
-                    className="text-xs font-semibold text-emerald-700 hover:underline"
-                  >
-                    View Listing
-                  </button>
-                </div>
-              ))}
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-lg font-bold text-neutral-900 font-serif-display">
+                Database Property Inventory ({totalDatabaseProperties})
+              </h3>
+              <button type="button" onClick={() => void fetchPropertyInventory()} className="rounded-lg border border-neutral-300 p-2 text-neutral-700" aria-label="Refresh property inventory">
+                <RefreshCw className={`h-4 w-4 ${inventoryLoading ? 'animate-spin' : ''}`} />
+              </button>
             </div>
+            {inventoryError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{inventoryError}</p>}
+            {inventoryLoading ? (
+              <p className="py-8 text-center text-sm text-neutral-500">Loading database property inventory...</p>
+            ) : inventoryProperties.length === 0 ? (
+              <p className="py-8 text-center text-sm text-neutral-500">No properties are stored in the backend yet.</p>
+            ) : (
+              <div className="divide-y divide-neutral-100">
+                {inventoryProperties.map((property) => {
+                  const image = property.media.find((media) => media.isActive && media.kind === 'IMAGE');
+                  return (
+                    <div key={property.id} className="flex items-center justify-between gap-4 py-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        {image && <img src={image.publicUrl} alt="" width={320} height={240} loading="lazy" decoding="async" className="h-12 w-16 shrink-0 rounded-xl object-cover" />}
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-bold text-neutral-900">{property.title}</p>
+                          <p className="text-[11px] text-neutral-500">
+                            {property.district}, {property.country} · {property.currency} {Number(property.price).toLocaleString()} · {property.owner.fullName}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                        property.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' :
+                          property.status === 'PENDING_REVIEW' ? 'bg-amber-50 text-amber-800' :
+                            'bg-neutral-100 text-neutral-700'
+                      }`}>
+                        {property.status.replaceAll('_', ' ')}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

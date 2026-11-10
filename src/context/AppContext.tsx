@@ -29,6 +29,7 @@ import {
   normalizePage
 } from '../utils/navigation';
 import { backendApi, DEFAULT_LOCK_SETTINGS } from '../services/backendApi';
+import { getApprovedBackendProperties } from '../services/propertyApi';
 
 export interface AppContextType {
   // Navigation & Routing
@@ -72,6 +73,7 @@ export interface AppContextType {
   // Property Data & Mutations
   properties: Property[];
   availableProperties: Property[];
+  propertyCatalogError: string;
   addProperty: (property: Omit<Property, 'id' | 'viewsCount' | 'savesCount' | 'dateAdded'> & { id?: string }) => void;
   updatePropertyStatus: (id: string, status: PropertyStatus) => void;
   toggleVerifiedStatus: (id: string) => void;
@@ -421,7 +423,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Property Listings State
-  const [properties, setProperties] = useState<Property[]>(() => {
+  const [localProperties, setLocalProperties] = useState<Property[]>(() => {
     try {
       const saved = localStorage.getItem('sheltered_mukono_properties_v5');
       if (saved) return JSON.parse(saved);
@@ -433,11 +435,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     try {
-      localStorage.setItem('sheltered_mukono_properties_v5', JSON.stringify(properties));
+      localStorage.setItem('sheltered_mukono_properties_v5', JSON.stringify(localProperties));
     } catch {
       // ignore
     }
-  }, [properties]);
+  }, [localProperties]);
+
+  const [backendProperties, setBackendProperties] = useState<Property[]>([]);
+  const [propertyCatalogError, setPropertyCatalogError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const refreshApprovedProperties = async () => {
+      try {
+        const approved = await getApprovedBackendProperties();
+        if (!active) return;
+        setBackendProperties(approved);
+        setPropertyCatalogError('');
+      } catch (error) {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : 'Could not load approved property listings.';
+        setPropertyCatalogError(message);
+        console.error('Approved property catalog refresh failed:', error);
+      }
+    };
+    const handlePropertiesUpdated = () => { void refreshApprovedProperties(); };
+    void refreshApprovedProperties();
+    window.addEventListener('shelter-properties-updated', handlePropertiesUpdated);
+    return () => {
+      active = false;
+      window.removeEventListener('shelter-properties-updated', handlePropertiesUpdated);
+    };
+  }, []);
+
+  const properties = [...localProperties];
+  for (const property of backendProperties) {
+    const existingIndex = properties.findIndex((item) => item.id === property.id);
+    if (existingIndex === -1) properties.push(property);
+    else properties[existingIndex] = property;
+  }
 
   // Saved / Favorited Properties
   const [savedPropertyIds, setSavedPropertyIds] = useState<string[]>(() => {
@@ -851,7 +887,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const incrementViews = (id: string) => {
-    setProperties((prev) =>
+    setLocalProperties((prev) =>
       prev.map((p) => (p.id === id ? { ...p, viewsCount: p.viewsCount + 1 } : p))
     );
   };
@@ -868,7 +904,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
 
-    setProperties((prev) =>
+    setLocalProperties((prev) =>
       prev.map((p) =>
         p.id === id
           ? {
@@ -911,12 +947,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       savesCount: 0,
       dateAdded: new Date().toISOString()
     };
-    setProperties((prev) => [created, ...prev]);
+    setLocalProperties((prev) => [created, ...prev]);
     addAuditLog('Property Submitted', `New listing submitted: "${created.title}" in ${created.district}, ${created.country}`, 'Property', created.id);
   };
 
   const updatePropertyStatus = (id: string, status: PropertyStatus) => {
-    setProperties((prev) =>
+    setLocalProperties((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status } : p))
     );
     addAuditLog('Property Status Updated', `Status changed to ${status}`, 'Property', id);
@@ -924,7 +960,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleVerifiedStatus = (id: string) => {
-    setProperties((prev) =>
+    setLocalProperties((prev) =>
       prev.map((p) => (p.id === id ? { ...p, verified: !p.verified } : p))
     );
     addAuditLog('Property Verification Toggled', `Verification badge updated`, 'Property', id);
@@ -932,13 +968,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteProperty = (id: string) => {
-    setProperties((prev) => prev.filter((p) => p.id !== id));
+    setLocalProperties((prev) => prev.filter((p) => p.id !== id));
     addAuditLog('Property Deleted', `Listing permanently removed`, 'Property', id);
     showNotification('Property removed successfully', 'info');
   };
 
   const approveProperty = (id: string, notes?: string) => {
-    setProperties((prev) =>
+    setLocalProperties((prev) =>
       prev.map((p) =>
         p.id === id
           ? {
@@ -957,7 +993,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const rejectProperty = (id: string, reason?: string) => {
-    setProperties((prev) =>
+    setLocalProperties((prev) =>
       prev.map((p) =>
         p.id === id
           ? {
@@ -1035,9 +1071,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Only administrator-approved active listings are eligible for public browsing.
-  const availableProperties = properties.filter(
-    (p) => p.status === 'Available' || p.status === 'Published'
-  );
+  const availableProperties = [
+    ...mockProperties.filter((property) => property.status === 'Available' || property.status === 'Published'),
+    ...backendProperties
+  ];
 
   return (
     <AppContext.Provider
@@ -1070,6 +1107,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         importLocationsCsv,
         properties,
         availableProperties,
+        propertyCatalogError,
         addProperty,
         updatePropertyStatus,
         toggleVerifiedStatus,

@@ -19,6 +19,7 @@ import { propertyImages } from '../assets/propertyImages';
 export const HomePage: React.FC = () => {
   const {
     availableProperties,
+    propertyCatalogError,
     applyQuickSearch,
     setCurrentPage,
     setFilters,
@@ -79,6 +80,9 @@ export const HomePage: React.FC = () => {
 
   // Group properties
   const featuredProperties = availableProperties.filter((p) => p.featured);
+  const recentProperties = [...availableProperties]
+    .sort((first, second) => new Date(second.dateAdded).getTime() - new Date(first.dateAdded).getTime())
+    .slice(0, 6);
   const commercialAndLand = availableProperties.filter(
     (p) =>
       p.propertyType === 'Commercial Property' ||
@@ -89,6 +93,13 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="bg-neutral-50 min-h-screen">
+      {propertyCatalogError && (
+        <div role="alert" className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Some approved listings may be missing because the property service could not be reached: {propertyCatalogError}
+          </p>
+        </div>
+      )}
       {/* 1. HERO SECTION (Extends behind transparent header) */}
       <section className="relative min-h-[640px] lg:min-h-[700px] flex items-center justify-center overflow-hidden bg-slate-950 -mt-[88px] pt-28 sm:pt-36 pb-16 px-4 sm:px-6 lg:px-8">
         {/* Background Photography with Reduced Darkness for High Visibility */}
@@ -462,6 +473,38 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Recently approved backend listings */}
+      {recentProperties.length > 0 && (
+        <section className="px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl space-y-8">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">New on Shelter</span>
+                <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-neutral-950 sm:text-3xl">Recently listed properties</h2>
+                <p className="mt-1 text-xs text-neutral-500 sm:text-sm">Approved properties, ready to explore.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilters((prev) => ({ ...prev, listingType: 'All', country: '' }));
+                  setCurrentPage('search');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="flex items-center gap-1.5 text-xs font-bold text-neutral-900 transition hover:text-emerald-700"
+              >
+                <span>Browse all approved properties ({availableProperties.length})</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {recentProperties.map((property) => (
+                <PropertyCard key={`recent-${property.id}`} property={property} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 4. COMMERCIAL & LAND INVESTMENT SHOWCASE */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
