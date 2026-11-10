@@ -1,4 +1,3 @@
-javascript
 import cors from 'cors';
 import { env } from './env.js';
 
