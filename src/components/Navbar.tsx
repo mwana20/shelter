@@ -189,7 +189,7 @@ export const Navbar: React.FC = () => {
           </button>
 
           {/* Zone 2: Clean single-line text navigation links */}
-          <nav className="hidden lg:flex items-center gap-6 xl:gap-7 text-sm font-semibold text-slate-200">
+          <nav className={`${isDashboardPage ? 'hidden' : 'hidden lg:flex'} items-center gap-6 xl:gap-7 text-sm font-semibold text-slate-200`}>
             <button
               type="button"
               onClick={() => navigateTo('home')}
@@ -255,7 +255,7 @@ export const Navbar: React.FC = () => {
           {/* Zone 3: Selectors + Clean Auth Buttons + CTA */}
           <div className="hidden sm:flex items-center gap-2.5 lg:gap-3 shrink-0">
             {/* Language Selector Dropdown */}
-            <div className="relative">
+            <div className={`relative ${isDashboardPage ? 'hidden' : ''}`}>
               <button
                 type="button"
                 onClick={() => {
@@ -299,7 +299,7 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* Currency Selector Dropdown */}
-            <div className="relative">
+            <div className={`relative ${isDashboardPage ? 'hidden' : ''}`}>
               <button
                 type="button"
                 onClick={() => {
@@ -344,7 +344,6 @@ export const Navbar: React.FC = () => {
                 </div>
               )}
             </div>
-
             {/* Clean Persistent Authentication Buttons (Sign In & Create Account) */}
             <div className="flex items-center gap-2">
               {isAuthenticated && <button
@@ -406,10 +405,10 @@ export const Navbar: React.FC = () => {
               </button>}
             </div>
 
-            {/* Primary Action Button: List Your Property (takes user to login page) */}
+            {/* Primary Action Button: List Your Property */}
             <button
               type="button"
-              onClick={() => navigateTo('sign-in')}
+              onClick={() => navigateTo(isAuthenticated ? 'list-property' : 'sign-in')}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-sm transition whitespace-nowrap shrink-0 cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5 text-white" />
