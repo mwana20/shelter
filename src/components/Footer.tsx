@@ -163,11 +163,11 @@ export const Footer: React.FC = () => {
                 <MapPin aria-hidden="true" className="h-4 w-4 shrink-0 fill-white/60 text-white/60" />
                 <span>{SHELTERED_COMPANY_CONFIG.hqCity}, {SHELTERED_COMPANY_CONFIG.hqCountry}</span>
               </div>
-              <a className="flex items-center gap-2 hover:text-white" href={`tel:${SHELTERED_COMPANY_CONFIG.primaryPhone.replace(/\s/g, '')}`}>
+              <a className="flex items-center gap-2 transition-colors hover:text-emerald-300" href={`tel:${SHELTERED_COMPANY_CONFIG.primaryPhone.replace(/\s/g, '')}`}>
                 <Phone aria-hidden="true" className="h-4 w-4 shrink-0 fill-white/60 text-white/60" />
                 {SHELTERED_COMPANY_CONFIG.primaryPhone}
               </a>
-              <a className="flex items-center gap-2 hover:text-white" href={`mailto:${SHELTERED_COMPANY_CONFIG.officialEmail}`}>
+              <a className="flex items-center gap-2 transition-colors hover:text-emerald-300" href={`mailto:${SHELTERED_COMPANY_CONFIG.officialEmail}`}>
                 <Mail aria-hidden="true" className="h-4 w-4 shrink-0 fill-white/60 text-white/60" />
                 {SHELTERED_COMPANY_CONFIG.officialEmail}
               </a>
@@ -184,7 +184,7 @@ export const Footer: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigateTo(link.page)}
-                      className="flex items-start gap-1.5 text-left text-sm text-white/70 transition hover:text-white"
+                      className="flex items-start gap-1.5 text-left text-sm text-white/70 transition-colors hover:text-emerald-300"
                     >
                       <ChevronRight aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/50" />
                       <span>{link.label}</span>
@@ -218,11 +218,11 @@ export const Footer: React.FC = () => {
             <div className="mt-6 border-t border-white/15 pt-4 text-center">
               <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm">
                 <p className="text-white/70">© {new Date().getFullYear()} {t('footer_rights')}</p>
-                <button type="button" onClick={() => navigateTo('terms')} className="hover:text-white">
+                <button type="button" onClick={() => navigateTo('terms')} className="transition-colors hover:text-emerald-300">
                   {t('terms_of_service')}
                 </button>
                 <span aria-hidden="true" className="text-white/30">|</span>
-                <button type="button" onClick={() => navigateTo('privacy')} className="hover:text-white">
+                <button type="button" onClick={() => navigateTo('privacy')} className="transition-colors hover:text-emerald-300">
                   {t('privacy_policy')}
                 </button>
               </div>
@@ -254,12 +254,12 @@ export const Footer: React.FC = () => {
             <span>{SHELTERED_COMPANY_CONFIG.hqCity}, {SHELTERED_COMPANY_CONFIG.hqCountry}</span>
             <span aria-hidden="true" className="mx-1 hidden h-5 border-l border-white/30 sm:block" />
             <Phone aria-hidden="true" className="h-5 w-5 shrink-0 fill-white/60 text-white/60" />
-            <a className="hover:text-white" href={`tel:${SHELTERED_COMPANY_CONFIG.primaryPhone.replace(/\s/g, '')}`}>
+            <a className="transition-colors hover:text-emerald-300" href={`tel:${SHELTERED_COMPANY_CONFIG.primaryPhone.replace(/\s/g, '')}`}>
               {SHELTERED_COMPANY_CONFIG.primaryPhone}
             </a>
           </div>
           <a
-            className="flex w-fit max-w-full items-center gap-2 break-all hover:text-white sm:break-normal"
+            className="flex w-fit max-w-full items-center gap-2 break-all transition-colors hover:text-emerald-300 sm:break-normal"
             href={`mailto:${SHELTERED_COMPANY_CONFIG.officialEmail}`}
           >
             <Mail aria-hidden="true" className="h-5 w-5 shrink-0 fill-white/60 text-white/60" />
@@ -289,7 +289,7 @@ export const Footer: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigateTo(link.page)}
-                          className="break-words py-1 text-left text-sm text-white/70 hover:text-white hover:underline sm:text-base"
+                          className="break-words py-1 text-left text-sm text-white/70 transition-colors hover:text-emerald-300 hover:underline sm:text-base"
                         >
                           {link.label}
                         </button>
@@ -325,11 +325,11 @@ export const Footer: React.FC = () => {
         <div className="mt-4 border-t border-white/15 pt-3 pr-8 text-center text-xs text-white/70 sm:mt-5 sm:pr-0 sm:pt-4 sm:text-sm">
           <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 sm:mt-3 sm:gap-x-3">
             <p>© {new Date().getFullYear()} {t('footer_rights')}</p>
-            <button type="button" onClick={() => navigateTo('terms')} className="hover:text-white">
+            <button type="button" onClick={() => navigateTo('terms')} className="transition-colors hover:text-emerald-300">
               {t('terms_of_service')}
             </button>
             <span aria-hidden="true" className="text-white/30">|</span>
-            <button type="button" onClick={() => navigateTo('privacy')} className="hover:text-white">
+            <button type="button" onClick={() => navigateTo('privacy')} className="transition-colors hover:text-emerald-300">
               {t('privacy_policy')}
             </button>
           </div>

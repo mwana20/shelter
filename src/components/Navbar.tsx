@@ -194,7 +194,7 @@ export const Navbar: React.FC = () => {
               type="button"
               onClick={() => navigateTo('home')}
               aria-current={isHomePage ? 'page' : undefined}
-              className={`flex items-center gap-1.5 hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
+              className={`flex items-center gap-1.5 transition-colors hover:text-emerald-300 whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
                 isHomePage ? 'text-white font-bold' : ''
               }`}
             >
@@ -204,7 +204,7 @@ export const Navbar: React.FC = () => {
             <button
               type="button"
               onClick={() => handleNavClick('buy')}
-              className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
+              className={`transition-colors hover:text-emerald-300 whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
                 currentPage === 'buy' ? 'text-white font-bold' : ''
               }`}
             >
@@ -213,7 +213,7 @@ export const Navbar: React.FC = () => {
             <button
               type="button"
               onClick={() => handleNavClick('rent')}
-              className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
+              className={`transition-colors hover:text-emerald-300 whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
                 currentPage === 'rent' ? 'text-white font-bold' : ''
               }`}
             >
@@ -222,21 +222,21 @@ export const Navbar: React.FC = () => {
             <button
               type="button"
               onClick={() => handleNavClick('commercial')}
-              className="hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
+              className="transition-colors hover:text-emerald-300 whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
             >
               {t('nav_commercial')}
             </button>
             <button
               type="button"
               onClick={() => handleNavClick('land')}
-              className="hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
+              className="transition-colors hover:text-emerald-300 whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
             >
               {t('nav_land')}
             </button>
             <button
               type="button"
               onClick={() => handleNavClick('explore')}
-              className="hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
+              className="transition-colors hover:text-emerald-300 whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs"
             >
               {t('nav_explore')}
             </button>
@@ -244,7 +244,7 @@ export const Navbar: React.FC = () => {
               type="button"
               onClick={() => navigateTo('subscription')}
               aria-current={currentPage === 'subscription' ? 'page' : undefined}
-              className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
+              className={`transition-colors hover:text-emerald-300 whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
                 currentPage === 'subscription' ? 'text-white font-bold' : ''
               }`}
             >
