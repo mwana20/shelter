@@ -240,16 +240,6 @@ export const Navbar: React.FC = () => {
             >
               {t('nav_explore')}
             </button>
-            <button
-              type="button"
-              onClick={() => navigateTo('subscription')}
-              aria-current={currentPage === 'subscription' ? 'page' : undefined}
-              className={`transition-colors hover:text-emerald-300 whitespace-nowrap shrink-0 cursor-pointer drop-shadow-xs ${
-                currentPage === 'subscription' ? 'text-white font-bold' : ''
-              }`}
-            >
-              Plans
-            </button>
           </nav>
 
           {/* Zone 3: Selectors + Clean Auth Buttons + CTA */}
@@ -510,9 +500,6 @@ export const Navbar: React.FC = () => {
                   </button>
                   <button type="button" onClick={() => handleNavClick('explore')} className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer">
                     {t('nav_explore')}
-                  </button>
-                  <button type="button" onClick={() => navigateTo('subscription')} className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer">
-                    Subscription plans
                   </button>
                 </nav>
               )}

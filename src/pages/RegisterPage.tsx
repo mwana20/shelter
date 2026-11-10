@@ -197,6 +197,13 @@ export const RegisterPage: React.FC = () => {
           <p className="mt-2 text-sm text-slate-200 drop-shadow-xs">
             {t('create_account_desc')}
           </p>
+          <button
+            type="button"
+            onClick={() => setCurrentPage('subscription')}
+            className="mt-3 text-sm font-semibold text-emerald-300 underline decoration-emerald-300/60 underline-offset-4 transition-colors hover:text-emerald-200"
+          >
+            Compare plans before registering
+          </button>
         </div>
 
         {/* Glassmorphic Form Card */}
