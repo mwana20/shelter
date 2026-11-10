@@ -101,10 +101,10 @@ export const subscriptionAdminApi = {
   revoke: (subscriptionId: string, reason: string) =>
     adminRequest<SubscriptionRecord>(`/admin/subscriptions/${encodeURIComponent(subscriptionId)}/revoke`, 'PUT', { reason }),
 
-  listProperties: async (status = 'PENDING_REVIEW') => {
+  listProperties: async (status = 'PENDING_REVIEW'): Promise<{ items: AdminPropertyReview[]; totalItems: number }> => {
     const query = new URLSearchParams({ page: '1', limit: '100', status });
-    const result = await adminRequest<{ items: AdminPropertyReview[] }>(`/admin/properties?${query}`);
-    return result.items || [];
+    const result = await adminRequest<{ items: AdminPropertyReview[]; pagination?: { totalItems?: number } }>(`/admin/properties?${query}`);
+    return { items: result.items || [], totalItems: result.pagination?.totalItems ?? result.items?.length ?? 0 };
   },
 
   reviewProperty: (propertyId: string, action: 'approve' | 'reject' | 'corrections', notes?: string) =>

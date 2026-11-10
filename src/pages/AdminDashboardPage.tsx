@@ -61,7 +61,7 @@ export const AdminDashboardPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<
     'inventory' | 'moderation' | 'locking' | 'payments' | 'viewings' | 'analytics' | 'subscriptions'
-  >('locking');
+  >('moderation');
 
   useEffect(() => {
     const handleDashboardSection = (event: Event) => {
@@ -95,6 +95,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [propertyReviewQueue, setPropertyReviewQueue] = useState<AdminPropertyReview[]>([]);
   const [propertyReviewFilter, setPropertyReviewFilter] = useState('PENDING_REVIEW');
   const [propertyReviewLoading, setPropertyReviewLoading] = useState(false);
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
+  const [propertyReviewError, setPropertyReviewError] = useState('');
   const [propertyReviewNotes, setPropertyReviewNotes] = useState<Record<string, string>>({});
   const [subscriptionConfig, setSubscriptionConfig] = useState<AdminSubscriptionConfig | null>(null);
   const [subscriptionRows, setSubscriptionRows] = useState<AdminSubscription[]>([]);
@@ -133,10 +135,20 @@ export const AdminDashboardPage: React.FC = () => {
   const fetchPropertyReviewQueue = async () => {
     if (!isAdmin) return;
     setPropertyReviewLoading(true);
+    setPropertyReviewError('');
     try {
-      setPropertyReviewQueue(await subscriptionAdminApi.listProperties(propertyReviewFilter));
+      const [queue, pending] = await Promise.all([
+        subscriptionAdminApi.listProperties(propertyReviewFilter),
+        propertyReviewFilter === 'PENDING_REVIEW'
+          ? Promise.resolve(null)
+          : subscriptionAdminApi.listProperties('PENDING_REVIEW')
+      ]);
+      setPropertyReviewQueue(queue.items);
+      setPendingReviewCount(pending?.totalItems ?? queue.totalItems);
     } catch (error) {
-      showNotification(error instanceof Error ? error.message : 'Failed to load property review queue.', 'error');
+      const message = error instanceof Error ? error.message : 'Failed to load property review queue.';
+      setPropertyReviewError(message);
+      showNotification(message, 'error');
     } finally {
       setPropertyReviewLoading(false);
     }
@@ -253,9 +265,6 @@ export const AdminDashboardPage: React.FC = () => {
   const propertiesForSale = properties.filter((p) => p.listingType === 'Sale').length;
   const propertiesForRent = properties.filter((p) => p.listingType === 'Rent').length;
   const availableCount = properties.filter((p) => p.status === 'Available').length;
-  const pendingCount = properties.filter((p) => p.status === 'Pending').length;
-  const pendingListings = properties.filter((p) => p.status === 'Pending');
-
   // Security Check: Only Admins can access
   if (!isAdmin) {
     return (
@@ -442,7 +451,7 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
           <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
             <p className="text-xs text-neutral-500 font-medium">Pending Moderation</p>
-            <p className="text-2xl font-extrabold text-neutral-900 mt-1">{pendingCount}</p>
+            <p className="text-2xl font-extrabold text-neutral-900 mt-1">{pendingReviewCount}</p>
           </div>
         </div>
 
@@ -454,25 +463,22 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
             <div>
               <p className="font-bold text-neutral-950">
-                Operating in Standalone Sandbox / Mock Ledger Mode
+                Connected to Shelter administration
               </p>
               <p className="text-neutral-600 mt-0.5">
-                No external payment gateway keys or live API base URL are needed right now. All registrations, 18+ verification, password resets, location locking, dual-option payments, and admin approvals function completely out-of-the-box. When you are ready to connect your live services, simply supply the keys in your environment.
+                Review submitted listings and manage subscriptions using the connected backend. Listing approvals are loaded from the server and are independent of the demo property inventory.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="px-2.5 py-1 rounded-lg bg-blue-100 font-mono text-[11px] text-blue-900 font-semibold">
-              Gateway: Sandbox
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-100 font-mono text-[11px] text-emerald-900 font-semibold">
-              API Base: Local Service
-            </span>
+            <button type="button" onClick={() => setActiveTab('moderation')} className="rounded-lg bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-900">
+            {pendingReviewCount} listing{pendingReviewCount === 1 ? '' : 's'} awaiting review
+            </button>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="hidden overflow-x-auto border-b border-neutral-200 text-xs font-bold lg:flex lg:gap-2">
+        <div className="flex overflow-x-auto border-b border-neutral-200 text-xs font-bold">
           <button
             onClick={() => setActiveTab('locking')}
             className={`py-3 px-4 border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
@@ -518,7 +524,7 @@ export const AdminDashboardPage: React.FC = () => {
             }`}
           >
             <Shield className="w-4 h-4" />
-            <span>Listing Approvals ({pendingListings.length})</span>
+            <span>Listing Approvals ({pendingReviewCount})</span>
           </button>
 
           <button
@@ -1038,6 +1044,11 @@ export const AdminDashboardPage: React.FC = () => {
                 </h3>
                 <p className="mt-1 text-xs text-neutral-500">Review ownership, location, media, and approval history before publishing.</p>
               </div>
+              {propertyReviewError && (
+                <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                  Could not load listings from the backend: {propertyReviewError}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <select
                   value={propertyReviewFilter}
