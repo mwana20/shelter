@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   User,
   Heart,
@@ -30,6 +30,15 @@ export const MyShelteredPage: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'viewings' | 'enquiries' | 'saved' | 'profile'>('viewings');
+
+  useEffect(() => {
+    const handleDashboardSection = (event: Event) => {
+      setActiveTab((event as CustomEvent<typeof activeTab>).detail);
+    };
+
+    window.addEventListener('sheltered-dashboard-section', handleDashboardSection);
+    return () => window.removeEventListener('sheltered-dashboard-section', handleDashboardSection);
+  }, []);
 
   // Profile edit state
   const savedProperties = properties.filter((p) => savedPropertyIds.includes(p.id));
@@ -73,7 +82,7 @@ export const MyShelteredPage: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-neutral-200 space-x-6 text-xs font-bold text-neutral-500">
+        <div className="hidden border-b border-neutral-200 text-xs font-bold text-neutral-500 lg:flex lg:space-x-6">
           <button
             onClick={() => setActiveTab('viewings')}
             className={`pb-3 flex items-center gap-2 transition relative ${

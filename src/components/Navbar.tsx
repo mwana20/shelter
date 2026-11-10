@@ -7,9 +7,17 @@ import {
   X,
   PlusCircle,
   Heart,
+  LayoutDashboard,
+  Building,
+  Mail,
+  User,
+  Home,
+  CreditCard,
+  CalendarDays,
   Check,
   Receipt,
   ShieldCheck,
+  Settings,
   House,
   LogOut
 } from 'lucide-react';
@@ -21,6 +29,9 @@ export const Navbar: React.FC = () => {
   const {
     currentPage,
     setCurrentPage,
+    properties,
+    enquiries,
+    viewingRequests,
     savedPropertyIds,
     applyQuickSearch,
     setFilters,
@@ -104,7 +115,37 @@ export const Navbar: React.FC = () => {
     SUPPORTED_LANGUAGES.find((l) => l.code === userLanguage) || SUPPORTED_LANGUAGES[0];
 
   const isHomePage = currentPage === 'home';
+  const isDashboardPage = ['seller-dashboard', 'my-sheltered', 'admin', 'admin-dashboard'].includes(currentPage);
+  const isDashboardMenu = isAuthenticated && isDashboardPage;
+  const isBuyerDashboard = currentUser.role === 'buyer' || currentUser.role === 'tenant';
+  const dashboardMenuItems = isAdmin
+    ? [
+        { label: 'Location Locking & Payment Configuration', tab: 'locking', icon: <ShieldCheck className="h-4 w-4" /> },
+        { label: 'Unlock Payments & Verification Queue', tab: 'payments', icon: <CreditCard className="h-4 w-4" /> },
+        { label: `Property Inventory (${properties.length})`, tab: 'inventory', icon: <Home className="h-4 w-4" /> },
+        { label: 'Listing Approvals', tab: 'moderation', icon: <Check className="h-4 w-4" /> }
+      ]
+    : isBuyerDashboard
+      ? [
+          { label: `Viewing Appointments (${viewingRequests.length})`, tab: 'viewings', icon: <CalendarDays className="h-4 w-4" /> },
+          { label: `Enquiries (${enquiries.length})`, tab: 'enquiries', icon: <Mail className="h-4 w-4" /> },
+          { label: `Saved Homes (${savedPropertyIds.length})`, tab: 'saved', icon: <Heart className="h-4 w-4" /> },
+          { label: 'Account Profile', tab: 'profile', icon: <User className="h-4 w-4" /> }
+        ]
+      : [
+          { label: 'Overview', tab: 'overview', icon: <LayoutDashboard className="h-4 w-4" /> },
+          { label: `My Properties (${properties.length})`, tab: 'my-properties', icon: <Building className="h-4 w-4" /> },
+          { label: `Enquiries (${enquiries.length})`, tab: 'enquiries', icon: <Mail className="h-4 w-4" /> },
+          { label: 'Profile & Location', tab: 'agency-profile', icon: <User className="h-4 w-4" /> },
+          { label: 'Verification Request', tab: 'verification-request', icon: <ShieldCheck className="h-4 w-4" /> },
+          { label: 'Account Settings', tab: 'settings', icon: <Settings className="h-4 w-4" /> }
+        ];
   const [isScrolled, setIsScrolled] = useState(false);
+
+  const selectDashboardSection = (tab: string) => {
+    window.dispatchEvent(new CustomEvent('sheltered-dashboard-section', { detail: tab }));
+    setMobileMenuOpen(false);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -428,44 +469,58 @@ export const Navbar: React.FC = () => {
 
             {/* Scrollable Navigation Body with smooth touch scrolling and generous bottom padding */}
             <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y p-4 space-y-4 pb-28">
-              <nav className="flex flex-col space-y-1 text-sm font-semibold text-slate-800">
-                <button
-                  type="button"
-                  onClick={() => handleNavClick('buy')}
-                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
-                >
-                  {t('nav_buy')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleNavClick('rent')}
-                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
-                >
-                  {t('nav_rent')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleNavClick('commercial')}
-                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
-                >
-                  {t('nav_commercial')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleNavClick('land')}
-                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
-                >
-                  {t('nav_land')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleNavClick('explore')}
-                  className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer"
-                >
-                  {t('nav_explore')}
-                </button>
-              </nav>
+              {isDashboardMenu ? (
+                <nav aria-label="Dashboard navigation" className="flex flex-col space-y-1 text-sm font-semibold text-slate-800">
+                  <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Dashboard</p>
+                  {dashboardMenuItems.map((item) => (
+                    <button
+                      key={item.tab}
+                      type="button"
+                      onClick={() => selectDashboardSection(item.tab)}
+                      className="flex items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      <span className="text-slate-500">{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              ) : (
+                <nav className="flex flex-col space-y-1 text-sm font-semibold text-slate-800">
+                  <button type="button" onClick={() => handleNavClick('buy')} className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    {t('nav_buy')}
+                  </button>
+                  <button type="button" onClick={() => handleNavClick('rent')} className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    {t('nav_rent')}
+                  </button>
+                  <button type="button" onClick={() => handleNavClick('commercial')} className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    {t('nav_commercial')}
+                  </button>
+                  <button type="button" onClick={() => handleNavClick('land')} className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    {t('nav_land')}
+                  </button>
+                  <button type="button" onClick={() => handleNavClick('explore')} className="px-3 py-2.5 text-left rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    {t('nav_explore')}
+                  </button>
+                </nav>
+              )}
 
+              {isDashboardMenu && (
+                <div className="space-y-3 border-t border-slate-200 pt-3">
+                  <p className="px-3 py-2 text-xs text-slate-600">
+                    Signed in as <strong className="uppercase">{currentUser.role}</strong>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void logout()}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-2.5 text-center text-xs font-semibold text-white cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Sign out</span>
+                  </button>
+                </div>
+              )}
+
+              {!isDashboardMenu && (
               <div className="pt-3 border-t border-slate-200 space-y-3">
                 {/* Mobile Auth Buttons */}
                 {isAuthReady && !isAuthenticated && <div className="flex flex-col gap-2">
@@ -579,6 +634,7 @@ export const Navbar: React.FC = () => {
                   </button>
                 </div>
               </div>
+              )}
             </div>
           </div>
         </div>

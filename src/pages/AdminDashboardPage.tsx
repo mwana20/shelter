@@ -56,6 +56,15 @@ export const AdminDashboardPage: React.FC = () => {
     'inventory' | 'moderation' | 'locking' | 'payments' | 'viewings' | 'analytics'
   >('locking');
 
+  useEffect(() => {
+    const handleDashboardSection = (event: Event) => {
+      setActiveTab((event as CustomEvent<typeof activeTab>).detail);
+    };
+
+    window.addEventListener('sheltered-dashboard-section', handleDashboardSection);
+    return () => window.removeEventListener('sheltered-dashboard-section', handleDashboardSection);
+  }, []);
+
   // Payments Ledger State
   const [payments, setPayments] = useState<LocationUnlockPayment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
@@ -322,7 +331,7 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-neutral-200 overflow-x-auto gap-2 text-xs font-bold">
+        <div className="hidden overflow-x-auto border-b border-neutral-200 text-xs font-bold lg:flex lg:gap-2">
           <button
             onClick={() => setActiveTab('locking')}
             className={`py-3 px-4 border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${

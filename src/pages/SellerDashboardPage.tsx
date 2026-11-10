@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   Building,
@@ -52,6 +52,15 @@ export const SellerDashboardPage: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
+
+  useEffect(() => {
+    const handleDashboardSection = (event: Event) => {
+      setActiveTab((event as CustomEvent<DashboardTab>).detail);
+    };
+
+    window.addEventListener('sheltered-dashboard-section', handleDashboardSection);
+    return () => window.removeEventListener('sheltered-dashboard-section', handleDashboardSection);
+  }, []);
   const [propertyFilterStatus, setPropertyFilterStatus] = useState<string>('all');
   const [replyMessageId, setReplyMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -197,7 +206,7 @@ export const SellerDashboardPage: React.FC = () => {
         </div>
 
         {/* Dashboard Navigation Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-slate-200 text-xs font-medium text-slate-600">
+        <div className="hidden items-center gap-1 overflow-x-auto border-b border-slate-200 pb-1 text-xs font-medium text-slate-600 lg:flex">
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'my-properties', label: `My Properties (${myProperties.length})`, icon: Building },
