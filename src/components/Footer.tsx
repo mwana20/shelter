@@ -138,37 +138,37 @@ export const Footer: React.FC = () => {
 
   return (
     <footer
-      className="relative isolate overflow-hidden border-t border-blue-300/20 bg-[#061936] text-white"
+      className="relative isolate overflow-hidden border-t border-white/10 bg-black text-white"
       style={{ backgroundImage: `url(${footerImage})`, backgroundPosition: 'center 40%', backgroundSize: 'cover' }}
     >
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-[#04152c]/65 via-[#041a3b]/90 to-[#03132e] lg:bg-gradient-to-r lg:from-[#04152c]/95 lg:via-[#041a3b]/80 lg:to-[#04152c]/60" />
+      <div className="absolute inset-0 -z-10 bg-black/40" />
       <div className="w-full">
-        <div className="mx-auto hidden max-w-7xl grid-cols-[2fr_0.85fr_0.9fr_0.85fr_1.4fr] gap-7 px-9 pb-16 pt-20 lg:grid">
+        <div className="mx-auto hidden max-w-7xl grid-cols-[2fr_0.85fr_0.9fr_0.85fr_1.4fr] gap-4 px-6 pb-8 pt-10 lg:grid">
           <div>
-            <div className="flex items-center gap-4">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-blue-300/30 bg-blue-950/75 font-serif-display text-5xl font-bold text-white">
+            <div className="flex items-center gap-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-black/50 font-serif-display text-3xl font-bold text-white">
                 S
               </div>
               <div>
-                <div className="font-serif-display text-5xl font-bold leading-none">Sheltered</div>
-                <div className="mt-2 text-xs font-semibold uppercase text-blue-100">Global Real Estate Marketplace</div>
+                <div className="font-serif-display text-3xl font-bold leading-none">Sheltered</div>
+                <div className="mt-1 text-[10px] font-semibold uppercase text-white/60">Global Real Estate Marketplace</div>
               </div>
             </div>
-            <p className="mt-7 max-w-sm text-lg leading-snug text-blue-50/90">
+            <p className="mt-4 max-w-sm text-base leading-snug text-white/80">
               Connecting property buyers, sellers and investors across international markets.
             </p>
-            <div className="my-5 h-1 w-20 bg-sky-400" />
-            <address className="space-y-3 text-base not-italic text-blue-50/90">
-              <div className="flex items-center gap-3">
-                <MapPin aria-hidden="true" className="h-5 w-5 shrink-0 fill-sky-400 text-sky-400" />
+            <div className="my-3 h-1 w-16 bg-white/20" />
+            <address className="space-y-2 text-sm not-italic text-white/80">
+              <div className="flex items-center gap-2">
+                <MapPin aria-hidden="true" className="h-4 w-4 shrink-0 fill-white/60 text-white/60" />
                 <span>{SHELTERED_COMPANY_CONFIG.hqCity}, {SHELTERED_COMPANY_CONFIG.hqCountry}</span>
               </div>
-              <a className="flex items-center gap-3 hover:text-sky-300" href={`tel:${SHELTERED_COMPANY_CONFIG.primaryPhone.replace(/\s/g, '')}`}>
-                <Phone aria-hidden="true" className="h-5 w-5 shrink-0 fill-sky-400 text-sky-400" />
+              <a className="flex items-center gap-2 hover:text-white" href={`tel:${SHELTERED_COMPANY_CONFIG.primaryPhone.replace(/\s/g, '')}`}>
+                <Phone aria-hidden="true" className="h-4 w-4 shrink-0 fill-white/60 text-white/60" />
                 {SHELTERED_COMPANY_CONFIG.primaryPhone}
               </a>
-              <a className="flex items-center gap-3 hover:text-sky-300" href={`mailto:${SHELTERED_COMPANY_CONFIG.officialEmail}`}>
-                <Mail aria-hidden="true" className="h-5 w-5 shrink-0 fill-sky-400 text-sky-400" />
+              <a className="flex items-center gap-2 hover:text-white" href={`mailto:${SHELTERED_COMPANY_CONFIG.officialEmail}`}>
+                <Mail aria-hidden="true" className="h-4 w-4 shrink-0 fill-white/60 text-white/60" />
                 {SHELTERED_COMPANY_CONFIG.officialEmail}
               </a>
             </address>
@@ -176,17 +176,17 @@ export const Footer: React.FC = () => {
 
           {desktopSections.map((section) => (
             <nav key={section.title} aria-label={section.title} className="pt-1">
-              <h2 className="text-xl font-bold text-white">{section.title}</h2>
-              <div className="mt-3 h-1 w-12 bg-sky-400" />
-              <ul className="mt-5 space-y-3">
-                {section.links.map((link) => (
+              <h2 className="text-lg font-bold text-white">{section.title}</h2>
+              <div className="mt-2 h-1 w-10 bg-white/20" />
+              <ul className="mt-3 space-y-2">
+                {section.links.slice(0, 3).map((link) => (
                   <li key={`${section.title}-${link.label}`}>
                     <button
                       type="button"
                       onClick={() => navigateTo(link.page)}
-                      className="flex items-start gap-2 text-left text-base text-blue-50/85 transition hover:text-white"
+                      className="flex items-start gap-1.5 text-left text-sm text-white/70 transition hover:text-white"
                     >
-                      <ChevronRight aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-blue-200" />
+                      <ChevronRight aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/50" />
                       <span>{link.label}</span>
                     </button>
                   </li>
@@ -196,9 +196,9 @@ export const Footer: React.FC = () => {
           ))}
 
           <div className="pt-1">
-            <h2 className="text-xl font-bold text-white">Follow Us</h2>
-            <div className="mt-3 h-1 w-12 bg-sky-400" />
-            <nav aria-label="Social media" className="mt-6 flex flex-wrap gap-1">
+            <h2 className="text-lg font-bold text-white">Follow Us</h2>
+            <div className="mt-2 h-1 w-10 bg-white/20" />
+            <nav aria-label="Social media" className="mt-4 flex flex-wrap gap-1">
               {socialLinks.map((social) => (
                 <a
                   key={social.name}
@@ -207,7 +207,7 @@ export const Footer: React.FC = () => {
                   rel="noopener noreferrer"
                   aria-label={social.name}
                   title={social.name}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200/15 bg-blue-900/65 transition hover:-translate-y-0.5 hover:bg-blue-800/80"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-black/50 transition hover:-translate-y-0.5 hover:bg-black/70"
                 >
                   <svg aria-hidden="true" viewBox="0 0 24 24" className={`h-5 w-5 fill-current ${social.color}`}>
                     {social.icon}
@@ -215,75 +215,81 @@ export const Footer: React.FC = () => {
                 </a>
               ))}
             </nav>
-            <div className="mt-6 border-t border-blue-100/20 pt-5 text-center">
-              <p className="text-lg italic leading-snug text-blue-50/90">
-                Your trusted real estate partner worldwide.
-              </p>
-              <div className="mx-auto mt-5 h-5 w-4/5 rounded-[50%] border-t-4 border-sky-400 [transform:rotate(-8deg)]" />
+            <div className="mt-6 border-t border-white/15 pt-4 text-center">
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm">
+                <p className="text-white/70">© {new Date().getFullYear()} {t('footer_rights')}</p>
+                <button type="button" onClick={() => navigateTo('terms')} className="hover:text-white">
+                  {t('terms_of_service')}
+                </button>
+                <span aria-hidden="true" className="text-white/30">|</span>
+                <button type="button" onClick={() => navigateTo('privacy')} className="hover:text-white">
+                  {t('privacy_policy')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mx-auto max-w-5xl px-4 pb-28 pt-8 sm:px-8 sm:pb-24 sm:pt-12 lg:hidden">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-blue-300/70 bg-blue-950/75 font-serif-display text-4xl font-bold text-white shadow-lg sm:h-16 sm:w-16 sm:text-5xl">
+        <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-8 sm:pb-10 sm:pt-8 lg:hidden">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/30 bg-black/50 font-serif-display text-3xl font-bold text-white shadow-lg sm:h-14 sm:w-14 sm:text-4xl">
             S
           </div>
-          <div className="min-w-0 border-l-2 border-white/90 pl-3 sm:pl-5">
-            <div className="font-serif-display text-3xl font-bold leading-none sm:text-4xl">Sheltered</div>
-            <div className="mt-1 max-w-[210px] break-words text-[10px] font-bold uppercase leading-tight text-sky-400 sm:text-xs">
+          <div className="min-w-0 border-l-2 border-white/90 pl-3 sm:pl-4">
+            <div className="font-serif-display text-2xl font-bold leading-none sm:text-3xl">Sheltered</div>
+            <div className="mt-1 max-w-[210px] break-words text-[10px] font-bold uppercase leading-tight text-white/60 sm:text-xs">
               Global Real Estate Marketplace
             </div>
           </div>
         </div>
 
-        <p className="mt-5 max-w-xl text-base italic leading-snug text-white/90 sm:mt-6 sm:text-lg">
+        <p className="mt-3 max-w-xl text-sm italic leading-snug text-white/90 sm:mt-4 sm:text-base">
           Connecting property buyers, sellers and investors across international markets.
         </p>
-        <div className="my-4 h-1 w-20 bg-sky-400" />
+        <div className="my-3 h-1 w-16 bg-white/20" />
 
-        <div className="space-y-2.5 text-sm sm:text-base">
+        <div className="space-y-2 text-sm sm:text-base">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <MapPin aria-hidden="true" className="h-6 w-6 shrink-0 fill-sky-400 text-sky-400" />
+            <MapPin aria-hidden="true" className="h-5 w-5 shrink-0 fill-white/60 text-white/60" />
             <span>{SHELTERED_COMPANY_CONFIG.hqCity}, {SHELTERED_COMPANY_CONFIG.hqCountry}</span>
-            <span aria-hidden="true" className="mx-1 hidden h-6 border-l border-blue-300/70 sm:block" />
-            <Phone aria-hidden="true" className="h-6 w-6 shrink-0 fill-sky-400 text-sky-400" />
-            <a className="hover:text-sky-300" href={`tel:${SHELTERED_COMPANY_CONFIG.primaryPhone.replace(/\s/g, '')}`}>
+            <span aria-hidden="true" className="mx-1 hidden h-5 border-l border-white/30 sm:block" />
+            <Phone aria-hidden="true" className="h-5 w-5 shrink-0 fill-white/60 text-white/60" />
+            <a className="hover:text-white" href={`tel:${SHELTERED_COMPANY_CONFIG.primaryPhone.replace(/\s/g, '')}`}>
               {SHELTERED_COMPANY_CONFIG.primaryPhone}
             </a>
           </div>
           <a
-            className="flex w-fit max-w-full items-center gap-3 break-all hover:text-sky-300 sm:break-normal"
+            className="flex w-fit max-w-full items-center gap-2 break-all hover:text-white sm:break-normal"
             href={`mailto:${SHELTERED_COMPANY_CONFIG.officialEmail}`}
           >
-            <Mail aria-hidden="true" className="h-6 w-6 shrink-0 fill-sky-400 text-sky-400" />
+            <Mail aria-hidden="true" className="h-5 w-5 shrink-0 fill-white/60 text-white/60" />
             {SHELTERED_COMPANY_CONFIG.officialEmail}
           </a>
         </div>
 
-        <div className="mt-6 space-y-2.5 sm:mt-8 sm:space-y-3">
+        <div className="mt-4 space-y-2 sm:mt-6 sm:space-y-2">
           {sections.map((section) => {
             const isOpen = openSection === section.title;
             return (
-              <div key={section.title} className="overflow-hidden rounded-xl border border-blue-300/30 bg-blue-950/55 shadow-sm backdrop-blur-sm sm:rounded-2xl">
+              <div key={section.title} className="overflow-hidden rounded-lg border border-white/20 bg-black/50 shadow-sm backdrop-blur-sm sm:rounded-xl">
                 <button
                   type="button"
                   aria-expanded={isOpen}
                   onClick={() => setOpenSection(isOpen ? null : section.title)}
-                  className="flex min-h-14 w-full items-center gap-3 px-4 text-left text-base font-bold hover:bg-blue-900/50 sm:min-h-16 sm:gap-4 sm:px-6 sm:text-lg"
+                  className="flex min-h-12 w-full items-center gap-3 px-3 text-left text-sm font-bold hover:bg-black/70 sm:min-h-14 sm:gap-3 sm:px-4 sm:text-base"
                 >
                   {section.icon}
                   <span className="flex-1">{section.title}</span>
-                  <ChevronDown aria-hidden="true" className={`h-5 w-5 shrink-0 transition-transform sm:h-6 sm:w-6 ${isOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 transition-transform sm:h-5 sm:w-5 ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {isOpen && (
-                  <ul className="grid gap-1 border-t border-blue-300/20 px-4 py-3 sm:grid-cols-2 sm:gap-2 sm:px-6 sm:py-4">
-                    {section.links.map((link) => (
+                  <ul className="grid gap-1 border-t border-white/15 px-3 py-2 sm:grid-cols-2 sm:gap-2 sm:px-4 sm:py-3">
+                    {section.links.slice(0, 3).map((link) => (
                       <li key={`${section.title}-${link.label}`}>
                         <button
                           type="button"
                           onClick={() => navigateTo(link.page)}
-                          className="break-words py-1 text-left text-sm text-blue-100 hover:text-white hover:underline sm:text-base"
+                          className="break-words py-1 text-left text-sm text-white/70 hover:text-white hover:underline sm:text-base"
                         >
                           {link.label}
                         </button>
@@ -296,8 +302,8 @@ export const Footer: React.FC = () => {
           })}
         </div>
 
-        <div className="mt-7 border-t border-blue-200/30 pt-5 sm:mt-9 sm:pt-6">
-          <nav aria-label="Social media" className="flex flex-wrap justify-center gap-2 sm:gap-3">
+        <div className="mt-5 border-t border-white/20 pt-4 sm:mt-6 sm:pt-4">
+          <nav aria-label="Social media" className="flex flex-wrap justify-center gap-2 sm:gap-2">
             {socialLinks.map((social) => (
               <a
                 key={social.name}
@@ -306,9 +312,9 @@ export const Footer: React.FC = () => {
                 rel="noopener noreferrer"
                 aria-label={social.name}
                 title={social.name}
-                className="flex h-12 w-12 items-center justify-center rounded-xl border border-blue-300/20 bg-blue-900/65 transition hover:-translate-y-1 hover:border-blue-200/60 hover:bg-blue-800/80 sm:h-14 sm:w-14"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-black/50 transition hover:-translate-y-1 hover:border-white/30 hover:bg-black/70 sm:h-11 sm:w-11"
               >
-                <svg aria-hidden="true" viewBox="0 0 24 24" className={`h-6 w-6 fill-current sm:h-7 sm:w-7 ${social.color}`}>
+                <svg aria-hidden="true" viewBox="0 0 24 24" className={`h-5 w-5 fill-current sm:h-6 sm:w-6 ${social.color}`}>
                   {social.icon}
                 </svg>
               </a>
@@ -316,41 +322,18 @@ export const Footer: React.FC = () => {
           </nav>
         </div>
 
-        <div className="mt-6 border-t border-blue-200/25 pt-4 pr-12 text-center text-xs text-blue-50/90 sm:mt-8 sm:pr-0 sm:pt-5 sm:text-sm">
-          <p>© {new Date().getFullYear()} {t('footer_rights')}</p>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:mt-4 sm:gap-x-4">
-            <button type="button" onClick={() => navigateTo('terms')} className="hover:text-sky-300">
+        <div className="mt-4 border-t border-white/15 pt-3 pr-8 text-center text-xs text-white/70 sm:mt-5 sm:pr-0 sm:pt-4 sm:text-sm">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 sm:mt-3 sm:gap-x-3">
+            <p>© {new Date().getFullYear()} {t('footer_rights')}</p>
+            <button type="button" onClick={() => navigateTo('terms')} className="hover:text-white">
               {t('terms_of_service')}
             </button>
-            <span aria-hidden="true">|</span>
-            <button type="button" onClick={() => navigateTo('privacy')} className="hover:text-sky-300">
+            <span aria-hidden="true" className="text-white/30">|</span>
+            <button type="button" onClick={() => navigateTo('privacy')} className="hover:text-white">
               {t('privacy_policy')}
             </button>
-            <span aria-hidden="true">|</span>
-            <button type="button" onClick={() => navigateTo('contact')} className="hover:text-sky-300">
-              {t('legal_compliance')}
-            </button>
           </div>
         </div>
-        </div>
-
-        <div className="hidden border-t border-blue-100/25 lg:block">
-          <div className="mx-auto flex min-h-24 max-w-7xl items-center justify-between gap-6 px-9 pr-36 text-sm text-blue-50/90">
-            <p>© {new Date().getFullYear()} {t('footer_rights')}</p>
-            <div className="flex items-center gap-5">
-              <button type="button" onClick={() => navigateTo('terms')} className="hover:text-sky-300">
-                {t('terms_of_service')}
-              </button>
-              <span aria-hidden="true" className="h-6 border-l border-blue-100/35" />
-              <button type="button" onClick={() => navigateTo('privacy')} className="hover:text-sky-300">
-                {t('privacy_policy')}
-              </button>
-              <span aria-hidden="true" className="h-6 border-l border-blue-100/35" />
-              <button type="button" onClick={() => navigateTo('contact')} className="hover:text-sky-300">
-                {t('legal_compliance')}
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </footer>
