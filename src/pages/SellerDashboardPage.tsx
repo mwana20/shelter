@@ -156,18 +156,19 @@ export const SellerDashboardPage: React.FC = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Top Header */}
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <img
               src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
               alt={currentUser.name}
-              className="w-16 h-16 rounded-full object-cover border-2 border-slate-200"
+              className="h-16 w-16 shrink-0 rounded-full border-2 border-slate-200 object-cover"
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900">{currentUser.name}</h1>
-                <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-medium capitalize">
-                  {currentUser.role}
-                </span>
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
+                <h1 className="max-w-full truncate whitespace-nowrap text-lg font-bold text-slate-900 sm:text-xl">{currentUser.name}</h1>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-medium capitalize">
+                    {currentUser.role}
+                  </span>
                 {currentUser.verificationStatus === 'Verified' ? (
                   <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-medium flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3" />
@@ -178,8 +179,9 @@ export const SellerDashboardPage: React.FC = () => {
                     {currentUser.verificationStatus || 'Unverified'}
                   </span>
                 )}
+                </div>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="mt-1 break-words text-[11px] leading-snug text-slate-500 sm:text-xs">
                 {currentUser.companyName ? `${currentUser.companyName} · ` : ''}
                   {currentUser.email} · {[currentUser.neighborhood, currentUser.district, currentUser.country].filter(Boolean).join(', ')}
               </p>
