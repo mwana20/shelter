@@ -12,6 +12,7 @@ import { CurrencyCode, RentalPeriod, formatPrice } from '../utils/currency';
 import { GLOBAL_LOCATIONS, COUNTRY_ADMIN_CONFIGS, POPULAR_COUNTRIES } from '../data/mockLocations';
 import { createPropertyWithBackend } from '../services/propertyApi';
 import { PropertyMediaUploader, UploadedMediaSelection } from '../components/PropertyMediaUploader';
+import { PropertyLocationPicker } from '../components/PropertyLocationPicker';
 
 export const ListPropertyPage: React.FC = () => {
   const { addProperty, currentUser, setCurrentPage, openPropertyDetail, showNotification } = useApp();
@@ -28,6 +29,8 @@ export const ListPropertyPage: React.FC = () => {
   const [neighborhood, setNeighborhood] = useState('');
   const [streetAddress, setStreetAddress] = useState('');
   const [isManualLocation, setIsManualLocation] = useState(false);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
 
   // Step 2: Pricing & Specs
   const [price, setPrice] = useState('450000');
@@ -87,6 +90,11 @@ export const ListPropertyPage: React.FC = () => {
       setCurrentStep(1);
       return;
     }
+    if (latitude === null || longitude === null) {
+      showNotification('Select the property location on the map before submitting.', 'error');
+      setCurrentStep(1);
+      return;
+    }
     if (!uploadedMedia) {
       showNotification('Upload four property images and one MP4 video before submitting.', 'error');
       setCurrentStep(3);
@@ -111,8 +119,8 @@ export const ListPropertyPage: React.FC = () => {
       district: district || region || 'Central District',
       neighborhood: neighborhood || undefined,
       exactAddress: streetAddress || undefined,
-      latitude: 1.0784,
-      longitude: 34.1756,
+      latitude,
+      longitude,
       propertyId: uploadedMedia.propertyId,
       mediaBatchId: uploadedMedia.batchId,
       mediaRefs: uploadedMedia.mediaRefs
@@ -151,7 +159,7 @@ export const ListPropertyPage: React.FC = () => {
       district: district || region || 'Central District',
       neighborhood: neighborhood || undefined,
       locationDetails: streetAddress ? `${streetAddress}, ${finalLocation}` : finalLocation,
-      coordinates: { lat: 1.0784, lng: 34.1756 }, // Default center near Mbale HQ for demo
+      coordinates: { lat: latitude, lng: longitude },
       bedrooms: parseInt(bedrooms) || 0,
       bathrooms: parseInt(bathrooms) || 0,
       parkingSpaces: parseInt(parkingSpaces) || 0,
@@ -413,6 +421,29 @@ export const ListPropertyPage: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                   />
                 </div>
+
+                <section className="space-y-2 border-t border-slate-100 pt-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Pin the property on the map</h3>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Pan and zoom to the property, then click to place the pin. You can drag the pin to adjust it.
+                      Exact coordinates are protected from public visitors until unlocked.
+                    </p>
+                  </div>
+                  <PropertyLocationPicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    onChange={(location) => {
+                      setLatitude(location.lat);
+                      setLongitude(location.lng);
+                    }}
+                  />
+                  <p aria-live="polite" className="text-xs text-slate-600">
+                    {latitude !== null && longitude !== null
+                      ? `Selected coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+                      : 'No map location selected yet.'}
+                  </p>
+                </section>
               </div>
             </div>
 

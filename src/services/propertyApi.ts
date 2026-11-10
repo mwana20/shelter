@@ -28,15 +28,15 @@ interface PublicPropertyRecord {
   directionsGuide?: string | null;
   cadastralPlotNumber?: string | null;
   createdAt: string;
-  owner: {
+  owner?: {
     id: string;
     fullName: string;
     email: string;
     phone?: string | null;
-    role: string;
+    role?: string;
     companyName?: string | null;
     avatarUrl?: string | null;
-  };
+  } | null;
   media: Array<{ id: string; kind: 'IMAGE' | 'VIDEO'; publicUrl: string; thumbnailUrl?: string | null; isFeatured?: boolean }>;
 }
 
@@ -74,7 +74,8 @@ function mapPublicProperty(record: PublicPropertyRecord): Property {
 
   const images = record.media.filter((media) => media.kind === 'IMAGE');
   const video = record.media.find((media) => media.kind === 'VIDEO');
-  const phone = record.owner.phone || '';
+  const owner = record.owner;
+  const phone = owner?.phone || '';
   const locationParts = [record.exactAddress, record.neighborhood, record.district, record.region, record.country].filter(Boolean);
 
   return {
@@ -111,13 +112,13 @@ function mapPublicProperty(record: PublicPropertyRecord): Property {
     viewsCount: record.viewsCount || 0,
     savesCount: 0,
     agent: {
-      id: record.owner.id,
-      name: record.owner.fullName,
-      company: record.owner.companyName || 'Independent Property Owner',
+      id: owner?.id || '',
+      name: owner?.fullName || 'Property Owner',
+      company: owner?.companyName || 'Independent Property Owner',
       phone,
       whatsapp: phone.replace(/\D/g, ''),
-      email: record.owner.email,
-      avatar: record.owner.avatarUrl || '',
+      email: owner?.email || '',
+      avatar: owner?.avatarUrl || '',
       verified: false,
       activeListingsCount: 0,
       experienceYears: 0,
