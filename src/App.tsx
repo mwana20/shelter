@@ -219,7 +219,7 @@ const AppContent: React.FC = () => {
       ) : null}
 
       {/* Floating Quick WhatsApp Chat & Back to Top Arrow */}
-      <FloatingActions />
+      <FloatingActions showWhatsApp={!isAuthenticationPage && !isPortalPage} />
 
       {/* Global Modals */}
       <ImageGalleryModal />
