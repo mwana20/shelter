@@ -68,6 +68,12 @@ export class AuthController {
     res.status(200).json(ApiResponse.success(result, result.message));
   });
 
+  static verifyPasswordResetCode = asyncHandler(async (req, res) => {
+    const { email, code } = req.body;
+    const result = await AuthService.verifyPasswordResetCode(email, code);
+    res.status(200).json(ApiResponse.success(result, result.message));
+  });
+
   static resetPassword = asyncHandler(async (req, res) => {
     const { token, newPassword } = req.body;
     const result = await AuthService.resetPassword(token, newPassword);

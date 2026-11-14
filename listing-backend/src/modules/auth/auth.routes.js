@@ -8,6 +8,7 @@ import {
   verifyEmailSchema,
   resendVerificationSchema,
   forgotPasswordSchema,
+  verifyPasswordResetCodeSchema,
   resetPasswordSchema
 } from '../../validators/auth.schema.js';
 import { authenticate } from '../../middlewares/authenticate.js';
@@ -59,6 +60,13 @@ router.post(
   authRateLimiter,
   validate({ body: forgotPasswordSchema }),
   AuthController.forgotPassword
+);
+
+router.post(
+  '/verify-password-reset-code',
+  authRateLimiter,
+  validate({ body: verifyPasswordResetCodeSchema }),
+  AuthController.verifyPasswordResetCode
 );
 
 router.post(

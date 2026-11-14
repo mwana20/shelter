@@ -14,6 +14,11 @@ import {
 import { sendEmail } from '../notifications/email.service.js';
 import { env } from '../../config/env.js';
 
+const hashPasswordResetCode = (userId, code) =>
+  crypto.createHmac('sha256', env.JWT.ACCESS_SECRET).update(`${userId}:${code}`).digest('hex');
+const VERIFICATION_CODE_TTL_MS = 60 * 1000;
+const PASSWORD_RESET_SESSION_TTL_MS = 15 * 60 * 1000;
+
 export class AuthService {
   static async createSession(userId, payload) {
     const id = crypto.randomUUID();
@@ -76,17 +81,20 @@ export class AuthService {
       }
     });
 
-    // 5. Create verification token (24 hours expiry) & 6-digit code
+    // Keep the email link and the 6-digit code on separate expiration windows.
     const token = generateRandomToken('vtok_');
     const code = generateNumericCode(6);
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const now = Date.now();
+    const expiresAt = new Date(now + 24 * 60 * 60 * 1000);
+    const codeExpiresAt = new Date(now + VERIFICATION_CODE_TTL_MS);
 
     await prisma.verificationToken.create({
       data: {
         token,
         code,
         userId: user.id,
-        expiresAt
+        expiresAt,
+        codeExpiresAt
       }
     });
 
@@ -100,6 +108,7 @@ export class AuthService {
         <p>Please verify your email address to activate all account features and start unlocking properties.</p>
         <p><a href="${verificationUrl}" style="display:inline-block;padding:12px 24px;background-color:#059669;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">Verify Email Address</a></p>
         <p>Or use your 6-digit verification code: <strong>${code}</strong></p>
+        <p>This code is valid for 1 minute.</p>
         <p>This link is valid for 24 hours.</p>
       `
     });
@@ -231,12 +240,7 @@ export class AuthService {
   static async verifyEmail({ token, code, email }) {
     let tokenRecord;
 
-    if (token) {
-      tokenRecord = await prisma.verificationToken.findUnique({
-        where: { token },
-        include: { user: true }
-      });
-    } else if (code && email) {
+    if (code && email) {
       const user = await prisma.user.findUnique({
         where: { email: email.toLowerCase().trim() }
       });
@@ -251,6 +255,11 @@ export class AuthService {
           orderBy: { createdAt: 'desc' }
         });
       }
+    } else if (token) {
+      tokenRecord = await prisma.verificationToken.findUnique({
+        where: { token },
+        include: { user: true }
+      });
     }
 
     if (!tokenRecord) {
@@ -261,8 +270,15 @@ export class AuthService {
       throw ApiError.badRequest('This verification link has already been used. Please sign in.');
     }
 
-    if (new Date() > tokenRecord.expiresAt) {
-      throw ApiError.badRequest('Verification link has expired. Please request a new verification email.');
+    const tokenExpiresAt = code
+      ? tokenRecord.codeExpiresAt || tokenRecord.expiresAt
+      : tokenRecord.expiresAt;
+    if (tokenExpiresAt <= new Date()) {
+      throw ApiError.badRequest(
+        code
+          ? 'Verification code has expired. Please request a new verification email.'
+          : 'Verification link has expired. Please request a new verification email.'
+      );
     }
 
     // Mark token as used & activate user email
@@ -300,14 +316,17 @@ export class AuthService {
 
     const token = generateRandomToken('vtok_');
     const code = generateNumericCode(6);
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const now = Date.now();
+    const expiresAt = new Date(now + 24 * 60 * 60 * 1000);
+    const codeExpiresAt = new Date(now + VERIFICATION_CODE_TTL_MS);
 
     await prisma.verificationToken.create({
       data: {
         token,
         code,
         userId: user.id,
-        expiresAt
+        expiresAt,
+        codeExpiresAt
       }
     });
 
@@ -320,6 +339,7 @@ export class AuthService {
         <p>Click below to verify your account:</p>
         <p><a href="${verificationUrl}" style="display:inline-block;padding:12px 24px;background-color:#059669;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">Verify Email</a></p>
         <p>Security code: <strong>${code}</strong></p>
+        <p>This code is valid for 1 minute. The link is valid for 24 hours.</p>
       `
     });
 
@@ -336,7 +356,7 @@ export class AuthService {
     });
 
     // SECURITY RULE: Always return a neutral response to prevent user enumeration
-    const neutralMessage = 'If this email is registered, a password reset link has been sent.';
+    const neutralMessage = 'If this email is registered, a password reset code has been sent.';
 
     if (!user) {
       return { message: neutralMessage };
@@ -348,34 +368,72 @@ export class AuthService {
       data: { used: true }
     });
 
-    // Generate 15-minute reset token
-    const token = generateRandomToken('rtok_');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const code = crypto.randomInt(100000, 1000000).toString();
+    const expiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
 
     await prisma.passwordResetToken.create({
       data: {
-        token,
+        token: hashPasswordResetCode(user.id, code),
         userId: user.id,
         expiresAt
       }
     });
 
-    const resetUrl = `${env.APP_URL}/#/reset-password?token=${token}`;
     await sendEmail({
       to: cleanEmail,
       subject: 'Password Reset Request - Sheltered Real Estate',
       html: `
         <h2>Password Reset Request</h2>
         <p>You requested a password reset for your Sheltered account.</p>
-        <p><a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background-color:#0f172a;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">Reset Password</a></p>
-        <p>This link is valid for 15 minutes only and can be used once.</p>
+        <p>Your 6-digit password reset code is: <strong>${code}</strong></p>
+        <p>This code is valid for 1 minute only and can be used once.</p>
         <p>If you did not request this, please ignore this email.</p>
       `
     });
 
     return {
       message: neutralMessage,
-      previewToken: env.NODE_ENV === 'development' ? token : undefined
+      previewCode: env.NODE_ENV === 'development' ? code : undefined
+    };
+  }
+
+  static async verifyPasswordResetCode(email, code) {
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+      select: { id: true }
+    });
+
+    if (!user) {
+      throw ApiError.badRequest('Invalid or expired password reset code. Please request a new code.');
+    }
+
+    const codeToken = hashPasswordResetCode(user.id, code.trim());
+    const resetRecord = await prisma.passwordResetToken.findUnique({
+      where: { token: codeToken }
+    });
+    if (!resetRecord || resetRecord.userId !== user.id || resetRecord.used || resetRecord.expiresAt <= new Date()) {
+      throw ApiError.badRequest('Invalid or expired password reset code. Please request a new code.');
+    }
+
+    const resetToken = generateRandomToken('rtok_');
+    const resetSessionExpiresAt = new Date(Date.now() + PASSWORD_RESET_SESSION_TTL_MS);
+    const verified = await prisma.passwordResetToken.updateMany({
+      where: {
+        id: resetRecord.id,
+        token: codeToken,
+        used: false,
+        expiresAt: { gt: new Date() }
+      },
+      data: { token: resetToken, expiresAt: resetSessionExpiresAt }
+    });
+    if (verified.count !== 1) {
+      throw ApiError.badRequest('Invalid or expired password reset code. Please request a new code.');
+    }
+
+    return {
+      resetToken,
+      message: 'Code verified. You can now choose a new password.'
     };
   }
 
@@ -386,15 +444,15 @@ export class AuthService {
     });
 
     if (!resetRecord) {
-      throw ApiError.badRequest('Invalid password reset link. Please request a new one.');
+      throw ApiError.badRequest('Invalid password reset session. Please request a new code.');
     }
 
     if (resetRecord.used) {
-      throw ApiError.badRequest('This password reset link has already been used. Please request a new one.');
+      throw ApiError.badRequest('This password reset session has already been used. Please request a new code.');
     }
 
     if (new Date() > resetRecord.expiresAt) {
-      throw ApiError.badRequest('This password reset link has expired. Password reset links are valid for 15 minutes.');
+      throw ApiError.badRequest('This password reset session has expired. Please request a new code.');
     }
 
     const passwordHash = await hashPassword(newPassword);

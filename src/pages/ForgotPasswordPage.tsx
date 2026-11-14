@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { Mail, ArrowLeft, CheckCircle2, ShieldAlert, KeyRound, ExternalLink } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Mail, ArrowLeft, CheckCircle2, ShieldAlert, KeyRound } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { requestPasswordResetWithBackend } from '../services/authApi';
+import {
+  requestPasswordResetWithBackend,
+  verifyPasswordResetCodeWithBackend
+} from '../services/authApi';
 import { propertyImages } from '../assets/propertyImages';
 
 export const ForgotPasswordPage: React.FC = () => {
@@ -10,8 +13,31 @@ export const ForgotPasswordPage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [message, setMessage] = useState('');
   const [requestError, setRequestError] = useState('');
-  const [previewToken, setPreviewToken] = useState<string | null>(null);
+  const [previewCode, setPreviewCode] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const codeInputs = useRef<Array<HTMLInputElement | null>>([]);
+  const verificationInFlight = useRef(false);
+
+  const verifyCode = async (value: string) => {
+    if (verificationInFlight.current || !/^\d{6}$/.test(value)) return;
+    verificationInFlight.current = true;
+    setIsVerifying(true);
+    setRequestError('');
+
+    try {
+      const result = await verifyPasswordResetCodeWithBackend(email, value);
+      if (result.success && result.resetToken) {
+        setCurrentPage('reset-password', result.resetToken);
+      } else {
+        setRequestError(result.error || 'That code is invalid or expired. Please try again.');
+      }
+    } finally {
+      verificationInFlight.current = false;
+      setIsVerifying(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,14 +53,47 @@ export const ForgotPasswordPage: React.FC = () => {
         return;
       }
 
-      setMessage(result.message || 'If this email is registered, a password reset link has been sent.');
-      if (result.previewToken) {
-        setPreviewToken(result.previewToken);
+      setMessage(result.message || 'If this email is registered, a password reset code has been sent.');
+      if (result.previewCode) {
+        setPreviewCode(result.previewCode);
       }
       setSubmitted(true);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const updateCode = (index: number, digit: string) => {
+    const nextCode = Array.from({ length: 6 }, (_, position) =>
+      position === index ? digit : code[position] || ''
+    ).join('');
+    setCode(nextCode);
+    setRequestError('');
+    if (digit && index < 5) codeInputs.current[index + 1]?.focus();
+    if (/^\d{6}$/.test(nextCode)) void verifyCode(nextCode);
+  };
+
+  const handleCodeChange = (index: number, value: string) => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length > 1) {
+      const pastedCode = digits.slice(0, 6);
+      setCode(pastedCode);
+      setRequestError('');
+      codeInputs.current[Math.min(pastedCode.length, 5)]?.focus();
+      if (/^\d{6}$/.test(pastedCode)) void verifyCode(pastedCode);
+      return;
+    }
+    updateCode(index, digits.slice(-1));
+  };
+
+  const handleCodePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    const pastedCode = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pastedCode) return;
+    setCode(pastedCode);
+    setRequestError('');
+    codeInputs.current[Math.min(pastedCode.length, 5)]?.focus();
+    if (pastedCode.length === 6) void verifyCode(pastedCode);
   };
 
   return (
@@ -68,40 +127,72 @@ export const ForgotPasswordPage: React.FC = () => {
           {submitted ? (
             <div className="text-center space-y-4 py-2">
               <div className="w-14 h-14 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-7 h-7" />
+                {isVerifying ? <span className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-100/30 border-t-emerald-300" /> : <CheckCircle2 className="w-7 h-7" />}
               </div>
-              <h3 className="text-lg font-bold text-white">Instructions Dispatched</h3>
+              <h3 className="text-lg font-bold text-white">Enter Your Reset Code</h3>
               <p className="text-xs text-slate-200 leading-relaxed max-w-xs mx-auto">
-                {message}
+                {message} Enter the 6-digit code sent to <span className="font-semibold text-emerald-300">{email}</span>.
               </p>
 
-              {/* Dev Simulation: Quick token test link */}
-              {previewToken && (
+              {previewCode && (
                 <div className="mt-3 p-3 bg-emerald-950/50 border border-emerald-500/30 rounded-xl text-left">
                   <div className="text-[11px] font-semibold text-emerald-300 flex items-center gap-1.5 mb-1.5">
                     <KeyRound className="w-3.5 h-3.5" />
                     <span>Development Email Simulation:</span>
                   </div>
                   <p className="text-[10px] text-slate-300 mb-2">
-                    In production, this link is delivered via email with a 15-minute expiration token.
+                    Use this code for local testing. In production, the code is delivered by email.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage('reset-password', previewToken)}
-                    className="w-full py-2 px-3 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                  >
-                    <span>Test Reset Password Link</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </button>
+                  <p className="text-center font-mono text-lg font-bold tracking-[0.4em] text-white">{previewCode}</p>
                 </div>
               )}
 
+              {requestError && (
+                <p role="alert" className="rounded-lg border border-red-300/40 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+                  {requestError}
+                </p>
+              )}
+              <div className="flex justify-center gap-2" aria-label="6-digit password reset code">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <input
+                    key={index}
+                    ref={(element) => { codeInputs.current[index] = element; }}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                    aria-label={`Code digit ${index + 1}`}
+                    maxLength={1}
+                    value={code[index] || ''}
+                    disabled={isVerifying}
+                    onChange={(event) => handleCodeChange(index, event.target.value)}
+                    onPaste={handleCodePaste}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Backspace' && !code[index] && index > 0) {
+                        codeInputs.current[index - 1]?.focus();
+                      } else if (event.key === 'ArrowLeft' && index > 0) {
+                        codeInputs.current[index - 1]?.focus();
+                      } else if (event.key === 'ArrowRight' && index < 5) {
+                        codeInputs.current[index + 1]?.focus();
+                      }
+                    }}
+                    className="h-12 w-11 rounded-xl border border-white/25 bg-white/10 text-center font-mono text-xl font-bold text-white focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-60"
+                  />
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-300">
+                {isVerifying ? 'Verifying your code...' : 'Verification starts automatically when all digits are entered.'}
+              </p>
               <button
                 type="button"
-                onClick={() => setCurrentPage('sign-in')}
-                className="w-full mt-4 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+                onClick={() => {
+                  setSubmitted(false);
+                  setCode('');
+                  setRequestError('');
+                  setPreviewCode(null);
+                }}
+                className="w-full mt-2 py-3 px-4 text-slate-300 hover:text-white text-xs font-semibold transition cursor-pointer"
               >
-                Return to Sign In
+                <span className="inline-flex items-center gap-1.5"><ArrowLeft className="w-3.5 h-3.5" /> Change email address</span>
               </button>
             </div>
           ) : (
@@ -135,7 +226,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 disabled={isLoading}
                 className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-950/40 transition cursor-pointer disabled:opacity-50"
               >
-                {isLoading ? 'Processing request...' : 'Send Password Reset Link'}
+                {isLoading ? 'Sending code...' : 'Send Verification Code'}
               </button>
 
               <button

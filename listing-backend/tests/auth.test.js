@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateAge, verifyAgeRequirement } from '../src/utils/age.js';
 import { validatePasswordStrength } from '../src/utils/password.js';
+import { verifyPasswordResetCodeSchema } from '../src/validators/auth.schema.js';
 
 test('Auth Unit Tests: Age restriction rules', async (t) => {
   await t.test('Calculates age correctly for adult', () => {
@@ -53,4 +54,19 @@ test('Auth Unit Tests: Password complexity rules', async (t) => {
     const check = validatePasswordStrength('Sheltered2026!');
     assert.equal(check.isValid, true);
   });
+});
+
+test('Auth Unit Tests: Password reset code validation', () => {
+  assert.equal(
+    verifyPasswordResetCodeSchema.safeParse({ email: 'person@example.com', code: '123456' }).success,
+    true
+  );
+  assert.equal(
+    verifyPasswordResetCodeSchema.safeParse({ email: 'person@example.com', code: '12345a' }).success,
+    false
+  );
+  assert.equal(
+    verifyPasswordResetCodeSchema.safeParse({ email: 'person@example.com', code: '12345' }).success,
+    false
+  );
 });

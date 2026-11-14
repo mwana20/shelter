@@ -114,16 +114,16 @@ export const ResetPasswordPage: React.FC = () => {
               <div className="w-14 h-14 bg-rose-500/20 border border-rose-400/40 text-rose-300 rounded-full flex items-center justify-center mx-auto shadow-inner">
                 <AlertCircle className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-bold text-white">Invalid or Missing Reset Token</h3>
+              <h3 className="text-lg font-bold text-white">Verify Your Reset Code First</h3>
               <p className="text-xs text-slate-200 leading-relaxed max-w-xs mx-auto">
-                No active password reset token was detected in your link, or the link may have expired.
+                Your email verification code has not been confirmed, or your password reset session has expired.
               </p>
               <button
                 type="button"
                 onClick={() => setCurrentPage('forgot-password')}
                 className="w-full mt-4 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg transition cursor-pointer"
               >
-                Request New Password Reset Link
+                Request New Reset Code
               </button>
             </div>
           ) : isSuccess ? (

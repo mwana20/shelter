@@ -80,6 +80,11 @@ export const forgotPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email({ message: 'Valid email is required' })
 });
 
+export const verifyPasswordResetCodeSchema = z.object({
+  email: z.string().trim().toLowerCase().email({ message: 'Valid email is required' }),
+  code: z.string().trim().regex(/^\d{6}$/, { message: 'Security code must be exactly 6 digits' })
+});
+
 export const resetPasswordSchema = z.object({
   token: z.string().trim().min(1, { message: 'Reset token is required' }),
   newPassword: z

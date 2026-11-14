@@ -324,23 +324,47 @@ export async function resendVerificationWithBackend(email: string): Promise<{
 export async function requestPasswordResetWithBackend(email: string): Promise<{
   success: boolean;
   message?: string;
-  previewToken?: string;
+  previewCode?: string;
   error?: string;
 }> {
   try {
-    const result = await postAuth<{ message?: string; previewToken?: string }>(
+    const result = await postAuth<{ message?: string; previewCode?: string }>(
       'forgot-password',
       { email }
     );
     return {
       success: true,
       message: result.data?.message || result.message,
-      previewToken: result.data?.previewToken
+      previewCode: result.data?.previewCode
     };
   } catch {
     return {
       success: false,
       error: 'We could not send the password reset email. Please try again later.'
+    };
+  }
+}
+
+export async function verifyPasswordResetCodeWithBackend(email: string, code: string): Promise<{
+  success: boolean;
+  resetToken?: string;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const result = await postAuth<{ resetToken: string; message?: string }>(
+      'verify-password-reset-code',
+      { email, code }
+    );
+    return {
+      success: true,
+      resetToken: result.data!.resetToken,
+      message: result.data?.message || result.message
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Code verification failed.'
     };
   }
 }

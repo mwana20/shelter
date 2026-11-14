@@ -163,7 +163,7 @@ export const EmailVerificationPage: React.FC = () => {
                 className="w-full text-center tracking-widest text-2xl font-mono py-3 px-4 bg-white/10 border border-white/25 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 backdrop-blur-md font-semibold transition"
               />
               <p className="text-[11px] text-slate-300 text-center mt-2">
-                Click the link in your email or enter the 6-digit confirmation code.
+                The 6-digit code expires after 1 minute. You can also use the verification link in your email.
               </p>
             </div>
 
