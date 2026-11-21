@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard,
   Building,
@@ -18,14 +18,16 @@ import {
   Coins
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { UserRole } from '../types';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 import { SUPPORTED_CURRENCY_CODES } from '../utils/currency';
 import { POPULAR_COUNTRIES } from '../data/mockLocations';
 import { updateProfileWithBackend } from '../services/authApi';
 import { ProfileSettings } from '../components/ProfileSettings';
+import { DashboardNavigationGroup, DashboardSidebar } from '../components/DashboardSidebar';
+import { CumulativeBarChart } from '../components/CumulativeBarChart';
 import { getMySubscription, UserSubscriptionSummary } from '../services/subscriptionApi';
 import { getMyBackendProperties, OwnerPropertyRecord, resubmitBackendProperty } from '../services/propertyApi';
+import { buildCumulativeListingHistory } from '../utils/propertyAnalytics';
 import defaultAvatar from '../assets/default-avatar.svg';
 
 type DashboardTab =
@@ -112,6 +114,33 @@ export const SellerDashboardPage: React.FC = () => {
   const [verificationSubmitted, setVerificationSubmitted] = useState(false);
 
   const myProperties = backendProperties;
+  const isBroker = currentUser.role === 'agent' || currentUser.role === 'broker';
+  const roleLabel = isBroker ? 'Broker' : currentUser.role === 'landlord' ? 'Landlord' : 'Property Owner';
+  const sellerNavGroups: DashboardNavigationGroup<DashboardTab>[] = [
+    {
+      label: 'Dashboard',
+      items: [{ label: 'Overview', tab: 'overview', icon: <LayoutDashboard className="h-4 w-4" /> }]
+    },
+    {
+      label: 'Workspace',
+      items: [
+        { label: `My Properties (${myProperties.length})`, tab: 'my-properties', icon: <Building className="h-4 w-4" /> },
+        { label: `Enquiries (${enquiries.length})`, tab: 'enquiries', icon: <Mail className="h-4 w-4" /> },
+        { label: 'Profile & Location', tab: 'agency-profile', icon: <User className="h-4 w-4" /> }
+      ]
+    },
+    {
+      label: 'Account',
+      items: [
+        { label: 'Verification Request', tab: 'verification-request', icon: <ShieldCheck className="h-4 w-4" /> },
+        { label: 'Account Settings', tab: 'settings', icon: <Settings className="h-4 w-4" /> }
+      ]
+    }
+  ];
+  const cumulativeListings = useMemo(
+    () => buildCumulativeListingHistory(myProperties.map((property) => property.createdAt)),
+    [myProperties]
+  );
 
   const filteredBackendProperties = backendProperties.filter((property) => {
     if (propertyFilterStatus === 'all') return true;
@@ -191,19 +220,32 @@ export const SellerDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-100 py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-neutral-100 lg:bg-[#111111]">
+      <DashboardSidebar
+        user={currentUser}
+        groups={sellerNavGroups}
+        activeTab={activeTab}
+        greeting={`Hello, ${roleLabel}`}
+        footer="Sheltered Property Workspace"
+        ariaLabel={`${roleLabel} dashboard`}
+        onSelect={(tab) => {
+          setActiveTab(tab);
+          document.getElementById('seller-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+      />
+      <main className="min-h-screen px-4 py-6 sm:px-6 lg:ml-[276px] lg:px-8 lg:py-8">
+      <div id="seller-workspace" className="mx-auto max-w-7xl space-y-6 scroll-mt-20">
         {/* Top Header */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-xs md:flex-row md:items-center lg:border-white/10 lg:bg-[#242424] lg:text-white">
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <img
               src={currentUser.avatar || defaultAvatar}
               alt={currentUser.name}
-              className="h-16 w-16 shrink-0 rounded-full border-2 border-slate-200 object-cover"
+              className="h-16 w-16 shrink-0 rounded-full border-2 border-slate-200 object-cover lg:border-white/15"
             />
             <div className="min-w-0">
               <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-                <h1 className="max-w-full truncate whitespace-nowrap text-lg font-bold text-slate-900 sm:text-xl">{currentUser.name}</h1>
+                <h1 className="max-w-full truncate whitespace-nowrap text-lg font-bold text-slate-900 sm:text-xl lg:text-white">Dashboard Overview</h1>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-medium capitalize">
                     {currentUser.role}
@@ -220,9 +262,9 @@ export const SellerDashboardPage: React.FC = () => {
                 )}
                 </div>
               </div>
-              <p className="mt-1 break-words text-[11px] leading-snug text-slate-500 sm:text-xs">
-                {currentUser.companyName ? `${currentUser.companyName} · ` : ''}
-                  {currentUser.email} · {[currentUser.neighborhood, currentUser.district, currentUser.country].filter(Boolean).join(', ')}
+              <p className="mt-1 break-words text-[11px] leading-snug text-slate-500 sm:text-xs lg:text-neutral-400">
+                {currentUser.name} · {currentUser.companyName ? `${currentUser.companyName} · ` : ''}
+                {currentUser.email} · {[currentUser.neighborhood, currentUser.district, currentUser.country].filter(Boolean).join(', ')}
               </p>
             </div>
           </div>
@@ -231,7 +273,7 @@ export const SellerDashboardPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setCurrentPage('list-property')}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+              className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-slate-800 lg:bg-lime-300 lg:text-slate-950 lg:hover:bg-lime-200"
             >
               <PlusCircle className="w-4 h-4" />
               <span>List New Property</span>
@@ -239,63 +281,33 @@ export const SellerDashboardPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setCurrentPage('home')}
-              className="px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium transition"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 lg:border-white/15 lg:text-neutral-200 lg:hover:bg-white/10"
             >
               Public Marketplace
             </button>
           </div>
         </div>
 
-        {/* Dashboard Navigation Tabs */}
-        <div className="hidden items-center gap-1 overflow-x-auto border-b border-slate-200 pb-1 text-xs font-medium text-slate-600 lg:flex">
-          {[
-            { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-            { id: 'my-properties', label: `My Properties (${myProperties.length})`, icon: Building },
-            { id: 'enquiries', label: `Enquiries (${enquiries.length})`, icon: Mail },
-            { id: 'agency-profile', label: 'Profile & Location', icon: User },
-            { id: 'verification-request', label: 'Verification Request', icon: ShieldCheck },
-            { id: 'settings', label: 'Account Settings', icon: Settings },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id as DashboardTab)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg transition-colors whitespace-nowrap ${
-                  isActive
-                    ? 'bg-white text-slate-900 font-semibold border-t-2 border-slate-900 shadow-xs'
-                    : 'hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6 lg:border-white/10 lg:bg-[#242424] lg:text-white">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Subscription</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 lg:text-lime-300">Subscription</p>
                   {subscriptionSummary?.current ? (
                     <>
-                      <h2 className="mt-1 text-lg font-bold text-slate-950">
+                      <h2 className="mt-1 text-lg font-bold text-slate-950 lg:text-white">
                         {subscriptionSummary.current.plan} Plan · {subscriptionSummary.current.status}
                       </h2>
-                      <p className="mt-1 text-xs text-slate-600">
+                      <p className="mt-1 text-xs text-slate-600 lg:text-neutral-400">
                         Started {subscriptionSummary.current.startsAt ? new Date(subscriptionSummary.current.startsAt).toLocaleDateString() : '—'}
                         {' · '}expires {subscriptionSummary.current.expiresAt ? new Date(subscriptionSummary.current.expiresAt).toLocaleDateString() : '—'}
                         {subscriptionSummary.current.expiresAt
                           ? ` · ${Math.max(0, Math.ceil((new Date(subscriptionSummary.current.expiresAt).getTime() - Date.now()) / 86400000))} days remaining`
                           : ''}
                       </p>
-                      <p className="mt-1 text-xs text-slate-600">
+                      <p className="mt-1 text-xs text-slate-600 lg:text-neutral-400">
                         Listings {subscriptionSummary.privileges.listingsUsed} / {subscriptionSummary.privileges.listingLimit === 0
                           ? (subscriptionSummary.current.plan === 'FREE' ? 'None' : 'Unlimited')
                           : subscriptionSummary.privileges.listingLimit}
@@ -306,22 +318,22 @@ export const SellerDashboardPage: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <h2 className="mt-1 text-lg font-bold text-slate-950">
+                      <h2 className="mt-1 text-lg font-bold text-slate-950 lg:text-white">
                         {subscriptionSummary?.history[0]?.status === 'EXPIRED' ? 'Subscription expired' : 'No active subscription'}
                       </h2>
-                      <p className="mt-1 text-xs text-slate-600">
+                      <p className="mt-1 text-xs text-slate-600 lg:text-neutral-400">
                         {subscriptionSummary?.history[0]?.expiresAt
                           ? `Last plan expired ${new Date(subscriptionSummary.history[0].expiresAt).toLocaleDateString()}.`
                           : 'Choose a plan to activate listing and map privileges.'}
                       </p>
                     </>
                   )}
-                  {subscriptionError && <p className="mt-2 text-xs text-rose-700">{subscriptionError}</p>}
+                  {subscriptionError && <p className="mt-2 text-xs text-rose-700 lg:text-rose-300">{subscriptionError}</p>}
                 </div>
                 <button
                   type="button"
                   onClick={() => setCurrentPage('subscription')}
-                  className="inline-flex shrink-0 items-center justify-center rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800"
+                  className="inline-flex shrink-0 items-center justify-center rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800 lg:bg-lime-300 lg:text-slate-950 lg:hover:bg-lime-200"
                 >
                   {subscriptionSummary?.current?.plan === 'PAID' ? 'Renew / manage plan' : 'Choose or upgrade plan'}
                 </button>
@@ -330,56 +342,80 @@ export const SellerDashboardPage: React.FC = () => {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-                <span className="text-xs text-slate-500 font-medium">Active Published Listings</span>
-                <div className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+                <span className="text-xs font-medium text-slate-500 lg:text-neutral-400">Active Published Listings</span>
+                <div className="mt-1 text-2xl font-extrabold text-slate-900 tabular-nums lg:text-white">
                   {myProperties.filter((p) => p.status === 'ACTIVE' || p.status === 'APPROVED').length}
                 </div>
-                <div className="text-[11px] text-emerald-600 mt-1">Live on Global Marketplace</div>
+                <div className="mt-1 text-[11px] text-emerald-600 lg:text-lime-300">Live on Global Marketplace</div>
               </div>
 
-              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-                <span className="text-xs text-slate-500 font-medium">Total Buyer Impressions</span>
-                <div className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+                <span className="text-xs font-medium text-slate-500 lg:text-neutral-400">Total Buyer Impressions</span>
+                <div className="mt-1 text-2xl font-extrabold text-slate-900 tabular-nums lg:text-white">
                   {myProperties.reduce((sum, p) => sum + p.viewsCount, 0).toLocaleString()}
                 </div>
-                <div className="text-[11px] text-slate-400 mt-1">Across web & mobile</div>
+                <div className="mt-1 text-[11px] text-slate-400 lg:text-neutral-500">Across web & mobile</div>
               </div>
 
-              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-                <span className="text-xs text-slate-500 font-medium">Awaiting Admin Review</span>
-                <div className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+                <span className="text-xs font-medium text-slate-500 lg:text-neutral-400">Awaiting Admin Review</span>
+                <div className="mt-1 text-2xl font-extrabold text-slate-900 tabular-nums lg:text-white">
                   {myProperties.filter((p) => ['PENDING_REVIEW', 'CORRECTION_REQUESTED'].includes(p.status)).length}
                 </div>
-                <div className="text-[11px] text-slate-400 mt-1">Submitted for verification</div>
+                <div className="mt-1 text-[11px] text-slate-400 lg:text-neutral-500">Submitted for verification</div>
               </div>
 
-              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-                <span className="text-xs text-slate-500 font-medium">Client Inquiries</span>
-                <div className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+                <span className="text-xs font-medium text-slate-500 lg:text-neutral-400">Client Inquiries</span>
+                <div className="mt-1 text-2xl font-extrabold text-slate-900 tabular-nums lg:text-white">
                   {enquiries.length}
                 </div>
-                <div className="text-[11px] text-blue-600 mt-1">Direct message leads</div>
+                <div className="mt-1 text-[11px] text-blue-600 lg:text-cyan-300">Direct message leads</div>
               </div>
             </div>
 
+            <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6 lg:border-white/10 lg:bg-[#242424] lg:text-white" aria-labelledby="seller-listing-growth-heading">
+              <div>
+                <h2 id="seller-listing-growth-heading" className="text-lg font-bold text-slate-950 lg:text-white">Cumulative Listing Growth</h2>
+                <p className="mt-1 text-xs text-slate-500 lg:text-neutral-400">
+                  Running total of your property listings created each month.
+                </p>
+              </div>
+              {backendPropertiesLoading ? (
+                <p className="py-6 text-center text-sm text-slate-500 lg:text-neutral-400">Loading your listing history...</p>
+              ) : backendPropertiesError ? (
+                <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                  Could not load listing history: {backendPropertiesError}
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 p-3 sm:p-5 lg:border-white/10 lg:bg-[#2e2e2e]">
+                  <CumulativeBarChart
+                    points={cumulativeListings}
+                    emptyMessage="List a property to start building your listing history."
+                    ariaLabel="Cumulative property listings created by month"
+                  />
+                </div>
+              )}
+            </section>
+
             {/* Recent Listings Preview */}
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
+            <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-xs lg:border-white/10 lg:bg-[#242424]">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Recent Property Listings</h3>
-                  <p className="text-xs text-slate-500">Quickly monitor and update your portfolio status</p>
+                  <h3 className="text-base font-bold text-slate-900 lg:text-white">Recent Property Listings</h3>
+                  <p className="text-xs text-slate-500 lg:text-neutral-400">Quickly monitor and update your portfolio status</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setActiveTab('my-properties')}
-                  className="text-xs font-semibold text-slate-900 hover:underline"
+                  className="text-xs font-semibold text-slate-900 hover:underline lg:text-lime-300"
                 >
                   View All ({myProperties.length})
                 </button>
               </div>
 
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 lg:divide-white/10">
                 {myProperties.slice(0, 4).map((property) => (
                   <div key={property.id} className="py-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
@@ -392,10 +428,10 @@ export const SellerDashboardPage: React.FC = () => {
                         />
                       )}
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-900 truncate">
+                        <div className="truncate text-xs font-bold text-slate-900 lg:text-white">
                           {property.title}
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
+                        <div className="mt-0.5 text-[11px] text-slate-500 lg:text-neutral-400">
                           {property.country} · {property.district} · {property.currency} {Number(property.price).toLocaleString()}
                         </div>
                       </div>
@@ -913,6 +949,7 @@ export const SellerDashboardPage: React.FC = () => {
           </div>
         )}
       </div>
+      </main>
     </div>
   );
 };

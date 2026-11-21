@@ -22,7 +22,6 @@ import {
   Settings,
   AlertTriangle,
   RefreshCw,
-  Search,
   Filter,
   ArrowRight,
   ShieldAlert,
@@ -31,6 +30,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ProfileSettings } from '../components/ProfileSettings';
+import { DashboardSidebar } from '../components/DashboardSidebar';
+import { CumulativeBarChart } from '../components/CumulativeBarChart';
 import defaultAvatar from '../assets/default-avatar.svg';
 import { formatUGX, formatCompactUGX } from '../utils/format';
 import { PropertyStatus, LocationUnlockPayment, LocationLockSettings } from '../types';
@@ -68,7 +69,6 @@ export const AdminDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     'inventory' | 'moderation' | 'locking' | 'payments' | 'viewings' | 'analytics' | 'subscriptions' | 'profile'
   >('analytics');
-  const [dashboardSearch, setDashboardSearch] = useState('');
 
   const dashboardNavGroups: Array<{
     label: string;
@@ -95,13 +95,6 @@ export const AdminDashboardPage: React.FC = () => {
       ]
     }
   ];
-  const normalizedDashboardSearch = dashboardSearch.trim().toLowerCase();
-  const filteredDashboardNavGroups = dashboardNavGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => item.label.toLowerCase().includes(normalizedDashboardSearch))
-    }))
-    .filter((group) => group.items.length > 0);
 
   useEffect(() => {
     const handleDashboardSection = (event: Event) => {
@@ -367,9 +360,6 @@ export const AdminDashboardPage: React.FC = () => {
       ]
     : [];
   const cumulativeListings = propertyStatistics?.cumulativeListings || [];
-  const cumulativeChartWidth = Math.max(720, cumulativeListings.length * 48 + 72);
-  const cumulativeChartMax = Math.max(1, ...cumulativeListings.map((point) => point.totalProperties));
-  const cumulativeLabelInterval = Math.max(1, Math.ceil(cumulativeListings.length / 12));
   // Security Check: Only Admins can access
   if (!isAdmin) {
     return (
@@ -489,73 +479,22 @@ export const AdminDashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-neutral-50 lg:bg-[#111111]">
-      <aside className="fixed bottom-0 left-0 top-16 z-40 hidden w-[276px] flex-col border-r border-white/10 bg-[#101010] px-6 py-7 text-white lg:flex">
-        <div className="flex items-center gap-3">
-          <img
-            src={currentUser.avatar || defaultAvatar}
-            alt=""
-            className="h-11 w-11 rounded-full border border-white/15 object-cover"
-          />
-          <div className="min-w-0">
-            <p className="text-xs text-neutral-400">Hello, Admin</p>
-            <p className="truncate text-sm font-semibold text-white">{currentUser.name}</p>
-          </div>
-        </div>
-
-        <label className="relative mt-8 block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-          <input
-            type="search"
-            value={dashboardSearch}
-            onChange={(event) => setDashboardSearch(event.target.value)}
-            placeholder="Search"
-            aria-label="Search dashboard sections"
-            className="w-full rounded-full border border-white/5 bg-[#282828] py-3 pl-10 pr-4 text-xs text-white placeholder:text-neutral-400 focus:border-lime-300 focus:outline-none"
-          />
-        </label>
-
-        <nav aria-label="Admin dashboard" className="mt-8 flex-1 space-y-7 overflow-y-auto">
-          {filteredDashboardNavGroups.map((group) => (
-            <section key={group.label}>
-              <h2 className="mb-3 px-2 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-                {group.label}
-              </h2>
-              <div className="space-y-1">
-                {group.items.map((item) => (
-                  <button
-                    key={item.tab}
-                    type="button"
-                    onClick={() => {
-                      setActiveTab(item.tab);
-                      if (item.tab === 'analytics') {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      } else {
-                        document.getElementById('admin-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }}
-                    aria-current={activeTab === item.tab ? 'page' : undefined}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-xs font-medium transition ${
-                      activeTab === item.tab
-                        ? 'bg-lime-300 text-slate-950'
-                        : 'text-neutral-400 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-          {filteredDashboardNavGroups.length === 0 && (
-            <p className="px-2 text-xs text-neutral-400">No dashboard sections match that search.</p>
-          )}
-        </nav>
-
-        <div className="mt-5 border-t border-white/10 pt-4 text-[10px] text-neutral-500">
-          Sheltered Administration
-        </div>
-      </aside>
+      <DashboardSidebar
+        user={currentUser}
+        groups={dashboardNavGroups}
+        activeTab={activeTab}
+        greeting="Hello, Admin"
+        footer="Sheltered Administration"
+        ariaLabel="Admin dashboard"
+        onSelect={(tab) => {
+          setActiveTab(tab);
+          if (tab === 'analytics') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            document.getElementById('admin-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
+      />
 
       <main className="min-h-screen px-4 py-8 sm:px-6 lg:ml-[276px] lg:px-8 lg:py-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -637,60 +576,11 @@ export const AdminDashboardPage: React.FC = () => {
                 ))}
               </div>
               <div className="overflow-x-auto rounded-2xl border border-neutral-200 p-3 sm:p-5 lg:border-white/10 lg:bg-[#2e2e2e]">
-                {cumulativeListings.length > 0 ? (
-                  <svg
-                    className="block h-[250px]"
-                    width={cumulativeChartWidth}
-                    viewBox={`0 0 ${cumulativeChartWidth} 250`}
-                    role="img"
-                    aria-label="Cumulative property records created by month"
-                  >
-                    <title>Cumulative property records created by month</title>
-                    {[0, 1, 2, 3, 4].map((step) => {
-                      const y = 190 - step * 40;
-                      const value = Math.round(cumulativeChartMax * step / 4);
-                      return (
-                        <g key={step}>
-                          <line x1="62" y1={y} x2={cumulativeChartWidth - 16} y2={y} stroke="#454545" strokeWidth="1" />
-                          <text x="54" y={y - 4} textAnchor="end" fill="#a3a3a3" fontSize="10">
-                            {value.toLocaleString()}
-                          </text>
-                        </g>
-                      );
-                    })}
-                    {cumulativeListings.map((point, index) => {
-                      const slotWidth = (cumulativeChartWidth - 88) / cumulativeListings.length;
-                      const barWidth = Math.min(32, slotWidth * 0.64);
-                      const barHeight = Math.max(1, point.totalProperties / cumulativeChartMax * 160);
-                      const x = 68 + index * slotWidth + (slotWidth - barWidth) / 2;
-                      const y = 190 - barHeight;
-                      const monthDate = new Date(`${point.month}-01T00:00:00.000Z`);
-                      const monthLabel = monthDate.toLocaleDateString(undefined, {
-                        month: 'short',
-                        year: '2-digit',
-                        timeZone: 'UTC'
-                      });
-                      const showMonthLabel = index % cumulativeLabelInterval === 0 || index === cumulativeListings.length - 1;
-
-                      return (
-                        <g key={point.month}>
-                          <rect x={x} y={y} width={barWidth} height={barHeight} rx="4" fill="#b9f653">
-                            <title>{`${monthLabel}: ${point.totalProperties.toLocaleString()} cumulative properties`}</title>
-                          </rect>
-                          {showMonthLabel && (
-                            <text x={x + barWidth / 2} y="222" textAnchor="middle" fill="#a3a3a3" fontSize="10">
-                              {monthLabel}
-                            </text>
-                          )}
-                        </g>
-                      );
-                    })}
-                  </svg>
-                ) : (
-                  <p className="py-16 text-center text-sm text-neutral-500 lg:text-neutral-400">
-                    No property creation history is available yet.
-                  </p>
-                )}
+                <CumulativeBarChart
+                  points={cumulativeListings}
+                  emptyMessage="No property creation history is available yet."
+                  ariaLabel="Cumulative property records created by month"
+                />
               </div>
             </>
           ) : !statisticsLoading ? (
