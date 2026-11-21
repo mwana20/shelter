@@ -67,7 +67,41 @@ export const AdminDashboardPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<
     'inventory' | 'moderation' | 'locking' | 'payments' | 'viewings' | 'analytics' | 'subscriptions' | 'profile'
-  >('moderation');
+  >('analytics');
+  const [dashboardSearch, setDashboardSearch] = useState('');
+
+  const dashboardNavGroups: Array<{
+    label: string;
+    items: Array<{ label: string; tab: typeof activeTab; icon: React.ReactNode }>;
+  }> = [
+    {
+      label: 'Dashboard',
+      items: [{ label: 'Overview', tab: 'analytics', icon: <BarChart3 className="h-4 w-4" /> }]
+    },
+    {
+      label: 'Management',
+      items: [
+        { label: 'Property Inventory', tab: 'inventory', icon: <Home className="h-4 w-4" /> },
+        { label: 'Listing Approvals', tab: 'moderation', icon: <Shield className="h-4 w-4" /> },
+        { label: 'Transactions', tab: 'payments', icon: <CreditCard className="h-4 w-4" /> },
+        { label: 'Subscriptions', tab: 'subscriptions', icon: <Building2 className="h-4 w-4" /> }
+      ]
+    },
+    {
+      label: 'Administration',
+      items: [
+        { label: 'Settings', tab: 'locking', icon: <Settings className="h-4 w-4" /> },
+        { label: 'Admin Profile', tab: 'profile', icon: <UserRound className="h-4 w-4" /> }
+      ]
+    }
+  ];
+  const normalizedDashboardSearch = dashboardSearch.trim().toLowerCase();
+  const filteredDashboardNavGroups = dashboardNavGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.label.toLowerCase().includes(normalizedDashboardSearch))
+    }))
+    .filter((group) => group.items.length > 0);
 
   useEffect(() => {
     const handleDashboardSection = (event: Event) => {
@@ -326,10 +360,10 @@ export const AdminDashboardPage: React.FC = () => {
   ]).size;
   const analyticsCards = propertyStatistics
     ? [
-        { label: 'Total properties listed', value: propertyStatistics.totalProperties, color: 'text-slate-950', bar: 'bg-slate-900' },
-        { label: 'Properties sold', value: propertyStatistics.soldProperties, color: 'text-rose-700', bar: 'bg-rose-500' },
-        { label: 'Available for sale', value: propertyStatistics.availableProperties, color: 'text-emerald-700', bar: 'bg-emerald-500' },
-        { label: `New listings · ${propertyStatistics.newListingsPeriodDays} days`, value: propertyStatistics.newListings, color: 'text-blue-700', bar: 'bg-blue-500' }
+        { label: 'Total properties listed', value: propertyStatistics.totalProperties, color: 'text-slate-950 lg:text-lime-300', bar: 'bg-lime-500 lg:bg-lime-300' },
+        { label: 'Properties sold', value: propertyStatistics.soldProperties, color: 'text-rose-700 lg:text-rose-300', bar: 'bg-rose-500 lg:bg-rose-400' },
+        { label: 'Available for sale', value: propertyStatistics.availableProperties, color: 'text-emerald-700 lg:text-emerald-300', bar: 'bg-emerald-500 lg:bg-emerald-400' },
+        { label: `New listings · ${propertyStatistics.newListingsPeriodDays} days`, value: propertyStatistics.newListings, color: 'text-blue-700 lg:text-cyan-300', bar: 'bg-blue-500 lg:bg-cyan-400' }
       ]
     : [];
   const maxAnalyticsValue = Math.max(1, ...analyticsCards.map((card) => card.value));
@@ -451,8 +485,77 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-neutral-50 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-neutral-50 lg:bg-[#111111]">
+      <aside className="fixed bottom-0 left-0 top-16 z-40 hidden w-[276px] flex-col border-r border-white/10 bg-[#101010] px-6 py-7 text-white lg:flex">
+        <div className="flex items-center gap-3">
+          <img
+            src={currentUser.avatar || defaultAvatar}
+            alt=""
+            className="h-11 w-11 rounded-full border border-white/15 object-cover"
+          />
+          <div className="min-w-0">
+            <p className="text-xs text-neutral-400">Hello, Admin</p>
+            <p className="truncate text-sm font-semibold text-white">{currentUser.name}</p>
+          </div>
+        </div>
+
+        <label className="relative mt-8 block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <input
+            type="search"
+            value={dashboardSearch}
+            onChange={(event) => setDashboardSearch(event.target.value)}
+            placeholder="Search"
+            aria-label="Search dashboard sections"
+            className="w-full rounded-full border border-white/5 bg-[#282828] py-3 pl-10 pr-4 text-xs text-white placeholder:text-neutral-400 focus:border-lime-300 focus:outline-none"
+          />
+        </label>
+
+        <nav aria-label="Admin dashboard" className="mt-8 flex-1 space-y-7 overflow-y-auto">
+          {filteredDashboardNavGroups.map((group) => (
+            <section key={group.label}>
+              <h2 className="mb-3 px-2 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+                {group.label}
+              </h2>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <button
+                    key={item.tab}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(item.tab);
+                      if (item.tab === 'analytics') {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      } else {
+                        document.getElementById('admin-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }}
+                    aria-current={activeTab === item.tab ? 'page' : undefined}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-xs font-medium transition ${
+                      activeTab === item.tab
+                        ? 'bg-lime-300 text-slate-950'
+                        : 'text-neutral-400 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+          {filteredDashboardNavGroups.length === 0 && (
+            <p className="px-2 text-xs text-neutral-400">No dashboard sections match that search.</p>
+          )}
+        </nav>
+
+        <div className="mt-5 border-t border-white/10 pt-4 text-[10px] text-neutral-500">
+          Sheltered Administration
+        </div>
+      </aside>
+
+      <main className="min-h-screen px-4 py-8 sm:px-6 lg:ml-[276px] lg:px-8 lg:py-8">
+      <div className="mx-auto max-w-7xl space-y-8">
         {/* Admin Header */}
         <div className="bg-slate-950 text-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
           <div>
@@ -461,10 +564,10 @@ export const AdminDashboardPage: React.FC = () => {
               <span>Sheltered Global Administration Console</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold font-serif-display">
-              Admin Governance &amp; Payment Center
+              Dashboard Overview
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              Control location locking policies, configure payment gateways &amp; merchant codes, and audit user payment clearances.
+              Property status, listing activity, and administration at a glance.
             </p>
           </div>
 
@@ -495,17 +598,17 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        <section className="space-y-4 rounded-3xl border border-neutral-200/90 bg-white p-5 shadow-xs sm:p-7" aria-labelledby="property-analytics-heading">
+        <section className="space-y-4 rounded-3xl border border-neutral-200/90 bg-white p-5 shadow-xs sm:p-7 lg:border-white/10 lg:bg-[#242424] lg:text-white" aria-labelledby="property-analytics-heading">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 id="property-analytics-heading" className="text-lg font-bold font-serif-display text-neutral-950">Property Analytics</h2>
-              <p className="mt-1 text-xs text-neutral-500">Database-backed status totals. New listings are properties created in the last 30 days.</p>
+              <h2 id="property-analytics-heading" className="text-lg font-bold font-serif-display text-neutral-950 lg:text-white">Property Analytics</h2>
+              <p className="mt-1 text-xs text-neutral-500 lg:text-neutral-400">Database-backed status totals. New listings are properties created in the last 30 days.</p>
             </div>
             <button
               type="button"
               onClick={() => void fetchPropertyStatistics()}
               disabled={statisticsLoading}
-              className="inline-flex items-center gap-2 self-start rounded-lg border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 self-start rounded-lg border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-700 disabled:opacity-60 lg:border-white/15 lg:text-neutral-200"
               aria-label="Refresh property analytics"
             >
               <RefreshCw className={`h-4 w-4 ${statisticsLoading ? 'animate-spin' : ''}`} />
@@ -519,46 +622,46 @@ export const AdminDashboardPage: React.FC = () => {
             </p>
           )}
           {statisticsLoading && !propertyStatistics ? (
-            <p className="py-6 text-center text-sm text-neutral-500">Loading property analytics...</p>
+            <p className="py-6 text-center text-sm text-neutral-500 lg:text-neutral-400">Loading property analytics...</p>
           ) : propertyStatistics ? (
             <>
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 {analyticsCards.map((card) => (
-                  <article key={card.label} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                    <p className="text-xs font-medium text-neutral-500">{card.label}</p>
+                  <article key={card.label} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 lg:border-white/5 lg:bg-[#2e2e2e]">
+                    <p className="text-xs font-medium text-neutral-500 lg:text-neutral-400">{card.label}</p>
                     <p className={`mt-2 text-2xl font-extrabold ${card.color}`}>{card.value.toLocaleString()}</p>
                   </article>
                 ))}
               </div>
-              <div className="space-y-4 rounded-2xl border border-neutral-200 p-4 sm:p-5" role="img" aria-label="Bar chart showing total properties, sold properties, properties available for sale, and new listings">
+              <div className="space-y-4 rounded-2xl border border-neutral-200 p-4 sm:p-5 lg:border-white/10 lg:bg-[#2e2e2e]" role="img" aria-label="Bar chart showing total properties, sold properties, properties available for sale, and new listings">
                 {analyticsCards.map((card) => (
                   <div key={card.label} className="grid grid-cols-[minmax(7rem,0.7fr)_minmax(0,2fr)_auto] items-center gap-3">
-                    <span className="truncate text-[11px] font-semibold text-neutral-700 sm:text-xs">{card.label}</span>
-                    <div className="h-3 overflow-hidden rounded-full bg-neutral-100">
+                    <span className="truncate text-[11px] font-semibold text-neutral-700 sm:text-xs lg:text-neutral-300">{card.label}</span>
+                    <div className="h-3 overflow-hidden rounded-full bg-neutral-100 lg:bg-[#454545]">
                       <div
                         className={`h-full rounded-full transition-[width] duration-500 ${card.bar}`}
                         style={{ width: `${(card.value / maxAnalyticsValue) * 100}%` }}
                       />
                     </div>
-                    <span className="min-w-8 text-right text-xs font-bold tabular-nums text-neutral-900">{card.value.toLocaleString()}</span>
+                    <span className="min-w-8 text-right text-xs font-bold tabular-nums text-neutral-900 lg:text-white">{card.value.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
             </>
           ) : !statisticsLoading ? (
-            <p className="py-6 text-center text-sm text-neutral-500">Property analytics are unavailable until the database responds.</p>
+            <p className="py-6 text-center text-sm text-neutral-500 lg:text-neutral-400">Property analytics are unavailable until the database responds.</p>
           ) : null}
         </section>
 
         {/* Top Stats Ribbon */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
-            <p className="text-xs text-neutral-500 font-medium">Marketplace Listings</p>
-            <p className="text-2xl font-extrabold text-neutral-900 mt-1">{totalProperties}</p>
+          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+            <p className="text-xs text-neutral-500 font-medium lg:text-neutral-400">Marketplace Listings</p>
+            <p className="text-2xl font-extrabold text-neutral-900 mt-1 lg:text-white">{totalProperties}</p>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
-            <p className="text-xs text-neutral-500 font-medium">Location Locking</p>
-            <p className="text-sm font-bold text-neutral-900 mt-2 flex items-center gap-1">
+          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+            <p className="text-xs text-neutral-500 font-medium lg:text-neutral-400">Location Locking</p>
+            <p className="text-sm font-bold text-neutral-900 mt-2 flex items-center gap-1 lg:text-white">
               {locationLockSettings.enabledGlobally ? (
                 <span className="text-amber-600 flex items-center gap-1"><Lock className="w-4 h-4" /> Global Active</span>
               ) : (
@@ -566,41 +669,41 @@ export const AdminDashboardPage: React.FC = () => {
               )}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
-            <p className="text-xs text-neutral-500 font-medium">Locked Listings</p>
-            <p className="text-2xl font-extrabold text-amber-600 mt-1">
+          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+            <p className="text-xs text-neutral-500 font-medium lg:text-neutral-400">Locked Listings</p>
+            <p className="text-2xl font-extrabold text-amber-600 mt-1 lg:text-amber-300">
               {locationLockSettings.enabledGlobally
                 ? totalProperties
                 : locationLockSettings.lockedPropertyIds.length}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
-            <p className="text-xs text-neutral-500 font-medium">Unlock Fee</p>
-            <p className="text-2xl font-extrabold text-emerald-700 mt-1">
+          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+            <p className="text-xs text-neutral-500 font-medium lg:text-neutral-400">Unlock Fee</p>
+            <p className="text-2xl font-extrabold text-emerald-700 mt-1 lg:text-emerald-300">
               {locationLockSettings.unlockFeeCurrency} {locationLockSettings.unlockFeeAmount}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
-            <p className="text-xs text-neutral-500 font-medium">Unlock Payments</p>
-            <p className="text-2xl font-extrabold text-neutral-900 mt-1">{payments.length}</p>
+          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+            <p className="text-xs text-neutral-500 font-medium lg:text-neutral-400">Unlock Payments</p>
+            <p className="text-2xl font-extrabold text-neutral-900 mt-1 lg:text-white">{payments.length}</p>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
-            <p className="text-xs text-neutral-500 font-medium">Pending Moderation</p>
-            <p className="text-2xl font-extrabold text-neutral-900 mt-1">{pendingReviewCount}</p>
+          <div className="bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs lg:border-white/10 lg:bg-[#272727]">
+            <p className="text-xs text-neutral-500 font-medium lg:text-neutral-400">Pending Moderation</p>
+            <p className="text-2xl font-extrabold text-neutral-900 mt-1 lg:text-white">{pendingReviewCount}</p>
           </div>
         </div>
 
         {/* Gateway & Backend Environment Mode Banner */}
-        <div className="bg-gradient-to-r from-blue-900/10 via-indigo-900/10 to-emerald-900/10 border border-blue-200/80 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="bg-gradient-to-r from-blue-900/10 via-indigo-900/10 to-emerald-900/10 border border-blue-200/80 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs shadow-xs lg:border-white/10 lg:bg-[#242424] lg:bg-none lg:shadow-none">
           <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5 lg:bg-blue-400/15 lg:text-blue-300">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
-              <p className="font-bold text-neutral-950">
+              <p className="font-bold text-neutral-950 lg:text-white">
                 Connected to Shelter administration
               </p>
-              <p className="text-neutral-600 mt-0.5">
+              <p className="text-neutral-600 mt-0.5 lg:text-neutral-400">
                 Review submitted listings and manage subscriptions using the connected backend. Listing approvals are loaded from the server and are independent of the demo property inventory.
               </p>
             </div>
@@ -613,7 +716,20 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex overflow-x-auto border-b border-neutral-200 text-xs font-bold">
+        <div id="admin-workspace" />
+        <div className="flex overflow-x-auto border-b border-neutral-200 text-xs font-bold lg:hidden">
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`py-3 px-4 border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'analytics'
+                ? 'border-emerald-600 text-emerald-700'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Overview</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('locking')}
             className={`py-3 px-4 border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
@@ -1590,6 +1706,7 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         )}
       </div>
+      </main>
     </div>
   );
 };
