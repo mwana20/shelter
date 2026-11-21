@@ -360,13 +360,16 @@ export const AdminDashboardPage: React.FC = () => {
   ]).size;
   const analyticsCards = propertyStatistics
     ? [
-        { label: 'Total properties listed', value: propertyStatistics.totalProperties, color: 'text-slate-950 lg:text-lime-300', bar: 'bg-lime-500 lg:bg-lime-300' },
-        { label: 'Properties sold', value: propertyStatistics.soldProperties, color: 'text-rose-700 lg:text-rose-300', bar: 'bg-rose-500 lg:bg-rose-400' },
-        { label: 'Available for sale', value: propertyStatistics.availableProperties, color: 'text-emerald-700 lg:text-emerald-300', bar: 'bg-emerald-500 lg:bg-emerald-400' },
-        { label: `New listings · ${propertyStatistics.newListingsPeriodDays} days`, value: propertyStatistics.newListings, color: 'text-blue-700 lg:text-cyan-300', bar: 'bg-blue-500 lg:bg-cyan-400' }
+        { label: 'Total properties listed', value: propertyStatistics.totalProperties, color: 'text-slate-950 lg:text-lime-300' },
+        { label: 'Properties sold', value: propertyStatistics.soldProperties, color: 'text-rose-700 lg:text-rose-300' },
+        { label: 'Available for sale', value: propertyStatistics.availableProperties, color: 'text-emerald-700 lg:text-emerald-300' },
+        { label: `New listings · ${propertyStatistics.newListingsPeriodDays} days`, value: propertyStatistics.newListings, color: 'text-blue-700 lg:text-cyan-300' }
       ]
     : [];
-  const maxAnalyticsValue = Math.max(1, ...analyticsCards.map((card) => card.value));
+  const cumulativeListings = propertyStatistics?.cumulativeListings || [];
+  const cumulativeChartWidth = Math.max(720, cumulativeListings.length * 48 + 72);
+  const cumulativeChartMax = Math.max(1, ...cumulativeListings.map((point) => point.totalProperties));
+  const cumulativeLabelInterval = Math.max(1, Math.ceil(cumulativeListings.length / 12));
   // Security Check: Only Admins can access
   if (!isAdmin) {
     return (
@@ -601,8 +604,8 @@ export const AdminDashboardPage: React.FC = () => {
         <section className="space-y-4 rounded-3xl border border-neutral-200/90 bg-white p-5 shadow-xs sm:p-7 lg:border-white/10 lg:bg-[#242424] lg:text-white" aria-labelledby="property-analytics-heading">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 id="property-analytics-heading" className="text-lg font-bold font-serif-display text-neutral-950 lg:text-white">Property Analytics</h2>
-              <p className="mt-1 text-xs text-neutral-500 lg:text-neutral-400">Database-backed status totals. New listings are properties created in the last 30 days.</p>
+              <h2 id="property-analytics-heading" className="text-lg font-bold font-serif-display text-neutral-950 lg:text-white">Cumulative Listing Growth</h2>
+              <p className="mt-1 text-xs text-neutral-500 lg:text-neutral-400">Running total of property records created each month across all available history.</p>
             </div>
             <button
               type="button"
@@ -633,19 +636,61 @@ export const AdminDashboardPage: React.FC = () => {
                   </article>
                 ))}
               </div>
-              <div className="space-y-4 rounded-2xl border border-neutral-200 p-4 sm:p-5 lg:border-white/10 lg:bg-[#2e2e2e]" role="img" aria-label="Bar chart showing total properties, sold properties, properties available for sale, and new listings">
-                {analyticsCards.map((card) => (
-                  <div key={card.label} className="grid grid-cols-[minmax(7rem,0.7fr)_minmax(0,2fr)_auto] items-center gap-3">
-                    <span className="truncate text-[11px] font-semibold text-neutral-700 sm:text-xs lg:text-neutral-300">{card.label}</span>
-                    <div className="h-3 overflow-hidden rounded-full bg-neutral-100 lg:bg-[#454545]">
-                      <div
-                        className={`h-full rounded-full transition-[width] duration-500 ${card.bar}`}
-                        style={{ width: `${(card.value / maxAnalyticsValue) * 100}%` }}
-                      />
-                    </div>
-                    <span className="min-w-8 text-right text-xs font-bold tabular-nums text-neutral-900 lg:text-white">{card.value.toLocaleString()}</span>
-                  </div>
-                ))}
+              <div className="overflow-x-auto rounded-2xl border border-neutral-200 p-3 sm:p-5 lg:border-white/10 lg:bg-[#2e2e2e]">
+                {cumulativeListings.length > 0 ? (
+                  <svg
+                    className="block h-[250px]"
+                    width={cumulativeChartWidth}
+                    viewBox={`0 0 ${cumulativeChartWidth} 250`}
+                    role="img"
+                    aria-label="Cumulative property records created by month"
+                  >
+                    <title>Cumulative property records created by month</title>
+                    {[0, 1, 2, 3, 4].map((step) => {
+                      const y = 190 - step * 40;
+                      const value = Math.round(cumulativeChartMax * step / 4);
+                      return (
+                        <g key={step}>
+                          <line x1="62" y1={y} x2={cumulativeChartWidth - 16} y2={y} stroke="#454545" strokeWidth="1" />
+                          <text x="54" y={y - 4} textAnchor="end" fill="#a3a3a3" fontSize="10">
+                            {value.toLocaleString()}
+                          </text>
+                        </g>
+                      );
+                    })}
+                    {cumulativeListings.map((point, index) => {
+                      const slotWidth = (cumulativeChartWidth - 88) / cumulativeListings.length;
+                      const barWidth = Math.min(32, slotWidth * 0.64);
+                      const barHeight = Math.max(1, point.totalProperties / cumulativeChartMax * 160);
+                      const x = 68 + index * slotWidth + (slotWidth - barWidth) / 2;
+                      const y = 190 - barHeight;
+                      const monthDate = new Date(`${point.month}-01T00:00:00.000Z`);
+                      const monthLabel = monthDate.toLocaleDateString(undefined, {
+                        month: 'short',
+                        year: '2-digit',
+                        timeZone: 'UTC'
+                      });
+                      const showMonthLabel = index % cumulativeLabelInterval === 0 || index === cumulativeListings.length - 1;
+
+                      return (
+                        <g key={point.month}>
+                          <rect x={x} y={y} width={barWidth} height={barHeight} rx="4" fill="#b9f653">
+                            <title>{`${monthLabel}: ${point.totalProperties.toLocaleString()} cumulative properties`}</title>
+                          </rect>
+                          {showMonthLabel && (
+                            <text x={x + barWidth / 2} y="222" textAnchor="middle" fill="#a3a3a3" fontSize="10">
+                              {monthLabel}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                ) : (
+                  <p className="py-16 text-center text-sm text-neutral-500 lg:text-neutral-400">
+                    No property creation history is available yet.
+                  </p>
+                )}
               </div>
             </>
           ) : !statisticsLoading ? (

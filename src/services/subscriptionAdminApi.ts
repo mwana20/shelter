@@ -57,6 +57,7 @@ export interface AdminPropertyStatistics {
   availableProperties: number;
   newListings: number;
   newListingsPeriodDays: number;
+  cumulativeListings: Array<{ month: string; totalProperties: number }>;
 }
 
 interface ApiResponse<T> {

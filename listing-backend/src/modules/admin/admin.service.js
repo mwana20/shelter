@@ -393,7 +393,7 @@ export class AdminService {
   }
 
   static async getPropertyStatistics() {
-    return getPropertyStatistics(prisma.property);
+    return getPropertyStatistics(prisma.property, prisma.$queryRaw.bind(prisma));
   }
 
   static async listPendingProperties(query = {}) {
