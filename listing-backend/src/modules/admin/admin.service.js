@@ -4,6 +4,7 @@ import { getPagination, formatPaginationResponse } from '../../utils/pagination.
 import { logAudit } from '../../middlewares/auditLog.js';
 import { sendEmail } from '../notifications/email.service.js';
 import { addCalendarMonths, SubscriptionService } from '../subscriptions/subscription.service.js';
+import { getPropertyStatistics } from './property-statistics.js';
 
 async function sendEmailSafe(to, subject, html) {
   try {
@@ -390,6 +391,11 @@ export class AdminService {
 
     return { success: true, message: 'Owner account rejected', user: updated };
   }
+
+  static async getPropertyStatistics() {
+    return getPropertyStatistics(prisma.property);
+  }
+
   static async listPendingProperties(query = {}) {
     const { page, limit, skip } = getPagination(query, 20);
     const where = query.status === 'ALL'

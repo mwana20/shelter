@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { calculateAge } from '../utils/age.js';
+import { isValidProfileImageUrl } from '../utils/profileImage.js';
 
 export const registerSchema = z.object({
   fullName: z
@@ -35,6 +36,9 @@ export const registerSchema = z.object({
   district: z.string().trim().max(120).optional(),
   neighborhood: z.string().trim().max(120).optional(),
   bio: z.string().trim().max(2000).optional(),
+  avatarUrl: z.string().refine(isValidProfileImageUrl, {
+    message: 'Profile image must be an HTTP(S) URL or a compressed JPEG image'
+  }).optional(),
 
   role: z.enum(['BUYER', 'SELLER', 'AGENT']).optional().default('BUYER'),
 

@@ -38,6 +38,7 @@ router.put('/owners/:id/reject', validate({ params: uuidParamSchema }), AdminCon
 // Manual support unlock with audit logging
 router.post('/payments/manual-unlock', validate({ body: manualUnlockSchema }), AdminController.manualUnlock);
 // Property approval
+router.get('/properties/statistics', AdminController.getPropertyStatistics);
 router.get('/properties', validate({ query: paginationQuerySchema }), AdminController.listPendingProperties);
 router.put('/properties/:id/approve', validate({ params: uuidParamSchema, body: propertyReviewSchema }), AdminController.approveProperty);
 router.put('/properties/:id/reject', validate({ params: uuidParamSchema, body: propertyCorrectionSchema }), AdminController.rejectProperty);

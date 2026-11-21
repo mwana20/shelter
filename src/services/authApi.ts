@@ -56,6 +56,7 @@ interface RegistrationResult {
   email: string;
   fullName: string;
   emailVerified: boolean;
+  avatarUrl?: string | null;
   token?: string;
 }
 
@@ -230,7 +231,8 @@ export async function registerWithBackend(payload: {
   bio?: string;
   companyName?: string;
   agencyLicense?: string;
-}): Promise<{ userId: string; email: string; fullName: string; token?: string; message?: string }> {
+  avatarUrl?: string;
+}): Promise<{ userId: string; email: string; fullName: string; avatarUrl?: string | null; token?: string; message?: string }> {
   const role: BackendRole =
     payload.role === 'agent' || payload.role === 'broker'
       ? 'AGENT'
@@ -250,6 +252,7 @@ export async function registerWithBackend(payload: {
     district: payload.district,
     neighborhood: payload.neighborhood,
     bio: payload.bio,
+    avatarUrl: payload.avatarUrl,
     companyName: payload.companyName,
     agencyLicense: payload.agencyLicense
   });

@@ -93,13 +93,6 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="bg-neutral-50 min-h-screen">
-      {propertyCatalogError && (
-        <div role="alert" className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Some approved listings may be missing because the property service could not be reached: {propertyCatalogError}
-          </p>
-        </div>
-      )}
       {/* 1. HERO SECTION (Extends behind transparent header) */}
       <section className="relative min-h-[640px] lg:min-h-[700px] flex items-center justify-center overflow-hidden bg-slate-950 -mt-[88px] pt-28 sm:pt-36 pb-16 px-4 sm:px-6 lg:px-8">
         {/* Background Photography with Reduced Darkness for High Visibility */}
@@ -363,7 +356,13 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
-
+      {propertyCatalogError && (
+        <div role="alert" className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Some approved listings may be missing because the property service could not be reached: {propertyCatalogError}
+          </p>
+        </div>
+      )}
       {/* 2. EXPLORE THE WORLD DESTINATIONS SECTION */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">

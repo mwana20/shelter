@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  MapPin
+  MapPin,
+  ImagePlus
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
@@ -22,12 +23,15 @@ import { POPULAR_COUNTRIES, GLOBAL_LOCATIONS } from '../data/mockLocations';
 import { calculateAge, validatePasswordStrength } from '../services/backendApi';
 import { registerWithBackend } from '../services/authApi';
 import { propertyImages } from '../assets/propertyImages';
+import defaultAvatar from '../assets/default-avatar.svg';
+import { prepareProfileImage } from '../utils/profileImage';
 
 export const RegisterPage: React.FC = () => {
   const { setCurrentPage, setCurrentUser, showNotification, t } = useApp();
 
   const [role, setRole] = useState<UserRole>('owner');
   const [name, setName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
@@ -37,6 +41,7 @@ export const RegisterPage: React.FC = () => {
   const [neighborhood, setNeighborhood] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [agencyLicense, setAgencyLicense] = useState('');
+  const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -72,6 +77,22 @@ export const RegisterPage: React.FC = () => {
   }, [password]);
 
   const passwordsMatch = password.length > 0 && confirmPassword.length > 0 && password === confirmPassword;
+
+  const handleProfileImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setError(null);
+    setIsProcessingAvatar(true);
+    try {
+      setAvatarUrl(await prepareProfileImage(file));
+    } catch (imageError) {
+      setError(imageError instanceof Error ? imageError.message : 'Could not load this image.');
+    } finally {
+      setIsProcessingAvatar(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,6 +150,7 @@ export const RegisterPage: React.FC = () => {
         password,
         confirmPassword,
         role,
+        ...(avatarUrl ? { avatarUrl } : {}),
         country,
         region,
         district,
@@ -151,6 +173,7 @@ export const RegisterPage: React.FC = () => {
           dob,
           age,
           role,
+          avatar: result.avatarUrl || undefined,
           country,
           region,
           district,
@@ -245,6 +268,29 @@ export const RegisterPage: React.FC = () => {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-xl border border-white/15 bg-white/5 p-4 sm:flex-row sm:items-center">
+              <img
+                src={avatarUrl || defaultAvatar}
+                alt="Profile photo preview"
+                className="h-20 w-20 shrink-0 rounded-full border border-white/25 object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-white">Profile photo <span className="font-normal text-slate-300">(optional)</span></p>
+                <p className="mt-1 text-[11px] text-slate-300">Choose a JPG, PNG, or WebP image. Up to 5 MB; a preview appears before registration.</p>
+              </div>
+              <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/15">
+                <ImagePlus className="h-4 w-4 text-emerald-300" />
+                {isProcessingAvatar ? 'Preparing photo...' : avatarUrl ? 'Change photo' : 'Choose photo'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleProfileImageChange}
+                  className="sr-only"
+                  aria-label="Choose profile photo"
+                />
+              </label>
             </div>
 
             {/* Full Name & Email */}
@@ -578,7 +624,7 @@ export const RegisterPage: React.FC = () => {
 
             <button
               type="submit"
-              disabled={isLoading || isUnderage}
+              disabled={isLoading || isUnderage || isProcessingAvatar}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-950/40 transition disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               {isLoading ? (

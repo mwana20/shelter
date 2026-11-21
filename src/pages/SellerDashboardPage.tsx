@@ -26,6 +26,7 @@ import { updateProfileWithBackend } from '../services/authApi';
 import { ProfileSettings } from '../components/ProfileSettings';
 import { getMySubscription, UserSubscriptionSummary } from '../services/subscriptionApi';
 import { getMyBackendProperties, OwnerPropertyRecord, resubmitBackendProperty } from '../services/propertyApi';
+import defaultAvatar from '../assets/default-avatar.svg';
 
 type DashboardTab =
   | 'overview'
@@ -196,7 +197,7 @@ export const SellerDashboardPage: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <img
-              src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+              src={currentUser.avatar || defaultAvatar}
               alt={currentUser.name}
               className="h-16 w-16 shrink-0 rounded-full border-2 border-slate-200 object-cover"
             />

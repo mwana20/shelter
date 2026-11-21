@@ -77,6 +77,7 @@ export class AuthService {
          accountStatus: (data.role === 'SELLER' || data.role === 'AGENT') ? 'PENDING' : 'APPROVED',
         companyName: data.companyName?.trim() || null,
         agencyLicense: data.agencyLicense?.trim() || null,
+        avatarUrl: data.avatarUrl || null,
         emailVerified: false
       }
     });
@@ -117,6 +118,7 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       fullName: user.fullName,
+      avatarUrl: user.avatarUrl,
       emailVerified: false,
       ...(env.NODE_ENV !== 'production' ? { token, verificationCode: code } : {})
     };

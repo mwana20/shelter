@@ -24,6 +24,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { SUPPORTED_CURRENCY_CODES, CurrencyCode, CURRENCIES } from '../utils/currency';
 import { SUPPORTED_LANGUAGES } from '../i18n/languages';
+import defaultAvatar from '../assets/default-avatar.svg';
 
 export const Navbar: React.FC = () => {
   const {
@@ -124,7 +125,8 @@ export const Navbar: React.FC = () => {
         { label: 'Unlock Payments & Verification Queue', tab: 'payments', icon: <CreditCard className="h-4 w-4" /> },
         { label: 'Subscription Management', tab: 'subscriptions', icon: <Receipt className="h-4 w-4" /> },
         { label: `Property Inventory (${properties.length})`, tab: 'inventory', icon: <Home className="h-4 w-4" /> },
-        { label: 'Listing Approvals', tab: 'moderation', icon: <Check className="h-4 w-4" /> }
+        { label: 'Listing Approvals', tab: 'moderation', icon: <Check className="h-4 w-4" /> },
+        { label: 'Admin Profile', tab: 'profile', icon: <User className="h-4 w-4" /> }
       ]
     : isBuyerDashboard
       ? [
@@ -160,10 +162,10 @@ export const Navbar: React.FC = () => {
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
+      className={`z-50 transition-all duration-300 ${
         isTransparent
-          ? 'bg-transparent border-b border-transparent'
-          : 'bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shadow-md'
+          ? 'absolute top-0 left-0 w-full bg-transparent border-b border-transparent'
+          : 'sticky top-0 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shadow-md'
       }`}
     >
       {/* Main Navigation Bar */}
@@ -395,15 +397,6 @@ export const Navbar: React.FC = () => {
               </button>}
             </div>
 
-            {/* Primary Action Button: List Your Property */}
-            <button
-              type="button"
-              onClick={() => navigateTo(isAuthenticated ? 'list-property' : 'sign-in')}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-sm transition whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              <PlusCircle className="w-3.5 h-3.5 text-white" />
-              <span>Add Property</span>
-            </button>
           </div>
 
           {/* Mobile Menu Hamburger */}
@@ -506,9 +499,13 @@ export const Navbar: React.FC = () => {
 
               {isDashboardMenu && (
                 <div className="space-y-3 border-t border-slate-200 pt-3">
-                  <p className="px-3 py-2 text-xs text-slate-600">
-                    Signed in as <strong className="uppercase">{currentUser.role}</strong>
-                  </p>
+                  <div className="flex items-center gap-3 px-3 py-2">
+                    <img src={currentUser.avatar || defaultAvatar} alt="" className="h-10 w-10 rounded-full border border-slate-200 object-cover" />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-slate-800">{currentUser.name}</p>
+                      <p className="text-[11px] text-slate-500">Signed in as <strong className="uppercase">{currentUser.role}</strong></p>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => void logout()}

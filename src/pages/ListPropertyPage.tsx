@@ -13,6 +13,7 @@ import { GLOBAL_LOCATIONS, COUNTRY_ADMIN_CONFIGS, POPULAR_COUNTRIES } from '../d
 import { createPropertyWithBackend } from '../services/propertyApi';
 import { PropertyMediaUploader, UploadedMediaSelection } from '../components/PropertyMediaUploader';
 import { PropertyLocationPicker } from '../components/PropertyLocationPicker';
+import defaultAvatar from '../assets/default-avatar.svg';
 
 export const ListPropertyPage: React.FC = () => {
   const { addProperty, currentUser, setCurrentPage, openPropertyDetail, showNotification } = useApp();
@@ -180,7 +181,7 @@ export const ListPropertyPage: React.FC = () => {
         phone: currentUser.phone,
         whatsapp: currentUser.phone.replace(/\D/g, ''),
         email: currentUser.email,
-        avatar: currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        avatar: currentUser.avatar || defaultAvatar,
         verified: currentUser.verificationStatus === 'Verified',
         activeListingsCount: 1,
         experienceYears: 5,

@@ -26,9 +26,12 @@ import {
   Filter,
   ArrowRight,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  UserRound
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { ProfileSettings } from '../components/ProfileSettings';
+import defaultAvatar from '../assets/default-avatar.svg';
 import { formatUGX, formatCompactUGX } from '../utils/format';
 import { PropertyStatus, LocationUnlockPayment, LocationLockSettings } from '../types';
 import { backendApi } from '../services/backendApi';
@@ -37,11 +40,14 @@ import {
   AdminSubscription,
   AdminSubscriptionConfig,
   AdminSubscriptionUser,
+  AdminPropertyStatistics,
   subscriptionAdminApi
 } from '../services/subscriptionAdminApi';
 
 export const AdminDashboardPage: React.FC = () => {
   const {
+    currentUser,
+    setCurrentUser,
     properties,
     approveProperty,
     rejectProperty,
@@ -60,7 +66,7 @@ export const AdminDashboardPage: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'inventory' | 'moderation' | 'locking' | 'payments' | 'viewings' | 'analytics' | 'subscriptions'
+    'inventory' | 'moderation' | 'locking' | 'payments' | 'viewings' | 'analytics' | 'subscriptions' | 'profile'
   >('moderation');
 
   useEffect(() => {
@@ -101,6 +107,9 @@ export const AdminDashboardPage: React.FC = () => {
   const [totalDatabaseProperties, setTotalDatabaseProperties] = useState(0);
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryError, setInventoryError] = useState('');
+  const [propertyStatistics, setPropertyStatistics] = useState<AdminPropertyStatistics | null>(null);
+  const [statisticsLoading, setStatisticsLoading] = useState(false);
+  const [statisticsError, setStatisticsError] = useState('');
   const [propertyReviewNotes, setPropertyReviewNotes] = useState<Record<string, string>>({});
   const [subscriptionConfig, setSubscriptionConfig] = useState<AdminSubscriptionConfig | null>(null);
   const [subscriptionRows, setSubscriptionRows] = useState<AdminSubscription[]>([]);
@@ -186,6 +195,26 @@ export const AdminDashboardPage: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'inventory') void fetchPropertyInventory();
   }, [activeTab, isAdmin]);
+
+  const fetchPropertyStatistics = async () => {
+    if (!isAdmin) return;
+    setStatisticsLoading(true);
+    setStatisticsError('');
+    try {
+      setPropertyStatistics(await subscriptionAdminApi.getPropertyStatistics());
+    } catch (error) {
+      setStatisticsError(error instanceof Error ? error.message : 'Failed to load property statistics.');
+    } finally {
+      setStatisticsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    void fetchPropertyStatistics();
+    const refreshTimer = window.setInterval(() => void fetchPropertyStatistics(), 30_000);
+    return () => window.clearInterval(refreshTimer);
+  }, [isAdmin]);
 
   const fetchSubscriptionManagement = async () => {
     if (!isAdmin) return;
@@ -284,7 +313,7 @@ export const AdminDashboardPage: React.FC = () => {
         action === 'approve' ? 'Property approved and published.' : action === 'reject' ? 'Property rejected.' : 'Corrections requested.',
         'success'
       );
-      await Promise.all([fetchPropertyReviewQueue(), fetchPropertyInventory()]);
+      await Promise.all([fetchPropertyReviewQueue(), fetchPropertyInventory(), fetchPropertyStatistics()]);
     } catch (error) {
       showNotification(error instanceof Error ? error.message : 'Property review failed.', 'error');
     }
@@ -295,6 +324,15 @@ export const AdminDashboardPage: React.FC = () => {
     ...properties.map((property) => property.id),
     ...inventoryProperties.map((property) => property.id)
   ]).size;
+  const analyticsCards = propertyStatistics
+    ? [
+        { label: 'Total properties listed', value: propertyStatistics.totalProperties, color: 'text-slate-950', bar: 'bg-slate-900' },
+        { label: 'Properties sold', value: propertyStatistics.soldProperties, color: 'text-rose-700', bar: 'bg-rose-500' },
+        { label: 'Available for sale', value: propertyStatistics.availableProperties, color: 'text-emerald-700', bar: 'bg-emerald-500' },
+        { label: `New listings · ${propertyStatistics.newListingsPeriodDays} days`, value: propertyStatistics.newListings, color: 'text-blue-700', bar: 'bg-blue-500' }
+      ]
+    : [];
+  const maxAnalyticsValue = Math.max(1, ...analyticsCards.map((card) => card.value));
   // Security Check: Only Admins can access
   if (!isAdmin) {
     return (
@@ -430,7 +468,19 @@ export const AdminDashboardPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('profile')}
+              className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 py-1.5 pl-1.5 pr-3 text-left transition hover:bg-white/15"
+              aria-label="Manage administrator profile"
+            >
+              <img src={currentUser.avatar || defaultAvatar} alt="" className="h-10 w-10 rounded-full border border-white/20 object-cover" />
+              <span className="min-w-0">
+                <span className="block max-w-36 truncate text-xs font-bold">{currentUser.name}</span>
+                <span className="block max-w-36 truncate text-[10px] text-slate-300">{currentUser.email}</span>
+              </span>
+            </button>
             <span className="bg-white/10 text-white text-xs font-semibold py-2.5 px-4 rounded-xl border border-white/20 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <span>Administrator verified</span>
@@ -444,6 +494,61 @@ export const AdminDashboardPage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        <section className="space-y-4 rounded-3xl border border-neutral-200/90 bg-white p-5 shadow-xs sm:p-7" aria-labelledby="property-analytics-heading">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 id="property-analytics-heading" className="text-lg font-bold font-serif-display text-neutral-950">Property Analytics</h2>
+              <p className="mt-1 text-xs text-neutral-500">Database-backed status totals. New listings are properties created in the last 30 days.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void fetchPropertyStatistics()}
+              disabled={statisticsLoading}
+              className="inline-flex items-center gap-2 self-start rounded-lg border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-700 disabled:opacity-60"
+              aria-label="Refresh property analytics"
+            >
+              <RefreshCw className={`h-4 w-4 ${statisticsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          {statisticsError && (
+            <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+              Could not load property analytics: {statisticsError}
+            </p>
+          )}
+          {statisticsLoading && !propertyStatistics ? (
+            <p className="py-6 text-center text-sm text-neutral-500">Loading property analytics...</p>
+          ) : propertyStatistics ? (
+            <>
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                {analyticsCards.map((card) => (
+                  <article key={card.label} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                    <p className="text-xs font-medium text-neutral-500">{card.label}</p>
+                    <p className={`mt-2 text-2xl font-extrabold ${card.color}`}>{card.value.toLocaleString()}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="space-y-4 rounded-2xl border border-neutral-200 p-4 sm:p-5" role="img" aria-label="Bar chart showing total properties, sold properties, properties available for sale, and new listings">
+                {analyticsCards.map((card) => (
+                  <div key={card.label} className="grid grid-cols-[minmax(7rem,0.7fr)_minmax(0,2fr)_auto] items-center gap-3">
+                    <span className="truncate text-[11px] font-semibold text-neutral-700 sm:text-xs">{card.label}</span>
+                    <div className="h-3 overflow-hidden rounded-full bg-neutral-100">
+                      <div
+                        className={`h-full rounded-full transition-[width] duration-500 ${card.bar}`}
+                        style={{ width: `${(card.value / maxAnalyticsValue) * 100}%` }}
+                      />
+                    </div>
+                    <span className="min-w-8 text-right text-xs font-bold tabular-nums text-neutral-900">{card.value.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : !statisticsLoading ? (
+            <p className="py-6 text-center text-sm text-neutral-500">Property analytics are unavailable until the database responds.</p>
+          ) : null}
+        </section>
 
         {/* Top Stats Ribbon */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -567,6 +672,18 @@ export const AdminDashboardPage: React.FC = () => {
           >
             <CreditCard className="w-4 h-4" />
             <span>Subscriptions &amp; Pricing</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`py-3 px-4 border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'profile'
+                ? 'border-emerald-600 text-emerald-700'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            <UserRound className="w-4 h-4" />
+            <span>Admin Profile</span>
           </button>
         </div>
 
@@ -1321,6 +1438,16 @@ export const AdminDashboardPage: React.FC = () => {
               )}
             </section>
           </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-xs sm:p-7">
+            <ProfileSettings
+              currentUser={currentUser}
+              onSaved={setCurrentUser}
+              showNotification={showNotification}
+            />
+          </section>
         )}
 
         {/* REJECTION DIALOG (Mandatory Reason Required) */}

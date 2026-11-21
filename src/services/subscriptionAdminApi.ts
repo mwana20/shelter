@@ -51,6 +51,14 @@ export interface AdminPropertyReview {
   reviewHistory: Array<{ id: string; action: string; notes?: string | null; fromStatus: string; toStatus: string; createdAt: string }>;
 }
 
+export interface AdminPropertyStatistics {
+  totalProperties: number;
+  soldProperties: number;
+  availableProperties: number;
+  newListings: number;
+  newListingsPeriodDays: number;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   message?: string;
@@ -76,6 +84,8 @@ async function adminRequest<T>(path: string, method = 'GET', body?: unknown): Pr
 }
 
 export const subscriptionAdminApi = {
+  getPropertyStatistics: () => adminRequest<AdminPropertyStatistics>('/admin/properties/statistics'),
+
   getConfig: () => adminRequest<AdminSubscriptionConfig>('/admin/subscriptions/config'),
 
   updateConfig: (config: Omit<AdminSubscriptionConfig, 'id' | 'discounts'> & {

@@ -23,6 +23,11 @@ export class AdminController {
     res.status(200).json(ApiResponse.success(result, 'Pending properties retrieved'));
   });
 
+  static getPropertyStatistics = asyncHandler(async (_req, res) => {
+    const statistics = await AdminService.getPropertyStatistics();
+    res.status(200).json(ApiResponse.success(statistics, 'Property statistics retrieved'));
+  });
+
   static approveProperty = asyncHandler(async (req, res) => {
     const result = await AdminService.approveProperty(req.params.id, req.user, req);
     res.status(200).json(ApiResponse.success(result, result.message));

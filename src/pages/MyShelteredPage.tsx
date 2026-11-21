@@ -14,6 +14,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { formatUGX } from '../utils/format';
 import { ProfileSettings } from '../components/ProfileSettings';
+import defaultAvatar from '../assets/default-avatar.svg';
 
 export const MyShelteredPage: React.FC = () => {
   const {
@@ -49,13 +50,7 @@ export const MyShelteredPage: React.FC = () => {
         {/* User Greeting Header */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            {currentUser.avatar ? (
-              <img src={currentUser.avatar} alt={currentUser.name} className="h-16 w-16 rounded-2xl object-cover shadow-md" />
-            ) : (
-              <div className="w-16 h-16 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold text-xl shadow-md">
-                {currentUser.name.charAt(0)}
-              </div>
-            )}
+            <img src={currentUser.avatar || defaultAvatar} alt={currentUser.name} className="h-16 w-16 rounded-2xl object-cover shadow-md" />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-neutral-900 font-serif-display">
