@@ -333,7 +333,21 @@ export class AdminService {
     }
     const updated = await prisma.user.update({
       where: { id: ownerId },
-      data: { accountStatus: 'APPROVED', approvedAt: new Date(), approvedById: adminUser.id }
+      data: { accountStatus: 'APPROVED', approvedAt: new Date(), approvedById: adminUser.id },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        role: true,
+        accountStatus: true,
+        approvedAt: true,
+        approvedById: true,
+        companyName: true,
+        agencyLicense: true,
+        country: true,
+        createdAt: true
+      }
     });
 
     await prisma.notification.create({
@@ -365,7 +379,21 @@ export class AdminService {
     if (!user) throw ApiError.notFound('User not found');
     const updated = await prisma.user.update({
       where: { id: ownerId },
-      data: { accountStatus: 'REJECTED', approvedById: adminUser.id }
+      data: { accountStatus: 'REJECTED', approvedById: adminUser.id },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        role: true,
+        accountStatus: true,
+        approvedAt: true,
+        approvedById: true,
+        companyName: true,
+        agencyLicense: true,
+        country: true,
+        createdAt: true
+      }
     });
 
     await prisma.notification.create({

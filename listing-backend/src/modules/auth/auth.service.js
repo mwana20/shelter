@@ -306,14 +306,10 @@ export class AuthService {
     const user = await prisma.user.findUnique({
       where: { email: cleanEmail }
     });
+    const message = 'If an account requires email verification, instructions have been sent.';
 
-    if (!user) {
-      // Return success-like response to avoid account enumeration
-      return { message: 'If this email is registered and unverified, a verification link has been sent.' };
-    }
-
-    if (user.emailVerified) {
-      throw ApiError.badRequest('This email address has already been verified.');
+    if (!user || user.emailVerified) {
+      return { message };
     }
 
     const token = generateRandomToken('vtok_');
@@ -345,10 +341,7 @@ export class AuthService {
       `
     });
 
-    return {
-      message: 'Verification email resent successfully.',
-      token // For testing convenience
-    };
+    return { message };
   }
 
   static async forgotPassword(email) {

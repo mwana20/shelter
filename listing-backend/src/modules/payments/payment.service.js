@@ -3,6 +3,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { StripeService } from './stripe.service.js';
 import { MerchantCodeService } from './merchant-code.service.js';
 import { getPagination, formatPaginationResponse } from '../../utils/pagination.js';
+import { stripe } from '../../config/stripe.js';
 
 export class PaymentService {
   static async getActiveLockSettings() {
@@ -99,14 +100,67 @@ export class PaymentService {
       throw ApiError.notFound('Payment session not found');
     }
 
-    // In sandbox or verified webhook, mark as verified
+    if (payment.status === 'VERIFIED') {
+      await prisma.locationUnlock.upsert({
+        where: {
+          userId_propertyId: { userId, propertyId }
+        },
+        update: {
+          paymentId: payment.id,
+          unlockedAt: payment.verifiedAt || new Date()
+        },
+        create: {
+          userId,
+          propertyId,
+          paymentId: payment.id,
+          unlockMethod: 'GATEWAY_STRIPE',
+          unlockedAt: payment.verifiedAt || new Date()
+        }
+      });
+      return {
+        success: true,
+        status: 'VERIFIED',
+        payment
+      };
+    }
+
+    let gatewayReference = `ref_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    let auditNotes = 'Verified through secure gateway session handshake';
+
+    if (stripe) {
+      let session;
+      try {
+        session = await stripe.checkout.sessions.retrieve(sessionId);
+      } catch {
+        throw ApiError.badRequest('Unable to verify payment session with the payment gateway.');
+      }
+
+      const metadata = session.metadata || {};
+      const paid =
+        session.payment_status === 'paid' ||
+        session.status === 'complete';
+      const matches =
+        metadata.purpose === 'LOCATION_UNLOCK' &&
+        metadata.userId === userId &&
+        metadata.propertyId === propertyId;
+
+      if (!paid || !matches) {
+        throw ApiError.badRequest('Payment session has not been confirmed for this property unlock.');
+      }
+
+      gatewayReference = session.payment_intent || session.id;
+      auditNotes = 'Verified by retrieving confirmed Stripe Checkout session';
+    } else if (!String(sessionId).startsWith('cs_sandbox_')) {
+      throw ApiError.badRequest('Payment gateway verification is unavailable for this session.');
+    }
+
     const updatedPayment = await prisma.payment.update({
       where: { id: payment.id },
       data: {
         status: 'VERIFIED',
-        gatewayReference: `ref_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        gatewayReference,
         verifiedAt: new Date(),
-        auditNotes: 'Verified through secure gateway session handshake'
+        auditNotes
       }
     });
 

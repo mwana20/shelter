@@ -88,6 +88,10 @@ export class PropertyService {
     });
   }
 
+  static canViewOwnerContact(property, requestingUser) {
+    return !!(requestingUser && (requestingUser.role === 'ADMIN' || requestingUser.id === property.ownerId));
+  }
+
   static async getPropertyById(id, requestingUser = null) {
     const property = await PropertyRepository.findById(id);
     if (!property) {
@@ -102,7 +106,7 @@ export class PropertyService {
     }).catch(() => {});
 
     const canViewExact = await this.isLocationAccessible(property, requestingUser);
-    return sanitizePropertyLocation(property, canViewExact);
+    return sanitizePropertyLocation(property, canViewExact, this.canViewOwnerContact(property, requestingUser));
   }
 
   static async getPropertyBySlug(slug, requestingUser = null) {
@@ -113,7 +117,7 @@ export class PropertyService {
     this.assertPublicOrOwner(property, requestingUser);
 
     const canViewExact = await this.isLocationAccessible(property, requestingUser);
-    return sanitizePropertyLocation(property, canViewExact);
+    return sanitizePropertyLocation(property, canViewExact, this.canViewOwnerContact(property, requestingUser));
   }
 
   static async listProperties(query, requestingUser = null) {
@@ -166,11 +170,11 @@ export class PropertyService {
       PropertyRepository.count(where)
     ]);
 
-    // Check location locking accessibility for each property
+    // Check location locking accessibility and contact visibility for each property
     const sanitizedItems = await Promise.all(
       properties.map(async (prop) => {
         const canViewExact = await this.isLocationAccessible(prop, requestingUser);
-        return sanitizePropertyLocation(prop, canViewExact);
+        return sanitizePropertyLocation(prop, canViewExact, this.canViewOwnerContact(prop, requestingUser));
       })
     );
 

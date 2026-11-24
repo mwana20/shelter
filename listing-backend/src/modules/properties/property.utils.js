@@ -1,15 +1,24 @@
 /**
  * Filters property fields based on whether the requester is authorized
- * to view the confidential exact location.
+ * to view confidential exact location and owner contact details.
  *
  * CRITICAL RULE:
  * The backend MUST withhold exact location data until payment is successfully verified.
  * Do not rely only on frontend hiding.
  */
-export const sanitizePropertyLocation = (property, isAuthorizedToViewExact) => {
+export const sanitizePropertyLocation = (
+  property,
+  isAuthorizedToViewExact,
+  isAuthorizedToViewOwnerContact = false
+) => {
+  const sanitizedOwner = property?.owner && !isAuthorizedToViewOwnerContact
+    ? { ...property.owner, email: null, phone: null }
+    : property?.owner;
+
   if (isAuthorizedToViewExact) {
     return {
       ...property,
+      owner: sanitizedOwner,
       isLocationLocked: false
     };
   }
@@ -26,6 +35,7 @@ export const sanitizePropertyLocation = (property, isAuthorizedToViewExact) => {
 
   return {
     ...publicFields,
+    owner: sanitizedOwner,
     isLocationLocked: true,
     exactAddress: null,
     latitude: null,

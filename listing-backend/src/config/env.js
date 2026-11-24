@@ -6,24 +6,44 @@ const positiveInt = (value, fallback) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const isProduction = NODE_ENV === 'production';
+
+const jwtDefaults = {
+  ACCESS_SECRET: 'dev_jwt_access_secret_key_32_characters_minimum',
+  REFRESH_SECRET: 'dev_jwt_refresh_secret_key_32_characters_minimum',
+  RESET_SECRET: 'dev_jwt_reset_secret_key_32_characters_minimum',
+  VERIFY_SECRET: 'dev_jwt_verify_secret_key_32_characters_minimum'
+};
+
+const resolveJwtSecret = (envName, fallback) => {
+  const value = process.env[envName] || fallback;
+  if (isProduction) {
+    if (!process.env[envName] || value === fallback || value.length < 32) {
+      throw new Error(`Insecure or missing ${envName}. Set a unique secret of at least 32 characters for production.`);
+    }
+  }
+  return value;
+};
+
 export const env = {
-  NODE_ENV: process.env.NODE_ENV || 'development',
+  NODE_ENV,
   PORT: parseInt(process.env.PORT || '5000', 10),
   API_PREFIX: process.env.API_PREFIX || '/api/v1',
   APP_URL: process.env.APP_URL || 'http://localhost:3000',
   AUTH_COOKIE_SAME_SITE: process.env.AUTH_COOKIE_SAME_SITE ||
-    (process.env.NODE_ENV === 'production' ? 'none' : 'lax'),
+    (isProduction ? 'none' : 'lax'),
 
   DATABASE_URL: process.env.DATABASE_URL || '',
 
   JWT: {
-    ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'dev_jwt_access_secret_key_32_characters_minimum',
+    ACCESS_SECRET: resolveJwtSecret('JWT_ACCESS_SECRET', jwtDefaults.ACCESS_SECRET),
     ACCESS_EXPIRATION: process.env.JWT_ACCESS_EXPIRATION || '15m',
-    REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'dev_jwt_refresh_secret_key_32_characters_minimum',
+    REFRESH_SECRET: resolveJwtSecret('JWT_REFRESH_SECRET', jwtDefaults.REFRESH_SECRET),
     REFRESH_EXPIRATION: process.env.JWT_REFRESH_EXPIRATION || '7d',
-    RESET_SECRET: process.env.JWT_RESET_SECRET || 'dev_jwt_reset_secret_key_32_characters_minimum',
+    RESET_SECRET: resolveJwtSecret('JWT_RESET_SECRET', jwtDefaults.RESET_SECRET),
     RESET_EXPIRATION: process.env.JWT_RESET_EXPIRATION || '15m',
-    VERIFY_SECRET: process.env.JWT_VERIFY_SECRET || 'dev_jwt_verify_secret_key_32_characters_minimum',
+    VERIFY_SECRET: resolveJwtSecret('JWT_VERIFY_SECRET', jwtDefaults.VERIFY_SECRET),
     VERIFY_EXPIRATION: process.env.JWT_VERIFY_EXPIRATION || '24h'
   },
 
