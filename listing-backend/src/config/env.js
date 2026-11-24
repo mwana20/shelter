@@ -25,6 +25,9 @@ const resolveJwtSecret = (envNames, fallback) => {
       throw new Error(`Insecure or missing ${names.join(' or ')}. Set a unique secret of at least 32 characters for production.`);
     }
   }
+  if (!isProduction && matchedName && value.length < 32) {
+    console.warn(`Warning: ${matchedName} is shorter than 32 characters; use a longer secret in production.`);
+  }
   return value;
 };
 
