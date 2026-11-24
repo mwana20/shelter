@@ -10,10 +10,10 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const isProduction = NODE_ENV === 'production';
 
 const jwtDefaults = {
-  ACCESS_SECRET: 'dev_jwt_access_secret_key_32_characters_minimum',
-  REFRESH_SECRET: 'dev_jwt_refresh_secret_key_32_characters_minimum',
-  RESET_SECRET: 'dev_jwt_reset_secret_key_32_characters_minimum',
-  VERIFY_SECRET: 'dev_jwt_verify_secret_key_32_characters_minimum'
+  ACCESS_SECRET: 'a14e259c15e46a851ab247c6d5825e3d32d561c59c6fdabaa53a2f85cff65f36',
+  REFRESH_SECRET: '966434c0c97c9de5ad1f39c5f625ebd0698c355100ccc1472f1a70ce93f9bd69',
+  RESET_SECRET: 'b56ce56fa81719baa350319347d8e5ff493c9c8d999ae4e44abd3dce39ba8c3e',
+  VERIFY_SECRET: 'b07066e7599f8eb622f56ca56fe52ac3c021850fc0685b85dac69f2e2a721d9a'
 };
 
 const resolveJwtSecret = (envName, fallback) => {
