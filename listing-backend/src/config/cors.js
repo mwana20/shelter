@@ -8,6 +8,8 @@ const allowedOrigins = [
       'https://shelter-coral.vercel.app',
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://127.0.0.1:3000',
+      'http://10.200.0.78:3000',
       'http://localhost:5173',
       ...env.CORS_ORIGIN
     ]
