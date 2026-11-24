@@ -16,11 +16,13 @@ const jwtDefaults = {
   VERIFY_SECRET: 'b07066e7599f8eb622f56ca56fe52ac3c021850fc0685b85dac69f2e2a721d9a'
 };
 
-const resolveJwtSecret = (envName, fallback) => {
-  const value = process.env[envName] || fallback;
+const resolveJwtSecret = (envNames, fallback) => {
+  const names = Array.isArray(envNames) ? envNames : [envNames];
+  const matchedName = names.find((name) => process.env[name]);
+  const value = matchedName ? process.env[matchedName] : fallback;
   if (isProduction) {
-    if (!process.env[envName] || value === fallback || value.length < 32) {
-      throw new Error(`Insecure or missing ${envName}. Set a unique secret of at least 32 characters for production.`);
+    if (!matchedName || value === fallback || value.length < 32) {
+      throw new Error(`Insecure or missing ${names.join(' or ')}. Set a unique secret of at least 32 characters for production.`);
     }
   }
   return value;
@@ -41,9 +43,9 @@ export const env = {
     ACCESS_EXPIRATION: process.env.JWT_ACCESS_EXPIRATION || '15m',
     REFRESH_SECRET: resolveJwtSecret('JWT_REFRESH_SECRET', jwtDefaults.REFRESH_SECRET),
     REFRESH_EXPIRATION: process.env.JWT_REFRESH_EXPIRATION || '7d',
-    RESET_SECRET: resolveJwtSecret('JWT_RESET_SECRET', jwtDefaults.RESET_SECRET),
+    RESET_SECRET: resolveJwtSecret(['JWT_RESET_SECRET', 'JWT_PASSWORD_RESET_SECRET'], jwtDefaults.RESET_SECRET),
     RESET_EXPIRATION: process.env.JWT_RESET_EXPIRATION || '15m',
-    VERIFY_SECRET: resolveJwtSecret('JWT_VERIFY_SECRET', jwtDefaults.VERIFY_SECRET),
+    VERIFY_SECRET: resolveJwtSecret(['JWT_VERIFY_SECRET', 'JWT_EMAIL_SECRET'], jwtDefaults.VERIFY_SECRET),
     VERIFY_EXPIRATION: process.env.JWT_VERIFY_EXPIRATION || '24h'
   },
 
