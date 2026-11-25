@@ -40,6 +40,7 @@ export const env = {
     (isProduction ? 'none' : 'lax'),
 
   DATABASE_URL: process.env.DATABASE_URL || '',
+  DIRECT_URL: process.env.DIRECT_URL || '',
 
   JWT: {
     ACCESS_SECRET: resolveJwtSecret('JWT_ACCESS_SECRET', jwtDefaults.ACCESS_SECRET),
