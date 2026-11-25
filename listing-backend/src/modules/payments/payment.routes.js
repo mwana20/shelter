@@ -12,12 +12,8 @@ import { paginationQuerySchema, uuidParamSchema } from '../../validators/common.
 
 const router = Router();
 
-// Stripe Webhook (Raw body)
-router.post(
-  '/webhook/stripe',
-  express.raw({ type: 'application/json' }),
-  PaymentController.handleStripeWebhook
-);
+// Stripe Webhook (raw body is parsed at app level before express.json)
+router.post('/webhook/stripe', PaymentController.handleStripeWebhook);
 
 // Protected routes (Require login)
 router.use(authenticate);

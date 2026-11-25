@@ -34,7 +34,12 @@ app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
 // Rate limiting
 app.use(globalRateLimiter);
 
-// Parse JSON and URL-encoded bodies (except raw stripe webhook route handled in payment.routes.js)
+// Stripe webhook needs the raw request body for signature verification.
+// Mount it before JSON/urlencoded body parsing so req.body remains a Buffer.
+const prefix = env.API_PREFIX;
+app.use(`${prefix}/payments/webhook/stripe`, express.raw({ type: 'application/json' }));
+
+// Parse JSON and URL-encoded bodies
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -49,7 +54,6 @@ app.get('/health', (req, res) => {
 });
 
 // Mount API Modules
-const prefix = env.API_PREFIX;
 app.use(`${prefix}/auth`, authRoutes);
 app.use(`${prefix}/subscriptions`, subscriptionRoutes);
 app.use(`${prefix}/users`, userRoutes);
@@ -67,3 +71,4 @@ app.use(notFound);
 app.use(errorHandler);
 
 export { app };
+export default app;
