@@ -9,24 +9,12 @@ const positiveInt = (value, fallback) => {
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const isProduction = NODE_ENV === 'production';
 
-const jwtDefaults = {
-  ACCESS_SECRET: '3ad2efca697f198952615516cd5113f118c6ba8f0f659b1902e0b7bb46302a4fe2801f463e8f0225a4831a9714568c02',
-  REFRESH_SECRET: 'c9b1e0da440cebe3152e625a5e9267f4aa1de3190539daea3b919be202cebefd8c81968f2dfec5cb92dc3f1a88980473',
-  RESET_SECRET: '8be4d770bcaa4e932d11ec0c7f9190088d6e2315a2a595c28da4bb8cf37ee5a12cdb9eb99ab96514bc6b853d4dbe14ef',
-  VERIFY_SECRET: '3e9c69fa0934bec23744c25e912915aa653d32ca9fca7ac05b157b5d45bd8ca3f0f3f3d4a918fe13624dc199a2ba5d6d'
-};
-
-const resolveJwtSecret = (envNames, fallback) => {
+const resolveJwtSecret = (envNames) => {
   const names = Array.isArray(envNames) ? envNames : [envNames];
   const matchedName = names.find((name) => process.env[name]);
-  const value = matchedName ? process.env[matchedName] : fallback;
-  if (isProduction) {
-    if (!matchedName || value === fallback || value.length < 32) {
-      throw new Error(`Insecure or missing ${names.join(' or ')}. Set a unique secret of at least 32 characters for production.`);
-    }
-  }
-  if (!isProduction && matchedName && value.length < 32) {
-    console.warn(`Warning: ${matchedName} is shorter than 32 characters; use a longer secret in production.`);
+  const value = matchedName ? process.env[matchedName] : '';
+  if (!value || value.length < 32) {
+    throw new Error(`Missing or insecure ${names.join(' or ')}. Set a unique secret of at least 32 characters in your environment.`);
   }
   return value;
 };
@@ -43,13 +31,13 @@ export const env = {
   DIRECT_URL: process.env.DIRECT_URL || '',
 
   JWT: {
-    ACCESS_SECRET: resolveJwtSecret('JWT_ACCESS_SECRET', jwtDefaults.ACCESS_SECRET),
+    ACCESS_SECRET: resolveJwtSecret('JWT_ACCESS_SECRET'),
     ACCESS_EXPIRATION: process.env.JWT_ACCESS_EXPIRATION || '15m',
-    REFRESH_SECRET: resolveJwtSecret('JWT_REFRESH_SECRET', jwtDefaults.REFRESH_SECRET),
+    REFRESH_SECRET: resolveJwtSecret('JWT_REFRESH_SECRET'),
     REFRESH_EXPIRATION: process.env.JWT_REFRESH_EXPIRATION || '7d',
-    RESET_SECRET: resolveJwtSecret(['JWT_RESET_SECRET', 'JWT_PASSWORD_RESET_SECRET'], jwtDefaults.RESET_SECRET),
+    RESET_SECRET: resolveJwtSecret(['JWT_RESET_SECRET', 'JWT_PASSWORD_RESET_SECRET']),
     RESET_EXPIRATION: process.env.JWT_RESET_EXPIRATION || '15m',
-    VERIFY_SECRET: resolveJwtSecret(['JWT_VERIFY_SECRET', 'JWT_EMAIL_SECRET'], jwtDefaults.VERIFY_SECRET),
+    VERIFY_SECRET: resolveJwtSecret(['JWT_VERIFY_SECRET', 'JWT_EMAIL_SECRET']),
     VERIFY_EXPIRATION: process.env.JWT_VERIFY_EXPIRATION || '24h'
   },
 
