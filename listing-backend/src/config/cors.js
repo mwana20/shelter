@@ -6,6 +6,7 @@ const allowedOrigins = [
   ...new Set(
     [
       'https://shelter-coral.vercel.app',
+      'https://sheltermkn.netlify.app',
       'http://localhost:3000',
       'http://localhost:3001',
       'http://127.0.0.1:3000',
