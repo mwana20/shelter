@@ -53,6 +53,17 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Browser-friendly root route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'sheltered-listing-backend',
+    version: '1.0.0',
+    apiBaseUrl: env.API_PREFIX,
+    health: '/health'
+  });
+});
+
 // Mount API Modules
 app.use(`${prefix}/auth`, authRoutes);
 app.use(`${prefix}/subscriptions`, subscriptionRoutes);
