@@ -120,6 +120,16 @@ export const SellerDashboardPage: React.FC = () => {
   const myProperties = backendProperties;
   const isBroker = currentUser.role === 'agent' || currentUser.role === 'broker';
   const roleLabel = isBroker ? 'Broker' : currentUser.role === 'landlord' ? 'Landlord' : 'Property Owner';
+  const isSellerAccountApproved =
+    currentUser.accountStatus === 'APPROVED' ||
+    (!currentUser.accountStatus && currentUser.verificationStatus === 'Verified');
+  const sellerApprovalLabel = currentUser.accountStatus === 'APPROVED'
+    ? 'Verified'
+    : currentUser.accountStatus === 'PENDING'
+      ? 'Pending Review'
+      : currentUser.accountStatus === 'REJECTED'
+        ? 'Not Approved'
+        : currentUser.verificationStatus || 'Unverified';
   const sellerNavGroups: DashboardNavigationGroup<DashboardTab>[] = [
     {
       label: 'Dashboard',
@@ -263,14 +273,14 @@ export const SellerDashboardPage: React.FC = () => {
                   <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-medium capitalize">
                     {currentUser.role}
                   </span>
-                {currentUser.verificationStatus === 'Verified' ? (
+                {isSellerAccountApproved ? (
                   <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-medium flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3" />
                     <span>Verified Broker</span>
                   </span>
                 ) : (
                   <span className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded font-medium">
-                    {currentUser.verificationStatus || 'Unverified'}
+                    {sellerApprovalLabel}
                   </span>
                 )}
                 </div>
@@ -286,10 +296,12 @@ export const SellerDashboardPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setCurrentPage('list-property')}
-              className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-slate-800 lg:bg-lime-300 lg:text-slate-950 lg:hover:bg-lime-200"
+              disabled={!isSellerAccountApproved}
+              title={!isSellerAccountApproved ? 'You can list properties after your account is approved.' : undefined}
+              className="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 lg:bg-lime-300 lg:text-slate-950 lg:hover:bg-lime-200"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>List New Property</span>
+              <span>{isSellerAccountApproved ? 'List New Property' : 'Available After Approval'}</span>
             </button>
             <button
               type="button"
@@ -300,6 +312,31 @@ export const SellerDashboardPage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {!isSellerAccountApproved && (
+          <section
+            role="status"
+            className={`flex items-start gap-3 rounded-2xl border p-4 ${
+              currentUser.accountStatus === 'REJECTED'
+                ? 'border-rose-200 bg-rose-50 text-rose-900'
+                : 'border-amber-200 bg-amber-50 text-amber-950'
+            }`}
+          >
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <h2 className="text-sm font-bold">
+                {currentUser.accountStatus === 'REJECTED'
+                  ? 'Your account has not been approved'
+                  : 'Your account is awaiting verification'}
+              </h2>
+              <p className="mt-1 text-xs leading-relaxed">
+                {currentUser.accountStatus === 'REJECTED'
+                  ? 'You can explore your dashboard, but property listing is unavailable until your account is approved. Please contact support for help.'
+                  : 'You can explore your dashboard while we review your account. You can start adding property listings as soon as your account is verified.'}
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
@@ -500,10 +537,12 @@ export const SellerDashboardPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCurrentPage('list-property')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold"
+                disabled={!isSellerAccountApproved}
+                title={!isSellerAccountApproved ? 'You can list properties after your account is approved.' : undefined}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                <span>Add Property</span>
+                <span>{isSellerAccountApproved ? 'Add Property' : 'Available After Approval'}</span>
               </button>
             </div>
 
@@ -522,9 +561,11 @@ export const SellerDashboardPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setCurrentPage('list-property')}
-                  className="mt-4 px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-lg"
+                  disabled={!isSellerAccountApproved}
+                  title={!isSellerAccountApproved ? 'You can list properties after your account is approved.' : undefined}
+                  className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  List a Property
+                  {isSellerAccountApproved ? 'List a Property' : 'Available After Approval'}
                 </button>
               </div>
             ) : (
