@@ -23,6 +23,7 @@ export const env = {
   NODE_ENV,
   PORT: parseInt(process.env.PORT || '5000', 10),
   API_PREFIX: process.env.API_PREFIX || '/api/v1',
+  PROXY_SECRET: process.env.PROXY_SECRET || '',
   APP_URL: process.env.APP_URL || 'http://localhost:3000',
   AUTH_COOKIE_SAME_SITE: process.env.AUTH_COOKIE_SAME_SITE ||
     (isProduction ? 'none' : 'lax'),

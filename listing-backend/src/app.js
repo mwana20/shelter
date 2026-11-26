@@ -20,7 +20,7 @@ import subscriptionRoutes from './modules/subscriptions/subscription.routes.js';
 
 const app = express();
 
-app.set('trust proxy', true);
+app.set('trust proxy', 2);
 
 // Security HTTP headers
 app.use(helmet());
