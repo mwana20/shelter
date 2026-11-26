@@ -148,6 +148,7 @@ export const Navbar: React.FC = () => {
   const selectDashboardSection = (tab: string) => {
     window.dispatchEvent(new CustomEvent('sheltered-dashboard-section', { detail: tab }));
     setMobileMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {

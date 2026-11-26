@@ -41,8 +41,19 @@ export const MyShelteredPage: React.FC = () => {
     return () => window.removeEventListener('sheltered-dashboard-section', handleDashboardSection);
   }, []);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
   // Profile edit state
   const savedProperties = properties.filter((p) => savedPropertyIds.includes(p.id));
+
+  const sectionTitles: Record<typeof activeTab, string> = {
+    viewings: 'Viewing Appointments',
+    enquiries: 'Enquiries & Messages',
+    saved: 'Saved Homes',
+    profile: 'Account Profile'
+  };
 
   return (
     <div className="bg-neutral-50/50 py-12 px-4 sm:px-6 lg:px-8 min-h-screen">
@@ -54,7 +65,7 @@ export const MyShelteredPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-neutral-900 font-serif-display">
-                  My Sheltered Dashboard
+                  {sectionTitles[activeTab]}
                 </h1>
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full capitalize">
                   {currentUser.role}

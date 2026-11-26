@@ -105,6 +105,10 @@ export const AdminDashboardPage: React.FC = () => {
     return () => window.removeEventListener('sheltered-dashboard-section', handleDashboardSection);
   }, []);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
   // Payments Ledger State
   const [payments, setPayments] = useState<LocationUnlockPayment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
@@ -477,6 +481,42 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  const sectionTitles: Record<typeof activeTab, { title: string; subtitle: string }> = {
+    analytics: {
+      title: 'Dashboard Overview',
+      subtitle: 'Property status, listing activity, and administration at a glance.'
+    },
+    inventory: {
+      title: 'Property Inventory',
+      subtitle: 'View and manage all property records in the database.'
+    },
+    moderation: {
+      title: 'Listing Approvals',
+      subtitle: 'Review submitted listings and approve or return them for correction.'
+    },
+    locking: {
+      title: 'Administration Settings',
+      subtitle: 'Configure location locking and payment behavior.'
+    },
+    payments: {
+      title: 'Transactions',
+      subtitle: 'Review unlock payments and verify submissions.'
+    },
+    subscriptions: {
+      title: 'Subscriptions',
+      subtitle: 'Manage subscription plans and customer access.'
+    },
+    viewings: {
+      title: 'Viewing Appointments',
+      subtitle: 'Manage scheduled property viewings.'
+    },
+    profile: {
+      title: 'Admin Profile',
+      subtitle: 'Manage your administrator account details.'
+    }
+  };
+  const activeSection = sectionTitles[activeTab];
+
   return (
     <div className="min-h-screen bg-neutral-50 lg:bg-[#111111]">
       <DashboardSidebar
@@ -488,11 +528,7 @@ export const AdminDashboardPage: React.FC = () => {
         ariaLabel="Admin dashboard"
         onSelect={(tab) => {
           setActiveTab(tab);
-          if (tab === 'analytics') {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } else {
-            document.getElementById('admin-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
 
@@ -506,10 +542,10 @@ export const AdminDashboardPage: React.FC = () => {
               <span>Sheltered Global Administration Console</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold font-serif-display">
-              Dashboard Overview
+              {activeSection.title}
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              Property status, listing activity, and administration at a glance.
+              {activeSection.subtitle}
             </p>
           </div>
 
@@ -540,6 +576,8 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
 
+        {activeTab === 'analytics' && (
+          <>
         <section className="space-y-4 rounded-3xl border border-neutral-200/90 bg-white p-5 shadow-xs sm:p-7 lg:border-white/10 lg:bg-[#242424] lg:text-white" aria-labelledby="property-analytics-heading">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -649,6 +687,8 @@ export const AdminDashboardPage: React.FC = () => {
             </button>
           </div>
         </div>
+          </>
+        )}
 
         {/* Navigation Tabs */}
         <div id="admin-workspace" />

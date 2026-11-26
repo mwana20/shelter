@@ -91,6 +91,10 @@ export const SellerDashboardPage: React.FC = () => {
     window.addEventListener('sheltered-dashboard-section', handleDashboardSection);
     return () => window.removeEventListener('sheltered-dashboard-section', handleDashboardSection);
   }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
   const [propertyFilterStatus, setPropertyFilterStatus] = useState<string>('all');
   const [replyMessageId, setReplyMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -219,6 +223,15 @@ export const SellerDashboardPage: React.FC = () => {
     showNotification('Verification request submitted for compliance inspection.', 'success');
   };
 
+  const sectionTitles: Record<DashboardTab, string> = {
+    overview: 'Dashboard Overview',
+    'my-properties': 'My Properties',
+    enquiries: 'Enquiries',
+    'agency-profile': 'Profile & Location',
+    'verification-request': 'Verification Request',
+    settings: 'Account Settings'
+  };
+
   return (
     <div className="min-h-screen bg-neutral-100 lg:bg-[#111111]">
       <DashboardSidebar
@@ -230,7 +243,7 @@ export const SellerDashboardPage: React.FC = () => {
         ariaLabel={`${roleLabel} dashboard`}
         onSelect={(tab) => {
           setActiveTab(tab);
-          document.getElementById('seller-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
       <main className="min-h-screen px-4 py-6 sm:px-6 lg:ml-[276px] lg:px-8 lg:py-8">
@@ -245,7 +258,7 @@ export const SellerDashboardPage: React.FC = () => {
             />
             <div className="min-w-0">
               <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-                <h1 className="max-w-full truncate whitespace-nowrap text-lg font-bold text-slate-900 sm:text-xl lg:text-white">Dashboard Overview</h1>
+                <h1 className="max-w-full truncate whitespace-nowrap text-lg font-bold text-slate-900 sm:text-xl lg:text-white">{sectionTitles[activeTab]}</h1>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-medium capitalize">
                     {currentUser.role}
