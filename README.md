@@ -43,10 +43,10 @@ APP_URL="http://localhost:3000"
 VITE_PAYMENT_GATEWAY_PUBLISHABLE_KEY="pk_test_sample_51O..."
 
 # Backend API Base URL
-VITE_API_BASE_URL="/api"
+VITE_API_BASE_URL="/api/v1"
 ```
 
-For local development, `/api` maps to the local backend at `http://localhost:5000/api/v1`. Production builds use the public Render API URL in `.env.production`; Vercel project environment variables can override it for preview or alternate environments.
+For local development, `/api/v1` maps to the local backend at `http://localhost:5000` through the Vite dev-server proxy. Production builds always use the relative `/api/v1` path, and the Vercel rewrite forwards those requests server-side to the configured API proxy. The browser therefore only connects to the Vercel domain for API calls. Keep `VITE_API_BASE_URL` set to `/api/v1` in Vercel project environment variables as well.
 
 > **Security Rule**: API secret keys (such as `STRIPE_SECRET_KEY`, database credentials, or merchant private settlement keys) reside exclusively in secure backend server environments and are never bundled into client-side code.
 
