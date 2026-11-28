@@ -8,7 +8,7 @@ export const API_BASE_URL =
     ? '/api/v1'
     : normalizedApiBaseUrl && normalizedApiBaseUrl !== '/api'
       ? normalizedApiBaseUrl
-      : 'http://localhost:5000/api/v1';
+      : '/api/v1';
 const ACCESS_TOKEN_KEY = 'sheltered_access_token';
 const REFRESH_TOKEN_KEY = 'sheltered_refresh_token';
 

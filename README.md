@@ -46,7 +46,7 @@ VITE_PAYMENT_GATEWAY_PUBLISHABLE_KEY="pk_test_sample_51O..."
 VITE_API_BASE_URL="/api/v1"
 ```
 
-For local development, `/api/v1` maps to the local backend at `http://localhost:5000` through the Vite dev-server proxy. Production builds always use the relative `/api/v1` path, and the Vercel rewrite forwards those requests server-side to the configured API proxy. The browser therefore only connects to the Vercel domain for API calls. Keep `VITE_API_BASE_URL` set to `/api/v1` in Vercel project environment variables as well.
+For local development, `/api/v1` maps through the Vite dev-server proxy to `http://localhost:5000` by default. To use the deployed API proxy from a development device instead, keep `VITE_API_BASE_URL="/api/v1"` and set `VITE_DEV_API_PROXY_TARGET="https://api-proxy.phillipmwanaweika.workers.dev"` in `.env`; browser requests then go to the Vite server rather than directly to the Worker. Restart Vite after changing these values. Production builds use the relative `/api/v1` path, and the Vercel rewrite forwards those requests server-side to the configured API proxy. Keep `VITE_API_BASE_URL` set to `/api/v1` in Vercel project environment variables as well.
 
 > **Security Rule**: API secret keys (such as `STRIPE_SECRET_KEY`, database credentials, or merchant private settlement keys) reside exclusively in secure backend server environments and are never bundled into client-side code.
 
