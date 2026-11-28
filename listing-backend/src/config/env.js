@@ -75,7 +75,7 @@ export const env = {
 
   RATE_LIMIT: {
     WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
-    MAX: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
+    MAX: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '300', 10),
     AUTH_MAX: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '10', 10)
   }
 };

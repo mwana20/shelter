@@ -174,6 +174,9 @@ The seed command does not create a default admin password. The administrator sig
 ### Proxy Trust
 The Express app trusts one proxy hop for client IP resolution. This matches the Render deployment topology and allows `express-rate-limit` to key limits by the originating client IP. Do not change this to `true` or trust forwarded headers from arbitrary sources; if the hosting proxy topology changes, adjust the hop count to match it.
 
+### API Rate Limits
+The global API limit defaults to 300 requests per IP per 15 minutes; `/health` is excluded. `RATE_LIMIT_MAX_REQUESTS` and `RATE_LIMIT_WINDOW_MS` override this default. Authentication routes retain their separate 10-request limit per 15 minutes by default (`AUTH_RATE_LIMIT_MAX_REQUESTS`). If either environment variable is explicitly set in the deployment environment, update it there for the new limit to take effect.
+
 ### Start Server
 ```bash
 # Development mode with auto-reload:

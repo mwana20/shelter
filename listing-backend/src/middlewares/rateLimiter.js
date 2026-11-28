@@ -21,6 +21,7 @@ export const globalRateLimiter = rateLimit({
   keyGenerator: clientKey,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path === '/health',
   handler: (req, res, next) => {
     next(new ApiError(429, 'Too many requests from this IP address. Please try again later.'));
   }
