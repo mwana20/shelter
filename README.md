@@ -1,17 +1,13 @@
 # Sheltered Real Estate Platform - Location Locking & Payment Integration
 
+For an implementation-oriented overview of the complete frontend/backend structure, routes, data model, integrations, and development commands, see [DOCUMENTATION.md](./DOCUMENTATION.md).
+
 This document outlines the architecture, configuration, security practices, and testing flows for the user registration, password reset, locked property location, and dual-option paid unlocking features.
 
-> **Current Operational Status**:
-> You do **not** need a live payment gateway account (such as Stripe) or a deployed external backend API URL right now. The application comes equipped with a **full-featured, client-side simulation engine** (`src/services/backendApi.ts`) that manages:
-> - User registration with strict 18+ age checks and password complexity rules
-> - Email verification tokens with rate-limited resend
-> - Password reset with single-use, 15-minute expiring tokens
-> - Location locking, withholding exact coordinates and addresses
-> - Simulated card/PayPal hosted checkout sessions with printable receipts
-> - Merchant code transaction ID submission, validation, duplicate detection, and automated or manual admin moderation
-> 
-> When you are ready to connect your production payment provider and backend server, you can supply `VITE_PAYMENT_GATEWAY_PUBLISHABLE_KEY` and `VITE_API_BASE_URL` in `.env` without needing to rewrite any frontend UI components.
+> **Runtime and demo behavior**:
+> The frontend contains demo fixtures and local/simulated workflows, but the application also has API-backed authentication, property, media, subscription, and administrative clients. Persistent account, listing, payment, and unlock workflows require the separate `listing-backend` service and its configured database/integrations. `src/services/backendApi.ts` contains simulated/local behavior alongside API-backed admin requests; a simulated checkout or browser-stored result is not proof of a real payment. See [DOCUMENTATION.md](./DOCUMENTATION.md) for the architecture and current service boundaries.
+>
+> For local API development, the Vite proxy forwards `/api/v1` to `http://localhost:5000` by default. Configure `VITE_DEV_API_PROXY_TARGET` to use another development API host. Production builds use `/api/v1`, which is forwarded by the deployment rewrite. Payment credentials and other private integration secrets belong only in the backend environment.
 
 ---
 
